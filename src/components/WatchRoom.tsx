@@ -30,6 +30,19 @@ type PresenceUser = {
 
   time: string;
 
+  state?: "play" | "pause";
+
+};
+
+
+type Reaction = {
+
+  id: string;
+
+  reaction: string;
+
+  user: string;
+
 };
 
 
@@ -42,6 +55,16 @@ type Props = {
   roomId: string;
 
 };
+
+
+const reactions = [
+  "❤️",
+  "😂",
+  "🔥",
+  "😮",
+  "😭",
+  "💀"
+];
 
 
 function WatchRoom({
@@ -65,6 +88,10 @@ function WatchRoom({
 
   const [presence, setPresence] =
     useState<PresenceUser[]>([]);
+
+
+  const [reactionsOnScreen, setReactionsOnScreen] =
+    useState<Reaction[]>([]);
 
 
   const [initialPosition, setInitialPosition] =
@@ -95,17 +122,11 @@ function WatchRoom({
 
   /*
     =========================
-    JOIN
+    JOIN ROOM
     =========================
   */
 
   useEffect(() => {
-
-    joinRoom(
-      roomId,
-      userName
-    );
-
 
     function handleUsers(
       count: number
@@ -173,6 +194,47 @@ function WatchRoom({
     }
 
 
+    function handleReaction(
+      reaction: Reaction
+    ) {
+
+      setReactionsOnScreen(
+        previous => [
+          ...previous,
+          reaction
+        ]
+      );
+
+
+      /*
+        Automatically remove
+        reaction after animation.
+      */
+
+      window.setTimeout(
+        () => {
+
+          setReactionsOnScreen(
+            previous =>
+              previous.filter(
+                item =>
+                  item.id !==
+                  reaction.id
+              )
+          );
+
+        },
+        2800
+      );
+
+    }
+
+
+    /*
+      Сначала слушаем события.
+      Потом подключаемся к комнате.
+    */
+
     socket.on(
       "users",
       handleUsers
@@ -194,6 +256,18 @@ function WatchRoom({
     socket.on(
       "video-control",
       handleRemoteControl
+    );
+
+
+    socket.on(
+      "reaction",
+      handleReaction
+    );
+
+
+    joinRoom(
+      roomId,
+      userName
     );
 
 
@@ -222,6 +296,12 @@ function WatchRoom({
         handleRemoteControl
       );
 
+
+      socket.off(
+        "reaction",
+        handleReaction
+      );
+
     };
 
   }, [
@@ -232,7 +312,7 @@ function WatchRoom({
 
   /*
     =========================
-    SEND CONTROL
+    VIDEO CONTROL
     =========================
   */
 
@@ -268,7 +348,7 @@ function WatchRoom({
 
   /*
     =========================
-    SEND POSITION
+    VIDEO POSITION
     =========================
   */
 
@@ -294,6 +374,30 @@ function WatchRoom({
         roomId
       ]
     );
+
+
+  /*
+    =========================
+    SEND REACTION
+    =========================
+  */
+
+  function sendReaction(
+    reaction: string
+  ) {
+
+    socket.emit(
+      "reaction",
+      {
+
+        roomId,
+
+        reaction
+
+      }
+    );
+
+  }
 
 
   return (
@@ -344,6 +448,7 @@ function WatchRoom({
 
         <div className="video-frame">
 
+
           <VideoPlayer
 
             videoUrl={
@@ -371,6 +476,88 @@ function WatchRoom({
             }
 
           />
+
+
+          {/* =========================
+              FLOATING REACTIONS
+          ========================= */}
+
+          <div className="floating-reactions">
+
+            {reactionsOnScreen.map(
+              item => (
+
+                <div
+                  key={
+                    item.id
+                  }
+                  className="floating-reaction"
+                >
+
+                  <span>
+                    {item.reaction}
+                  </span>
+
+
+                  <small>
+                    {item.user}
+                  </small>
+
+                </div>
+
+              )
+            )}
+
+          </div>
+
+
+        </div>
+
+
+        {/* =========================
+            REACTION BAR
+        ========================= */}
+
+        <div className="reaction-bar">
+
+          <div className="reaction-label">
+            REACT
+          </div>
+
+
+          <div className="reaction-buttons">
+
+            {reactions.map(
+              reaction => (
+
+                <button
+                  key={
+                    reaction
+                  }
+
+                  type="button"
+
+                  className="reaction-button"
+
+                  onClick={() =>
+                    sendReaction(
+                      reaction
+                    )
+                  }
+
+                  aria-label={
+                    `Отправить ${reaction}`
+                  }
+                >
+
+                  {reaction}
+
+                </button>
+
+              )
+            )}
+
+          </div>
 
         </div>
 
