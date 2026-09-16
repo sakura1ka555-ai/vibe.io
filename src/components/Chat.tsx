@@ -3,26 +3,51 @@ import {
   useState
 } from "react";
 
-import { socket } from "../socket";
+
+import {
+  socket
+} from "../socket";
 
 
 type Message = {
+
   user: string;
+
   text: string;
+
+};
+
+
+type PresenceUser = {
+
+  id: string;
+
+  name: string;
+
+  position: number;
+
+  time: string;
+
 };
 
 
 type Props = {
+
   roomId: string;
+
+  presence: PresenceUser[];
+
 };
 
 
 function Chat({
-  roomId
+  roomId,
+  presence
 }: Props) {
 
   const [messages, setMessages] =
     useState<Message[]>([]);
+
 
   const [text, setText] =
     useState("");
@@ -76,8 +101,12 @@ function Chat({
     socket.emit(
       "chat-message",
       {
+
         roomId,
-        text: message
+
+        text:
+          message
+
       }
     );
 
@@ -113,9 +142,26 @@ function Chat({
 
       <div className="chat-header">
 
-        <div className="chat-title">
-          Чат
+        <div>
+
+          <div className="chat-title">
+            Чат
+          </div>
+
+          <div className="chat-online">
+
+            <span>
+              ●
+            </span>
+
+            {presence.length || 1}
+            {" "}
+            сейчас смотрят
+
+          </div>
+
         </div>
+
 
         <div className="chat-room">
           {roomId}
@@ -124,12 +170,108 @@ function Chat({
       </div>
 
 
+      {/* =========================
+          VIEWERS
+      ========================= */}
+
+      <div className="chat-viewers">
+
+        <div className="chat-viewers-title">
+          СЕЙЧАС СМОТРЯТ
+        </div>
+
+
+        <div className="chat-viewers-list">
+
+          {presence.length === 0 && (
+
+            <div className="viewer">
+
+              <div className="viewer-avatar">
+                G
+              </div>
+
+              <div className="viewer-info">
+
+                <div className="viewer-name">
+                  Guest
+                </div>
+
+                <div className="viewer-time">
+                  00:00
+                </div>
+
+              </div>
+
+            </div>
+
+          )}
+
+
+          {presence.map(
+            person => (
+
+              <div
+                key={
+                  person.id
+                }
+                className="viewer"
+              >
+
+                <div className="viewer-avatar">
+
+                  {
+                    person.name
+                      .charAt(0)
+                      .toUpperCase()
+                  }
+
+                </div>
+
+
+                <div className="viewer-info">
+
+                  <div className="viewer-name">
+
+                    {person.name}
+
+                  </div>
+
+
+                  <div className="viewer-time">
+
+                    <span className="viewer-live-dot">
+                      ●
+                    </span>
+
+                    {person.time}
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            )
+          )}
+
+        </div>
+
+      </div>
+
+
+      {/* =========================
+          MESSAGES
+      ========================= */}
+
       <div className="messages">
 
         {messages.length === 0 && (
 
           <div className="chat-empty">
+
             Здесь появятся сообщения
+
           </div>
 
         )}
@@ -142,7 +284,9 @@ function Chat({
           ) => (
 
             <div
-              key={index}
+              key={
+                index
+              }
               className="message"
             >
 
@@ -162,13 +306,19 @@ function Chat({
       </div>
 
 
+      {/* =========================
+          INPUT
+      ========================= */}
+
       <div className="chat-input">
 
         <input
 
           type="text"
 
-          value={text}
+          value={
+            text
+          }
 
           onChange={
             event =>
@@ -197,7 +347,9 @@ function Chat({
           }
 
         >
+
           →
+
         </button>
 
       </div>
