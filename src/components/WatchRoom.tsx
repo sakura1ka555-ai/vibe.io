@@ -22,12 +22,19 @@ function WatchRoom({
     useRef<HTMLVideoElement>(null);
 
 
+  const [currentVideo, setCurrentVideo] =
+    useState(videoUrl);
+
+
   const [users, setUsers] =
     useState(1);
 
 
 
+
+
   useEffect(() => {
+
 
     joinRoom(roomId);
 
@@ -44,15 +51,38 @@ function WatchRoom({
 
 
 
+
+    socket.on(
+      "room-state",
+      (room) => {
+
+
+        if(room.videoUrl) {
+
+          setCurrentVideo(
+            room.videoUrl
+          );
+
+        }
+
+
+      }
+    );
+
+
+
+
+
     socket.on(
       "video-control",
       (data) => {
+
 
         const video =
           videoRef.current;
 
 
-        if (!video) return;
+        if(!video) return;
 
 
 
@@ -61,7 +91,7 @@ function WatchRoom({
 
 
 
-        if (data.action === "play") {
+        if(data.action === "play") {
 
           video.play();
 
@@ -69,20 +99,25 @@ function WatchRoom({
 
 
 
-        if (data.action === "pause") {
+        if(data.action === "pause") {
 
           video.pause();
 
         }
+
 
       }
     );
 
 
 
+
+
     return () => {
 
       socket.off("users");
+
+      socket.off("room-state");
 
       socket.off("video-control");
 
@@ -95,13 +130,17 @@ function WatchRoom({
 
 
 
+
+
+
   function playVideo() {
+
 
     const video =
       videoRef.current;
 
 
-    if (!video) return;
+    if(!video) return;
 
 
 
@@ -109,13 +148,14 @@ function WatchRoom({
 
 
 
+
     socket.emit(
       "video-control",
       {
 
         roomId,
 
-        action: "play",
+        action:"play",
 
         position:
           video.currentTime
@@ -123,7 +163,10 @@ function WatchRoom({
       }
     );
 
+
   }
+
+
 
 
 
@@ -131,15 +174,17 @@ function WatchRoom({
 
   function pauseVideo() {
 
+
     const video =
       videoRef.current;
 
 
-    if (!video) return;
+    if(!video) return;
 
 
 
     video.pause();
+
 
 
 
@@ -149,7 +194,7 @@ function WatchRoom({
 
         roomId,
 
-        action: "pause",
+        action:"pause",
 
         position:
           video.currentTime
@@ -157,7 +202,10 @@ function WatchRoom({
       }
     );
 
+
   }
+
+
 
 
 
@@ -165,18 +213,26 @@ function WatchRoom({
 
   function invite() {
 
+
     const link =
-      `https://t.me/VIBE_BOT/app?startapp=${roomId}`;
+    `https://t.me/VIBE_BOT/app?startapp=${roomId}`;
 
 
-    navigator.clipboard.writeText(link);
+
+    navigator.clipboard.writeText(
+      link
+    );
+
 
 
     alert(
-      "Ссылка комнаты скопирована 💜"
+      "Ссылка скопирована 💜"
     );
 
+
   }
+
+
 
 
 
@@ -193,17 +249,19 @@ function WatchRoom({
 
 
 
+
       <video
 
         ref={videoRef}
 
-        src={videoUrl}
+        src={currentVideo}
 
         className="video-player"
 
         controls
 
       />
+
 
 
 
@@ -217,21 +275,33 @@ function WatchRoom({
 
 
 
+
       <button onClick={playVideo}>
+
         ▶️ Смотреть вместе
+
       </button>
+
+
 
 
 
       <button onClick={pauseVideo}>
+
         ⏸ Пауза для всех
+
       </button>
+
+
 
 
 
       <button onClick={invite}>
+
         🔗 Пригласить друзей
+
       </button>
+
 
 
 
@@ -240,6 +310,7 @@ function WatchRoom({
   );
 
 }
+
 
 
 export default WatchRoom;
