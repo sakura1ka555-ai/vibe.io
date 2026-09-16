@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState
 } from "react";
 
@@ -33,6 +34,14 @@ type Reaction = {
 };
 
 
+type VibeStatsStorage = {
+  totalSeconds: number;
+  activity: Record<string, number>;
+  activeSince: number | null;
+  lastHeartbeat: number | null;
+};
+
+
 type Props = {
   name: string;
   videoUrl: string;
@@ -52,6 +61,225 @@ const reactions = [
   "😭",
   "💀"
 ];
+
+
+const VIBE_STATS_PREFIX =
+  "vibe-stats-v2-";
+
+
+const VIBE_USER_ID_KEY =
+  "vibe-user-id";
+
+
+function getTodayKey() {
+  const date =
+    new Date();
+
+  const year =
+    date.getFullYear();
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+
+function getDateKey(
+  date: Date
+) {
+  const year =
+    date.getFullYear();
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+
+function createUserId() {
+  return (
+    `${Date.now().toString(36)}-` +
+    `${Math.random()
+      .toString(36)
+      .slice(2, 10)}`
+  );
+}
+
+
+function getUserId() {
+  const existing =
+    localStorage.getItem(
+      VIBE_USER_ID_KEY
+    );
+
+  if (existing) {
+    return existing;
+  }
+
+  const id =
+    createUserId();
+
+  localStorage.setItem(
+    VIBE_USER_ID_KEY,
+    id
+  );
+
+  return id;
+}
+
+
+function getStorageKey(
+  userId: string
+) {
+  return (
+    `${VIBE_STATS_PREFIX}${userId}`
+  );
+}
+
+
+function createEmptyStats(): VibeStatsStorage {
+  return {
+    totalSeconds: 0,
+    activity: {},
+    activeSince: null,
+    lastHeartbeat: null
+  };
+}
+
+
+function loadStats(
+  userId: string
+): VibeStatsStorage {
+
+  try {
+
+    const raw =
+      localStorage.getItem(
+        getStorageKey(userId)
+      );
+
+    if (!raw) {
+      return createEmptyStats();
+    }
+
+    const parsed =
+      JSON.parse(raw);
+
+    return {
+      totalSeconds:
+        Number(
+          parsed.totalSeconds
+        ) || 0,
+
+      activity:
+        parsed.activity &&
+        typeof parsed.activity === "object"
+          ? parsed.activity
+          : {},
+
+      activeSince:
+        typeof parsed.activeSince === "number"
+          ? parsed.activeSince
+          : null,
+
+      lastHeartbeat:
+        typeof parsed.lastHeartbeat === "number"
+          ? parsed.lastHeartbeat
+          : null
+    };
+
+  } catch {
+
+    return createEmptyStats();
+
+  }
+}
+
+
+function saveStats(
+  userId: string,
+  stats: VibeStatsStorage
+) {
+
+  try {
+
+    localStorage.setItem(
+      getStorageKey(userId),
+      JSON.stringify(stats)
+    );
+
+  } catch {
+
+    // localStorage недоступен
+    // или переполнен
+
+  }
+}
+
+
+function getLastSevenDays() {
+
+  const result: {
+    key: string;
+    label: string;
+  }[] = [];
+
+  const labels = [
+    "SUN",
+    "MON",
+    "TUE",
+    "WED",
+    "THU",
+    "FRI",
+    "SAT"
+  ];
+
+  const now =
+    new Date();
+
+  for (
+    let index = 6;
+    index >= 0;
+    index--
+  ) {
+
+    const date =
+      new Date(now);
+
+    date.setDate(
+      now.getDate() - index
+    );
+
+    result.push({
+      key:
+        getDateKey(date),
+
+      label:
+        labels[
+          date.getDay()
+        ]
+    });
+
+  }
+
+  return result;
+}
 
 
 function WatchRoom({
@@ -115,6 +343,385 @@ function WatchRoom({
   const [profileOpen, setProfileOpen] =
     useState(false);
 
+
+  /*
+    =========================
+    VIBE TIME
+  =========================
+  */
+
+  const userIdRef =
+    useRef<string | null>(null);
+
+
+  if (!userIdRef.current) {
+    userIdRef.current =
+      getUserId();
+  }
+
+
+  const userId =
+    userIdRef.current;
+
+
+  const statsRef =
+    useRef<VibeStatsStorage>(
+      loadStats(userId)
+    );
+
+
+  const sessionStartedRef =
+    useRef<number | null>(null);
+
+
+  const lastTickRef =
+    useRef<number>(
+      Date.now()
+    );
+
+
+  const [vibeTimeSeconds, setVibeTimeSeconds] =
+    useState(
+      statsRef.current.totalSeconds
+    );
+
+
+  const [activity, setActivity] =
+    useState<Record<string, number>>(
+      statsRef.current.activity
+    );
+
+
+  function addElapsedTime(
+    seconds: number
+  ) {
+
+    if (
+      !Number.isFinite(seconds) ||
+      seconds <= 0
+    ) {
+      return;
+    }
+
+
+    const rounded =
+      Math.max(
+        0,
+        Math.floor(seconds)
+      );
+
+
+    if (rounded <= 0) {
+      return;
+    }
+
+
+    const today =
+      getTodayKey();
+
+
+    const currentStats =
+      statsRef.current;
+
+
+    currentStats.totalSeconds +=
+      rounded;
+
+
+    currentStats.activity[today] =
+      (
+        currentStats.activity[today] ||
+        0
+      ) + rounded;
+
+
+    saveStats(
+      userId,
+      currentStats
+    );
+
+
+    setVibeTimeSeconds(
+      currentStats.totalSeconds
+    );
+
+
+    setActivity({
+      ...currentStats.activity
+    });
+
+  }
+
+
+  function startVibeSession() {
+
+    const now =
+      Date.now();
+
+
+    sessionStartedRef.current =
+      now;
+
+
+    lastTickRef.current =
+      now;
+
+
+    statsRef.current.activeSince =
+      now;
+
+
+    statsRef.current.lastHeartbeat =
+      now;
+
+
+    saveStats(
+      userId,
+      statsRef.current
+    );
+
+  }
+
+
+  function stopVibeSession() {
+
+    const startedAt =
+      sessionStartedRef.current;
+
+
+    if (
+      startedAt !== null
+    ) {
+
+      const now =
+        Date.now();
+
+
+      const seconds =
+        (
+          now - startedAt
+        ) / 1000;
+
+
+      addElapsedTime(
+        seconds
+      );
+
+    }
+
+
+    sessionStartedRef.current =
+      null;
+
+
+    statsRef.current.activeSince =
+      null;
+
+
+    statsRef.current.lastHeartbeat =
+      null;
+
+
+    saveStats(
+      userId,
+      statsRef.current
+    );
+
+  }
+
+
+  useEffect(() => {
+
+    /*
+      Если предыдущая сессия
+      каким-то образом осталась
+      после закрытия браузера,
+      восстанавливаем только
+      небольшой промежуток времени,
+      а не считаем всю ночь.
+    */
+
+    const stored =
+      statsRef.current;
+
+
+    if (
+      stored.activeSince !== null &&
+      stored.lastHeartbeat !== null
+    ) {
+
+      const now =
+        Date.now();
+
+
+      const missedSeconds =
+        Math.min(
+          10,
+          Math.max(
+            0,
+            (
+              now -
+              stored.lastHeartbeat
+            ) / 1000
+          )
+        );
+
+
+      if (
+        missedSeconds > 0
+      ) {
+
+        addElapsedTime(
+          missedSeconds
+        );
+
+      }
+
+    }
+
+
+    startVibeSession();
+
+
+    const interval =
+      window.setInterval(
+        () => {
+
+          const now =
+            Date.now();
+
+
+          const previous =
+            lastTickRef.current;
+
+
+          const elapsed =
+            (
+              now -
+              previous
+            ) / 1000;
+
+
+          lastTickRef.current =
+            now;
+
+
+          if (
+            sessionStartedRef.current === null
+          ) {
+            return;
+          }
+
+
+          if (
+            elapsed > 0 &&
+            elapsed < 10
+          ) {
+
+            addElapsedTime(
+              elapsed
+            );
+
+          }
+
+
+          statsRef.current.lastHeartbeat =
+            now;
+
+
+          saveStats(
+            userId,
+            statsRef.current
+          );
+
+        },
+        1000
+      );
+
+
+    function handleVisibilityChange() {
+
+      if (
+        document.visibilityState ===
+        "hidden"
+      ) {
+
+        stopVibeSession();
+
+      } else {
+
+        startVibeSession();
+
+      }
+
+    }
+
+
+    function handlePageHide() {
+
+      stopVibeSession();
+
+    }
+
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+
+    window.addEventListener(
+      "pagehide",
+      handlePageHide
+    );
+
+
+    return () => {
+
+      window.clearInterval(
+        interval
+      );
+
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+
+
+      window.removeEventListener(
+        "pagehide",
+        handlePageHide
+      );
+
+
+      stopVibeSession();
+
+    };
+
+  }, [
+    userId
+  ]);
+
+
+  /*
+    =========================
+    LIVE ACTIVITY
+  =========================
+  */
+
+  const weeklyActivity =
+    getLastSevenDays().map(
+      day =>
+        activity[day.key] || 0
+    );
+
+
+  /*
+    =========================
+    INVITE
+  =========================
+  */
 
   const inviteUrl =
     `${window.location.origin}/?room=${encodeURIComponent(roomId)}`;
@@ -263,11 +870,6 @@ function WatchRoom({
     );
 
 
-    /*
-      Передаём серверу
-      наш профиль.
-    */
-
     window.setTimeout(
       () => {
 
@@ -333,7 +935,7 @@ function WatchRoom({
     =========================
     PROFILE UPDATE
   =========================
-  */
+    */
 
   function saveProfile(
     newProfile: ProfileData
@@ -652,7 +1254,7 @@ function WatchRoom({
     =========================
     UI
   =========================
-    */
+  */
 
   return (
 
@@ -944,6 +1546,18 @@ function WatchRoom({
 
           profile={
             profile
+          }
+
+          vibeTimeSeconds={
+            vibeTimeSeconds
+          }
+
+          weeklyActivity={
+            weeklyActivity
+          }
+
+          isOnline={
+            true
           }
 
           onSave={
