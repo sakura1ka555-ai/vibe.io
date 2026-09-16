@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { joinRoom, socket } from "../socket";
 
 
@@ -9,7 +9,13 @@ type WatchRoomProps = {
 
 function WatchRoom({ name }: WatchRoomProps) {
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const [users, setUsers] = useState(1);
+
+
+  const videoUrl =
+    "https://www.w3schools.com/html/mov_bbb.mp4";
 
 
   useEffect(() => {
@@ -19,18 +25,106 @@ function WatchRoom({ name }: WatchRoomProps) {
 
     socket.on(
       "users",
-      (count: number) => {
+      (count:number) => {
         setUsers(count);
       }
     );
 
 
+    socket.on(
+      "video-control",
+      (data) => {
+
+        const video =
+          videoRef.current;
+
+
+        if (!video) return;
+
+
+        if (data.action === "play") {
+
+          video.currentTime =
+            data.position;
+
+          video.play();
+
+        }
+
+
+        if (data.action === "pause") {
+
+          video.pause();
+
+          video.currentTime =
+            data.position;
+
+        }
+
+      }
+    );
+
+
     return () => {
+
       socket.off("users");
+      socket.off("video-control");
+
     };
 
 
   }, [name]);
+
+
+
+  function playVideo() {
+
+    const video =
+      videoRef.current;
+
+
+    if (!video) return;
+
+
+    video.play();
+
+
+    socket.emit(
+      "video-control",
+      {
+        roomId: name,
+        action: "play",
+        position: video.currentTime
+      }
+    );
+
+  }
+
+
+
+  function pauseVideo() {
+
+    const video =
+      videoRef.current;
+
+
+    if (!video) return;
+
+
+    video.pause();
+
+
+    socket.emit(
+      "video-control",
+      {
+        roomId: name,
+        action: "pause",
+        position: video.currentTime
+      }
+    );
+
+  }
+
 
 
   return (
@@ -41,32 +135,32 @@ function WatchRoom({ name }: WatchRoomProps) {
       </h1>
 
 
-      <div className="video-box">
-        Видео появится здесь
-      </div>
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        className="video-player"
+        controls
+      />
 
 
       <div className="members">
 
-        <h3>
-          Участники
-        </h3>
-
-        <p>
-          👥 Сейчас смотрят: {users}
-        </p>
+        👥 Сейчас смотрят:
+        {" "}
+        {users}
 
       </div>
 
 
-      <div className="chat-box">
-        💬 Чат комнаты
-      </div>
-
-
-      <button>
-        🔗 Пригласить друзей
+      <button onClick={playVideo}>
+        ▶️ Запустить всем
       </button>
+
+
+      <button onClick={pauseVideo}>
+        ⏸ Остановить всем
+      </button>
+
 
     </div>
   );
