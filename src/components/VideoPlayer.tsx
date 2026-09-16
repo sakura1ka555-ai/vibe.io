@@ -1,14 +1,39 @@
-import { useMemo } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef
+} from "react";
 
 
 type Props = {
   videoUrl: string;
+
+  initialPosition?: number;
+
+  initialAction?: "play" | "pause";
+
+  onControl?: (
+    action: "play" | "pause",
+    position: number
+  ) => void;
+
+  onPosition?: (
+    position: number
+  ) => void;
+
+  remoteControl?: {
+    action: "play" | "pause";
+
+    position: number;
+
+    id: number;
+  } | null;
 };
 
 
 /*
   =========================
-  YOUTUBE
+  YOUTUBE ID
   =========================
 */
 
@@ -196,7 +221,7 @@ function getRutubeId(
 
 /*
   =========================
-  VK VIDEO
+  VK
   =========================
 */
 
@@ -209,10 +234,6 @@ function getVKVideoData(
     const parsed =
       new URL(url);
 
-
-    /*
-      Готовая VK embed-ссылка
-    */
 
     if (
       parsed.pathname.includes(
@@ -252,12 +273,6 @@ function getVKVideoData(
     }
 
 
-    /*
-      Обычная ссылка:
-
-      /video-79337779_456243692
-    */
-
     const match =
       parsed.pathname.match(
         /video(-?\d+)_([0-9]+)/
@@ -271,11 +286,14 @@ function getVKVideoData(
 
     return {
 
-      oid: match[1],
+      oid:
+        match[1],
 
-      id: match[2],
+      id:
+        match[2],
 
-      hash: null
+      hash:
+        null
 
     };
 
@@ -290,61 +308,75 @@ function getVKVideoData(
 
 /*
   =========================
-  VIDEO TYPE
+  YOUTUBE API TYPES
   =========================
 */
 
-function getVideoType(
-  url: string
-) {
+type YouTubePlayer = {
 
-  const lower =
-    url.toLowerCase();
+  playVideo: () => void;
+
+  pauseVideo: () => void;
+
+  seekTo: (
+    seconds: number,
+    allowSeekAhead: boolean
+  ) => void;
+
+  getCurrentTime: () => number;
+
+  destroy: () => void;
+
+};
 
 
-  if (
-    lower.includes(
-      "youtube.com"
-    ) ||
-    lower.includes(
-      "youtu.be"
-    )
-  ) {
+type YouTubeEvent = {
 
-    return "youtube";
+  target: YouTubePlayer;
+
+  data: number;
+
+};
+
+
+type YouTubeConstructor =
+  new (
+    element: HTMLElement,
+    options: {
+      videoId: string;
+
+      playerVars?: Record<
+        string,
+        number | string
+      >;
+
+      events?: {
+
+        onReady?: (
+          event: YouTubeEvent
+        ) => void;
+
+        onStateChange?: (
+          event: YouTubeEvent
+        ) => void;
+
+      };
+
+    }
+  ) => YouTubePlayer;
+
+
+declare global {
+
+  interface Window {
+
+    YT?: {
+      Player: YouTubeConstructor;
+    };
+
+    onYouTubeIframeAPIReady?: () => void;
 
   }
-
-
-  if (
-    lower.includes(
-      "rutube.ru"
-    )
-  ) {
-
-    return "rutube";
-
-  }
-
-
-  if (
-    lower.includes(
-      "vkvideo.ru"
-    ) ||
-    lower.includes(
-      "vk.com"
-    ) ||
-    lower.includes(
-      "vk.ru"
-    )
-  ) {
-
-    return "vk";
-
-  }
-
-
-  return "unknown";
 
 }
 
@@ -356,18 +388,13 @@ function getVideoType(
 */
 
 function VideoPlayer({
-  videoUrl
+  videoUrl,
+  initialPosition = 0,
+  initialAction = "pause",
+  onControl,
+  onPosition,
+  remoteControl
 }: Props) {
-
-  const type =
-    useMemo(
-      () =>
-        getVideoType(
-          videoUrl
-        ),
-      [videoUrl]
-    );
-
 
   const youtubeId =
     useMemo(
@@ -399,41 +426,394 @@ function VideoPlayer({
     );
 
 
+  const playerElement =
+    useRef<HTMLDivElement | null>(
+      null
+    );
+
+
+  const player =
+    useRef<YouTubePlayer | null>(
+      null
+    );
+
+
+  const ready =
+    useRef(false);
+
+
+  const remoteAction =
+    useRef(false);
+
+
+  const lastReportedSecond =
+    useRef(-1);
+
+
+  /*
+    =========================
+    LOAD YOUTUBE API
+    =========================
+  */
+
+  useEffect(() => {
+
+    if (!youtubeId) {
+      return;
+    }
+
+
+    function createPlayer() {
+
+      if (
+        !playerElement.current ||
+        !window.YT?.Player
+      ) {
+        return;
+      }
+
+
+      if (player.current) {
+        return;
+      }
+
+
+      player.current =
+        new window.YT.Player(
+          playerElement.current,
+          {
+
+            videoId:
+              youtubeId,
+
+            playerVars: {
+
+              autoplay: 0,
+
+              controls: 1,
+
+              playsinline: 1,
+
+              enablejsapi: 1,
+
+              origin:
+                window.location.origin
+
+            },
+
+            events: {
+
+              onReady: (
+                event
+              ) => {
+
+                ready.current =
+                  true;
+
+
+                if (
+                  initialPosition > 0
+                ) {
+
+                  event.target.seekTo(
+                    initialPosition,
+                    true
+                  );
+
+                }
+
+
+                if (
+                  initialAction ===
+                  "play"
+                ) {
+
+                  event.target.playVideo();
+
+                }
+
+              },
+
+
+              onStateChange: (
+                event
+              ) => {
+
+                if (
+                  remoteAction.current
+                ) {
+
+                  return;
+
+                }
+
+
+                const position =
+                  event.target
+                    .getCurrentTime();
+
+
+                if (
+                  event.data === 1
+                ) {
+
+                  onControl?.(
+                    "play",
+                    position
+                  );
+
+                }
+
+
+                if (
+                  event.data === 2
+                ) {
+
+                  onControl?.(
+                    "pause",
+                    position
+                  );
+
+                }
+
+              }
+
+            }
+
+          }
+        );
+
+    }
+
+
+    /*
+      API уже загружен
+    */
+
+    if (
+      window.YT?.Player
+    ) {
+
+      createPlayer();
+
+    } else {
+
+      const previous =
+        window.onYouTubeIframeAPIReady;
+
+
+      window.onYouTubeIframeAPIReady =
+        () => {
+
+          previous?.();
+
+          createPlayer();
+
+        };
+
+
+      const existing =
+        document.querySelector(
+          'script[src="https://www.youtube.com/iframe_api"]'
+        );
+
+
+      if (!existing) {
+
+        const script =
+          document.createElement(
+            "script"
+          );
+
+
+        script.src =
+          "https://www.youtube.com/iframe_api";
+
+
+        script.async =
+          true;
+
+
+        document.head.appendChild(
+          script
+        );
+
+      }
+
+    }
+
+
+    return () => {
+
+      ready.current =
+        false;
+
+
+      if (
+        player.current
+      ) {
+
+        player.current.destroy();
+
+        player.current =
+          null;
+
+      }
+
+    };
+
+  }, [
+    youtubeId,
+    initialPosition,
+    initialAction,
+    onControl
+  ]);
+
+
+  /*
+    =========================
+    REPORT POSITION
+    =========================
+  */
+
+  useEffect(() => {
+
+    if (!youtubeId) {
+      return;
+    }
+
+
+    const interval =
+      window.setInterval(
+        () => {
+
+          if (
+            !ready.current ||
+            !player.current
+          ) {
+            return;
+          }
+
+
+          const position =
+            player.current
+              .getCurrentTime();
+
+
+          const second =
+            Math.floor(
+              position
+            );
+
+
+          if (
+            second ===
+            lastReportedSecond.current
+          ) {
+            return;
+          }
+
+
+          lastReportedSecond.current =
+            second;
+
+
+          onPosition?.(
+            position
+          );
+
+        },
+        1000
+      );
+
+
+    return () => {
+
+      window.clearInterval(
+        interval
+      );
+
+    };
+
+  }, [
+    youtubeId,
+    onPosition
+  ]);
+
+
+  /*
+    =========================
+    REMOTE CONTROL
+    =========================
+  */
+
+  useEffect(() => {
+
+    if (
+      !remoteControl ||
+      !ready.current ||
+      !player.current
+    ) {
+
+      return;
+
+    }
+
+
+    remoteAction.current =
+      true;
+
+
+    player.current.seekTo(
+      remoteControl.position,
+      true
+    );
+
+
+    if (
+      remoteControl.action ===
+      "play"
+    ) {
+
+      player.current.playVideo();
+
+    } else {
+
+      player.current.pauseVideo();
+
+    }
+
+
+    window.setTimeout(
+      () => {
+
+        remoteAction.current =
+          false;
+
+      },
+      500
+    );
+
+  }, [
+    remoteControl
+  ]);
+
+
   /*
     =========================
     YOUTUBE
     =========================
   */
 
-  if (
-    type === "youtube" &&
-    youtubeId
-  ) {
+  if (youtubeId) {
 
     return (
 
-      <iframe
-
-        className="embedded-player"
-
-        src={
-          `https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&playsinline=1`
+      <div
+        ref={
+          playerElement
         }
-
-        title="YouTube"
-
-        allow="
-          accelerometer;
-          autoplay;
-          clipboard-write;
-          encrypted-media;
-          gyroscope;
-          picture-in-picture;
-          web-share
-        "
-
-        allowFullScreen
-
+        className="embedded-player"
       />
 
     );
@@ -447,10 +827,7 @@ function VideoPlayer({
     =========================
   */
 
-  if (
-    type === "rutube" &&
-    rutubeId
-  ) {
+  if (rutubeId) {
 
     return (
 
@@ -482,14 +859,11 @@ function VideoPlayer({
 
   /*
     =========================
-    VK VIDEO
+    VK
     =========================
   */
 
-  if (
-    type === "vk" &&
-    vkData
-  ) {
+  if (vkData) {
 
     const params =
       new URLSearchParams();
