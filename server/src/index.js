@@ -93,7 +93,12 @@ app.post(
         data.videoUrl ||
         "",
 
-      users: 0
+      users: 0,
+
+      playback: {
+        action: "pause",
+        position: 0
+      }
 
     };
 
@@ -192,6 +197,109 @@ const io =
 
 /*
   =========================
+  HELPERS
+  =========================
+*/
+
+function formatPosition(
+  seconds
+) {
+
+  const total =
+    Math.max(
+      0,
+      Math.floor(
+        Number(seconds) || 0
+      )
+    );
+
+
+  const minutes =
+    Math.floor(
+      total / 60
+    );
+
+
+  const secs =
+    total % 60;
+
+
+  return (
+    String(minutes)
+      .padStart(2, "0")
+    +
+    ":"
+    +
+    String(secs)
+      .padStart(2, "0")
+  );
+
+}
+
+
+function getPresence(
+  roomId
+) {
+
+  const result = [];
+
+
+  for (
+    const connectedSocket of
+    io.sockets.sockets.values()
+  ) {
+
+    if (
+      connectedSocket.data.roomId !==
+      roomId
+    ) {
+      continue;
+    }
+
+
+    result.push({
+
+      id:
+        connectedSocket.id,
+
+      name:
+        connectedSocket.data.userName ||
+        "Guest",
+
+      position:
+        Number(
+          connectedSocket.data.position || 0
+        ),
+
+      time:
+        formatPosition(
+          connectedSocket.data.position
+        )
+
+    });
+
+  }
+
+
+  return result;
+
+}
+
+
+function emitPresence(
+  roomId
+) {
+
+  io.to(roomId).emit(
+    "presence",
+    getPresence(roomId)
+  );
+
+}
+
+
+/*
+  =========================
   SOCKET CONNECTION
   =========================
 */
@@ -207,23 +315,40 @@ io.on(
 
 
     /*
+      =========================
       JOIN ROOM
+      =========================
     */
 
     socket.on(
       "join-room",
-      (roomId) => {
+      (data) => {
 
-        const id =
+        const roomId =
           String(
-            roomId || ""
+            typeof data === "string"
+              ? data
+              : data?.roomId || ""
           )
             .trim()
             .toUpperCase();
 
 
+        const userName =
+          String(
+            typeof data === "string"
+              ? "Guest"
+              : data?.userName || "Guest"
+          )
+            .trim()
+            .slice(
+              0,
+              40
+            );
+
+
         const room =
-          rooms.get(id);
+          rooms.get(roomId);
 
 
         if (!room) {
@@ -238,13 +363,13 @@ io.on(
 
 
         /*
-          Не считаем
-          одного socket дважды
+          Если уже
+          в этой комнате
         */
 
         if (
           socket.data.roomId ===
-          id
+          roomId
         ) {
 
           return;
@@ -253,8 +378,8 @@ io.on(
 
 
         /*
-          Если был
-          в другой комнате
+          Уходим
+          из старой комнаты
         */
 
         if (
@@ -283,6 +408,11 @@ io.on(
               oldRoom.users
             );
 
+
+            emitPresence(
+              socket.data.roomId
+            );
+
           }
 
 
@@ -293,24 +423,34 @@ io.on(
         }
 
 
-        socket.join(id);
+        socket.join(
+          roomId
+        );
+
 
         socket.data.roomId =
-          id;
+          roomId;
+
+
+        socket.data.userName =
+          userName || "Guest";
+
+
+        socket.data.position =
+          room.playback.position;
 
 
         room.users++;
 
 
-        io.to(id).emit(
-          "users",
-          room.users
-        );
-
+        /*
+          Состояние комнаты
+        */
 
         socket.emit(
           "room-state",
           {
+
             roomId:
               room.id,
 
@@ -318,14 +458,33 @@ io.on(
               room.title,
 
             videoUrl:
-              room.videoUrl
+              room.videoUrl,
+
+            action:
+              room.playback.action,
+
+            position:
+              room.playback.position
+
           }
+        );
+
+
+        io.to(roomId).emit(
+          "users",
+          room.users
+        );
+
+
+        emitPresence(
+          roomId
         );
 
 
         console.log(
           "👤 joined:",
-          id,
+          roomId,
+          socket.data.userName,
           "users:",
           room.users
         );
@@ -335,39 +494,169 @@ io.on(
 
 
     /*
-      VIDEO
+      =========================
+      VIDEO CONTROL
+      =========================
     */
 
     socket.on(
       "video-control",
       (data) => {
 
-        if (
-          !data?.roomId
-        ) {
+        const roomId =
+          String(
+            data?.roomId || ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        if (!roomId) {
           return;
         }
 
 
+        const room =
+          rooms.get(roomId);
+
+
+        if (!room) {
+          return;
+        }
+
+
+        const action =
+          data?.action === "play"
+            ? "play"
+            : "pause";
+
+
+        const position =
+          Math.max(
+            0,
+            Number(
+              data?.position || 0
+            )
+          );
+
+
+        room.playback = {
+
+          action,
+
+          position
+
+        };
+
+
+        socket.data.position =
+          position;
+
+
+        socket.data.userName =
+          socket.data.userName ||
+          "Guest";
+
+
+        /*
+          Отправляем
+          всем остальным
+        */
+
         socket
-          .to(data.roomId)
+          .to(roomId)
           .emit(
             "video-control",
             {
-              action:
-                data.action,
 
-              position:
-                data.position
+              action,
+
+              position,
+
+              source:
+                socket.id
+
             }
           );
+
+
+        emitPresence(
+          roomId
+        );
 
       }
     );
 
 
     /*
+      =========================
+      VIDEO POSITION
+      =========================
+    */
+
+    socket.on(
+      "video-position",
+      (data) => {
+
+        const roomId =
+          String(
+            data?.roomId || ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        if (!roomId) {
+          return;
+        }
+
+
+        const position =
+          Math.max(
+            0,
+            Number(
+              data?.position || 0
+            )
+          );
+
+
+        socket.data.position =
+          position;
+
+
+        /*
+          Позицию самого видео
+          сохраняем в комнате
+        */
+
+        const room =
+          rooms.get(roomId);
+
+
+        if (room) {
+
+          room.playback.position =
+            position;
+
+        }
+
+
+        /*
+          Обновляем участников
+        */
+
+        emitPresence(
+          roomId
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
       CHAT
+      =========================
     */
 
     socket.on(
@@ -406,8 +695,13 @@ io.on(
         io.to(roomId).emit(
           "chat-message",
           {
-            user: "Guest",
+
+            user:
+              socket.data.userName ||
+              "Guest",
+
             text
+
           }
         );
 
@@ -416,7 +710,9 @@ io.on(
 
 
     /*
+      =========================
       DISCONNECT
+      =========================
     */
 
     socket.on(
@@ -445,6 +741,11 @@ io.on(
             io.to(roomId).emit(
               "users",
               room.users
+            );
+
+
+            emitPresence(
+              roomId
             );
 
           }
