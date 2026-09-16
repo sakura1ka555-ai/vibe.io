@@ -1,5 +1,6 @@
 import { useState } from "react";
 import RoomCard from "./components/RoomCard";
+import WatchRoom from "./components/WatchRoom";
 
 type Room = {
   title: string;
@@ -18,8 +19,10 @@ function App() {
     },
   ]);
 
+  const [activeRoom, setActiveRoom] = useState<string | null>(null);
+
   function createRoom() {
-    const newRoom: Room = {
+    const newRoom = {
       title: "Новая VIBE-комната ✨",
       users: 1,
     };
@@ -30,8 +33,17 @@ function App() {
     ]);
   }
 
+  if (activeRoom) {
+    return (
+      <WatchRoom
+        name={activeRoom}
+      />
+    );
+  }
+
   return (
     <div className="app">
+
       <div className="logo">
         VIBE
       </div>
@@ -49,17 +61,24 @@ function App() {
         + Создать комнату
       </button>
 
+
       <h2>
         Активные комнаты
       </h2>
 
+
       {rooms.map((room, index) => (
-        <RoomCard
+        <div
           key={index}
-          title={room.title}
-          users={room.users}
-        />
+          onClick={() => setActiveRoom(room.title)}
+        >
+          <RoomCard
+            title={room.title}
+            users={room.users}
+          />
+        </div>
       ))}
+
     </div>
   );
 }
