@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from "react";
+
 import { joinRoom, socket } from "../socket";
 
 
 type WatchRoomProps = {
   name: string;
   videoUrl: string;
+  roomId: string;
 };
 
 
 
 function WatchRoom({
   name,
-  videoUrl
+  videoUrl,
+  roomId
 }: WatchRoomProps) {
 
 
@@ -26,8 +29,7 @@ function WatchRoom({
 
   useEffect(() => {
 
-
-    joinRoom(name);
+    joinRoom(roomId);
 
 
 
@@ -46,7 +48,6 @@ function WatchRoom({
       "video-control",
       (data) => {
 
-
         const video =
           videoRef.current;
 
@@ -60,9 +61,7 @@ function WatchRoom({
 
 
 
-        if (
-          data.action === "play"
-        ) {
+        if (data.action === "play") {
 
           video.play();
 
@@ -70,14 +69,11 @@ function WatchRoom({
 
 
 
-        if (
-          data.action === "pause"
-        ) {
+        if (data.action === "pause") {
 
           video.pause();
 
         }
-
 
       }
     );
@@ -93,14 +89,13 @@ function WatchRoom({
     };
 
 
-  }, [name]);
+  }, [roomId]);
 
 
 
 
 
   function playVideo() {
-
 
     const video =
       videoRef.current;
@@ -118,7 +113,7 @@ function WatchRoom({
       "video-control",
       {
 
-        roomId: name,
+        roomId,
 
         action: "play",
 
@@ -128,7 +123,6 @@ function WatchRoom({
       }
     );
 
-
   }
 
 
@@ -136,7 +130,6 @@ function WatchRoom({
 
 
   function pauseVideo() {
-
 
     const video =
       videoRef.current;
@@ -154,7 +147,7 @@ function WatchRoom({
       "video-control",
       {
 
-        roomId: name,
+        roomId,
 
         action: "pause",
 
@@ -164,8 +157,27 @@ function WatchRoom({
       }
     );
 
+  }
+
+
+
+
+
+  function invite() {
+
+    const link =
+      `https://t.me/VIBE_BOT/app?startapp=${roomId}`;
+
+
+    navigator.clipboard.writeText(link);
+
+
+    alert(
+      "Ссылка комнаты скопирована 💜"
+    );
 
   }
+
 
 
 
@@ -214,6 +226,13 @@ function WatchRoom({
       <button onClick={pauseVideo}>
         ⏸ Пауза для всех
       </button>
+
+
+
+      <button onClick={invite}>
+        🔗 Пригласить друзей
+      </button>
+
 
 
     </div>
