@@ -2508,3 +2508,671 @@ button {
   }
 
 }
+
+/* =================================
+   PROFILE BUTTON
+================================= */
+
+.profile-button {
+  min-height: 36px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding:
+    4px 9px 4px 5px;
+
+  cursor: pointer;
+
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    transform .18s ease;
+}
+
+
+.profile-button:hover {
+  transform:
+    translateY(-1px);
+
+  border-color:
+    rgba(180,120,255,.20);
+
+  background:
+    rgba(153,88,243,.08);
+}
+
+
+.profile-button-avatar,
+.profile-button-letter {
+  width: 26px;
+  height: 26px;
+
+  flex: 0 0 26px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  border-radius: 8px;
+
+  border:
+    1px solid
+    rgba(166,105,232,.18);
+
+  background:
+    rgba(153,88,243,.10);
+
+  color:
+    rgba(225,203,241,.80);
+
+  font-size: 9px;
+
+  font-weight: 800;
+}
+
+
+.profile-button-avatar {
+  object-fit: cover;
+}
+
+
+.profile-button-name {
+  max-width: 100px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  color:
+    rgba(255,255,255,.60);
+
+  font-size: 9px;
+
+  font-weight: 700;
+}
+
+
+.profile-button-arrow {
+  color:
+    rgba(255,255,255,.28);
+
+  font-size: 15px;
+}
+
+
+/* =================================
+   WATCH PROFILE
+================================= */
+
+.watch-profile-button {
+  height: 34px;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  padding:
+    0 9px 0 5px;
+
+  border:
+    1px solid
+    rgba(255,255,255,.07);
+
+  border-radius: 10px;
+
+  background:
+    rgba(255,255,255,.025);
+
+  color:
+    rgba(255,255,255,.60);
+
+  cursor: pointer;
+
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    transform .18s ease;
+}
+
+
+.watch-profile-button:hover {
+  transform:
+    translateY(-1px);
+
+  border-color:
+    rgba(180,120,255,.22);
+
+  background:
+    rgba(153,88,243,.08);
+}
+
+
+.watch-profile-avatar,
+.watch-profile-letter {
+  width: 24px;
+  height: 24px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  border-radius: 7px;
+
+  background:
+    rgba(153,88,243,.10);
+
+  border:
+    1px solid
+    rgba(166,105,232,.16);
+
+  color:
+    rgba(225,203,241,.82);
+
+  font-size: 8px;
+
+  font-weight: 800;
+}
+
+
+.watch-profile-avatar {
+  object-fit: cover;
+}
+
+
+.watch-profile-name {
+  max-width: 90px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  font-size: 8px;
+
+  font-weight: 700;
+}
+
+
+/* =================================
+   VIEWER AVATAR IMAGE
+================================= */
+
+.viewer-avatar-image {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* =================================
+   PROFILE MODAL
+================================= */
+
+.profile-modal-backdrop {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 300;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background:
+    rgba(3,2,6,.74);
+
+  backdrop-filter:
+    blur(18px);
+}
+
+
+.profile-modal {
+  width: min(390px, 100%);
+
+  position: relative;
+
+  padding:
+    31px;
+
+  border:
+    1px solid
+    rgba(255,255,255,.09);
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(28,20,36,.97),
+      rgba(13,10,18,.99)
+    );
+
+  box-shadow:
+    0 30px 100px
+    rgba(0,0,0,.58);
+}
+
+
+.profile-modal-close {
+  position: absolute;
+
+  top: 15px;
+  right: 17px;
+
+  width: 29px;
+  height: 29px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background:
+    transparent;
+
+  color:
+    rgba(255,255,255,.38);
+
+  font-size: 21px;
+
+  cursor: pointer;
+}
+
+
+.profile-modal-close:hover {
+  background:
+    rgba(255,255,255,.06);
+
+  color:
+    #ffffff;
+}
+
+
+.profile-modal-label {
+  margin-bottom: 8px;
+
+  color:
+    #9b67d8;
+
+  font-size: 8px;
+
+  font-weight: 800;
+
+  letter-spacing: 2px;
+}
+
+
+.profile-modal h2 {
+  margin: 0;
+
+  color:
+    #f7f3fa;
+
+  font-size: 25px;
+
+  font-weight: 600;
+
+  letter-spacing: -.8px;
+}
+
+
+.profile-modal-description {
+  margin:
+    10px
+    0
+    23px;
+
+  color:
+    rgba(231,221,239,.46);
+
+  font-size: 12px;
+
+  line-height: 1.6;
+}
+
+
+/* =================================
+   PROFILE AVATAR EDITOR
+================================= */
+
+.profile-avatar-editor {
+  width: 82px;
+  height: 82px;
+
+  position: relative;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin:
+    0
+    auto
+    24px;
+
+  padding: 0;
+
+  overflow: visible;
+
+  border:
+    1px solid
+    rgba(166,105,232,.24);
+
+  border-radius: 23px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(153,88,243,.17),
+      rgba(153,88,243,.05)
+    );
+
+  color:
+    rgba(221,193,239,.82);
+
+  font-size: 25px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    transform .18s ease,
+    border-color .18s ease;
+}
+
+
+.profile-avatar-editor:hover {
+  transform:
+    scale(1.04);
+
+  border-color:
+    rgba(180,120,255,.42);
+}
+
+
+.profile-avatar-image {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+
+  overflow: hidden;
+
+  border-radius: 22px;
+}
+
+
+.profile-avatar-edit {
+  position: absolute;
+
+  right: -6px;
+  bottom: -6px;
+
+  width: 27px;
+  height: 27px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border:
+    1px solid
+    rgba(255,255,255,.12);
+
+  border-radius: 9px;
+
+  background:
+    #241831;
+
+  color:
+    #cda9ef;
+
+  font-size: 12px;
+}
+
+
+/* =================================
+   PROFILE FIELD
+================================= */
+
+.profile-field {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 7px;
+
+  margin-bottom: 17px;
+}
+
+
+.profile-field label {
+  color:
+    #736979;
+
+  font-size: 8px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.2px;
+}
+
+
+.profile-field input {
+  width: 100%;
+
+  height: 43px;
+
+  padding:
+    0
+    13px;
+
+  outline: none;
+
+  border:
+    1px solid
+    rgba(255,255,255,.08);
+
+  border-radius: 9px;
+
+  background:
+    rgba(0,0,0,.18);
+
+  color:
+    #ffffff;
+
+  font-size: 12px;
+
+  transition:
+    border-color .18s ease,
+    background .18s ease;
+}
+
+
+.profile-field input::placeholder {
+  color:
+    rgba(255,255,255,.22);
+}
+
+
+.profile-field input:focus {
+  border-color:
+    rgba(166,105,232,.38);
+
+  background:
+    rgba(153,88,243,.035);
+}
+
+
+/* =================================
+   PROFILE BUTTONS
+================================= */
+
+.profile-save-button {
+  width: 100%;
+
+  height: 43px;
+
+  border-radius: 9px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #8550c9,
+      #693aa4
+    );
+
+  color:
+    #ffffff;
+
+  font-size: 10px;
+
+  font-weight: 700;
+
+  letter-spacing: .8px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 25px
+    rgba(92,46,145,.18);
+
+  transition:
+    transform .18s ease,
+    filter .18s ease;
+}
+
+
+.profile-save-button:hover {
+  transform:
+    translateY(-1px);
+
+  filter:
+    brightness(1.1);
+}
+
+
+.profile-cancel-button {
+  width: 100%;
+
+  height: 38px;
+
+  margin-top: 7px;
+
+  border:
+    1px solid
+    rgba(255,255,255,.06);
+
+  border-radius: 9px;
+
+  background:
+    rgba(255,255,255,.025);
+
+  color:
+    rgba(255,255,255,.36);
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: .7px;
+
+  cursor: pointer;
+
+  transition:
+    background .18s ease,
+    color .18s ease;
+}
+
+
+.profile-cancel-button:hover {
+  background:
+    rgba(255,255,255,.05);
+
+  color:
+    rgba(255,255,255,.65);
+}
+
+
+/* =================================
+   MOBILE PROFILE
+================================= */
+
+@media (max-width: 760px) {
+
+  .profile-button-name {
+    max-width: 80px;
+  }
+
+
+  .watch-profile-name {
+    display: none;
+  }
+
+
+  .watch-profile-button {
+    width: 34px;
+
+    padding:
+      0;
+
+    justify-content: center;
+  }
+
+
+  .profile-modal {
+    padding:
+      27px
+      20px;
+  }
+
+}
+
+
+@media (max-width: 420px) {
+
+  .profile-button-name {
+    display: none;
+  }
+
+
+  .profile-button {
+    padding:
+      4px 5px;
+  }
+
+
+  .profile-button-arrow {
+    display: none;
+  }
+
+}
