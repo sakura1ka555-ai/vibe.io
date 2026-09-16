@@ -25,7 +25,6 @@ export function initTelegram() {
 }
 
 
-
 export function getTelegramUser() {
 
   const tg =
@@ -39,6 +38,9 @@ export function getTelegramUser() {
   }
 
 
-  return tg.initDataUnsafe?.user || null;
+  return (
+    tg.initDataUnsafe?.user ||
+    null
+  );
 
 }
