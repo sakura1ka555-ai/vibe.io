@@ -120,6 +120,10 @@ function WatchRoom({
     );
 
 
+  const [inviteCopied, setInviteCopied] =
+    useState(false);
+
+
   /*
     =========================
     JOIN ROOM
@@ -206,11 +210,6 @@ function WatchRoom({
       );
 
 
-      /*
-        Automatically remove
-        reaction after animation.
-      */
-
       window.setTimeout(
         () => {
 
@@ -229,11 +228,6 @@ function WatchRoom({
 
     }
 
-
-    /*
-      Сначала слушаем события.
-      Потом подключаемся к комнате.
-    */
 
     socket.on(
       "users",
@@ -378,7 +372,7 @@ function WatchRoom({
 
   /*
     =========================
-    SEND REACTION
+    REACTION
     =========================
   */
 
@@ -396,6 +390,129 @@ function WatchRoom({
 
       }
     );
+
+  }
+
+
+  /*
+    =========================
+    INVITE
+    =========================
+  */
+
+  async function inviteFriend() {
+
+    const inviteUrl =
+      `${window.location.origin}/?room=${encodeURIComponent(roomId)}`;
+
+
+    const shareText =
+      `🎬 Я смотрю в VIBE\nПрисоединяйся к комнате ${roomId}`;
+
+
+    const telegramShareUrl =
+      `https://t.me/share/url?url=${encodeURIComponent(
+        inviteUrl
+      )}&text=${encodeURIComponent(
+        shareText
+      )}`;
+
+
+    /*
+      Telegram Mini App
+      */
+
+    const telegramWebApp =
+      window.Telegram?.WebApp;
+
+
+    if (
+      telegramWebApp?.openTelegramLink
+    ) {
+
+      telegramWebApp.openTelegramLink(
+        telegramShareUrl
+      );
+
+      return;
+
+    }
+
+
+    /*
+      Native share
+      */
+
+    if (
+      navigator.share
+    ) {
+
+      try {
+
+        await navigator.share({
+
+          title:
+            "VIBE",
+
+          text:
+            shareText,
+
+          url:
+            inviteUrl
+
+        });
+
+        return;
+
+      } catch {
+
+        /*
+          Пользователь закрыл
+          окно Share.
+        */
+
+      }
+
+    }
+
+
+    /*
+      Clipboard fallback
+      */
+
+    try {
+
+      await navigator.clipboard.writeText(
+        inviteUrl
+      );
+
+
+      setInviteCopied(
+        true
+      );
+
+
+      window.setTimeout(
+        () => {
+
+          setInviteCopied(
+            false
+          );
+
+        },
+        1800
+      );
+
+
+    } catch {
+
+      window.open(
+        telegramShareUrl,
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+    }
 
   }
 
@@ -429,17 +546,44 @@ function WatchRoom({
           </div>
 
 
-          <div className="watch-users">
+          <div className="watch-header-actions">
 
-            <span className="watch-users-dot">
-              ●
-            </span>
+            <button
+              type="button"
+              className="invite-button"
+              onClick={
+                inviteFriend
+              }
+            >
 
-            {users}
+              <span className="invite-button-icon">
+                ↗
+              </span>
 
-            <span className="watch-users-label">
-              watching
-            </span>
+              <span>
+                {
+                  inviteCopied
+                    ? "COPIED"
+                    : "INVITE"
+                }
+              </span>
+
+            </button>
+
+
+            <div className="watch-users">
+
+              <span className="watch-users-dot">
+                ●
+              </span>
+
+              {users}
+
+              <span className="watch-users-label">
+                watching
+              </span>
+
+            </div>
 
           </div>
 
@@ -478,34 +622,46 @@ function WatchRoom({
           />
 
 
-          {/* =========================
-              FLOATING REACTIONS
-          ========================= */}
-
           <div className="floating-reactions">
 
             {reactionsOnScreen.map(
-              item => (
+              item => {
 
-                <div
-                  key={
-                    item.id
-                  }
-                  className="floating-reaction"
-                >
-
-                  <span>
-                    {item.reaction}
-                  </span>
+                const randomLeft =
+                  15 +
+                  (
+                    Math.random() *
+                    70
+                  );
 
 
-                  <small>
-                    {item.user}
-                  </small>
+                return (
 
-                </div>
+                  <div
+                    key={
+                      item.id
+                    }
+                    className="floating-reaction"
+                    style={{
+                      left:
+                        `${randomLeft}%`
+                    }}
+                  >
 
-              )
+                    <span>
+                      {item.reaction}
+                    </span>
+
+
+                    <small>
+                      {item.user}
+                    </small>
+
+                  </div>
+
+                );
+
+              }
             )}
 
           </div>
@@ -513,10 +669,6 @@ function WatchRoom({
 
         </div>
 
-
-        {/* =========================
-            REACTION BAR
-        ========================= */}
 
         <div className="reaction-bar">
 
