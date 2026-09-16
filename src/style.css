@@ -4200,3 +4200,120 @@ button {
   }
 
 }
+
+/* =========================
+   ROUND PROFILE AVATAR
+========================= */
+
+.watch-profile-button {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+
+  padding: 2px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  position: relative;
+
+  border-radius: 50% !important;
+
+  overflow: hidden;
+
+  aspect-ratio: 1 / 1;
+
+  background: rgba(166, 108, 255, 0.12);
+
+  border: 1px solid rgba(166, 108, 255, 0.3);
+
+  box-shadow:
+    0 0 18px rgba(139, 76, 204, 0.18);
+
+  cursor: pointer;
+
+  flex-shrink: 0;
+}
+
+
+.watch-profile-button::before {
+  border-radius: 50% !important;
+}
+
+
+.watch-profile-avatar {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  border-radius: 50% !important;
+
+  object-fit: cover;
+
+  overflow: hidden;
+
+  aspect-ratio: 1 / 1;
+
+  flex-shrink: 0;
+}
+
+
+.watch-profile-letter {
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7541a9,
+      #a66cff
+    );
+
+  color: white;
+
+  font-size: 16px;
+  font-weight: 800;
+
+  line-height: 1;
+
+  flex-shrink: 0;
+}
+
+
+.watch-profile-button:hover {
+  border-color:
+    rgba(182, 126, 255, 0.65);
+
+  box-shadow:
+    0 0 24px
+    rgba(139, 76, 204, 0.3);
+
+  transform:
+    translateY(-1px);
+}
+
+
+.watch-profile-button:active {
+  transform:
+    translateY(0);
+}
+
+
+/*
+  Имя оставляем рядом с круглой
+  аватаркой, если оно уже было
+  предусмотрено дизайном.
+*/
+
+.watch-profile-name {
+  white-space: nowrap;
+}
