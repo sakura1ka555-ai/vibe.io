@@ -2058,3 +2058,453 @@ button {
   }
 
 }
+
+/* =================================
+   INVITE MODAL
+================================= */
+
+.invite-modal-backdrop {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 500;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background:
+    rgba(3,2,6,.78);
+
+  backdrop-filter:
+    blur(18px);
+
+  animation:
+    invite-fade-in
+    .18s
+    ease
+    both;
+}
+
+
+.invite-modal {
+  width: min(430px, 100%);
+
+  position: relative;
+
+  padding: 30px;
+
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(255,255,255,.09);
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(29,21,38,.98),
+      rgba(12,9,17,.99)
+    );
+
+  box-shadow:
+    0 35px 120px
+    rgba(0,0,0,.65);
+
+  animation:
+    invite-modal-in
+    .22s
+    cubic-bezier(.2,.8,.2,1)
+    both;
+}
+
+
+.invite-modal::before {
+  content: "";
+
+  position: absolute;
+
+  width: 220px;
+  height: 220px;
+
+  top: -130px;
+  left: 50%;
+
+  transform:
+    translateX(-50%);
+
+  border-radius: 50%;
+
+  background:
+    rgba(139,76,213,.13);
+
+  filter:
+    blur(60px);
+
+  pointer-events: none;
+}
+
+
+.invite-modal-close {
+  position: absolute;
+
+  top: 14px;
+  right: 15px;
+
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background:
+    transparent;
+
+  color:
+    rgba(255,255,255,.34);
+
+  font-size: 21px;
+
+  cursor: pointer;
+
+  transition:
+    background .16s ease,
+    color .16s ease,
+    transform .16s ease;
+}
+
+
+.invite-modal-close:hover {
+  background:
+    rgba(255,255,255,.06);
+
+  color:
+    #ffffff;
+
+  transform:
+    rotate(4deg);
+}
+
+
+.invite-modal-label {
+  position: relative;
+
+  margin-bottom: 8px;
+
+  color:
+    #9b67d8;
+
+  font-size: 8px;
+
+  font-weight: 800;
+
+  letter-spacing: 2px;
+}
+
+
+.invite-modal h2 {
+  position: relative;
+
+  margin: 0;
+
+  color:
+    #f7f3fa;
+
+  font-size: 25px;
+
+  font-weight: 600;
+
+  letter-spacing: -.8px;
+}
+
+
+.invite-modal-description {
+  position: relative;
+
+  max-width: 340px;
+
+  margin:
+    10px
+    0
+    22px;
+
+  color:
+    rgba(231,221,239,.44);
+
+  font-size: 11px;
+
+  line-height: 1.65;
+}
+
+
+/* =================================
+   INVITE LINK
+================================= */
+
+.invite-link-box {
+  width: 100%;
+
+  min-height: 49px;
+
+  display: flex;
+
+  align-items: center;
+
+  padding:
+    0
+    13px;
+
+  border:
+    1px solid
+    rgba(255,255,255,.07);
+
+  border-radius: 10px;
+
+  background:
+    rgba(0,0,0,.24);
+
+  box-shadow:
+    inset
+    0 1px 0
+    rgba(255,255,255,.025);
+
+  overflow: hidden;
+}
+
+
+.invite-link {
+  width: 100%;
+
+  overflow: hidden;
+
+  color:
+    rgba(210,187,229,.65);
+
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+
+  font-size: 9px;
+
+  line-height: 1.4;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
+}
+
+
+/* =================================
+   INVITE BUTTONS
+================================= */
+
+.invite-copy-button,
+.invite-share-button {
+  width: 100%;
+
+  height: 42px;
+
+  margin-top: 10px;
+
+  border-radius: 9px;
+
+  font-size: 9px;
+
+  font-weight: 800;
+
+  letter-spacing: 1px;
+
+  cursor: pointer;
+
+  transition:
+    transform .16s ease,
+    background .16s ease,
+    border-color .16s ease,
+    filter .16s ease;
+}
+
+
+.invite-copy-button {
+  background:
+    linear-gradient(
+      135deg,
+      #8550c9,
+      #693aa4
+    );
+
+  color:
+    #ffffff;
+
+  box-shadow:
+    0 10px 28px
+    rgba(92,46,145,.20);
+}
+
+
+.invite-copy-button:hover {
+  transform:
+    translateY(-1px);
+
+  filter:
+    brightness(1.1);
+}
+
+
+.invite-copy-button:active {
+  transform:
+    scale(.98);
+}
+
+
+.invite-share-button {
+  border:
+    1px solid
+    rgba(255,255,255,.07);
+
+  background:
+    rgba(255,255,255,.025);
+
+  color:
+    rgba(255,255,255,.62);
+}
+
+
+.invite-share-button:hover {
+  transform:
+    translateY(-1px);
+
+  border-color:
+    rgba(180,120,255,.22);
+
+  background:
+    rgba(153,88,243,.09);
+
+  color:
+    #ffffff;
+}
+
+
+.invite-share-button:active {
+  transform:
+    scale(.98);
+}
+
+
+/* =================================
+   ROOM ID
+================================= */
+
+.invite-room-id {
+  margin-top: 17px;
+
+  color:
+    rgba(255,255,255,.19);
+
+  font-size: 7px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.4px;
+
+  text-align: center;
+}
+
+
+.invite-room-id strong {
+  color:
+    rgba(255,255,255,.40);
+
+  font-size: 8px;
+
+  letter-spacing: 1px;
+}
+
+
+/* =================================
+   INVITE ANIMATION
+================================= */
+
+@keyframes invite-fade-in {
+
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+
+}
+
+
+@keyframes invite-modal-in {
+
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(14px)
+      scale(.97);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+  }
+
+}
+
+
+/* =================================
+   INVITE MOBILE
+================================= */
+
+@media (max-width: 420px) {
+
+  .invite-modal {
+    padding:
+      26px
+      20px;
+
+    border-radius: 16px;
+  }
+
+
+  .invite-modal h2 {
+    font-size: 22px;
+  }
+
+
+  .invite-modal-description {
+    font-size: 10px;
+  }
+
+
+  .invite-link {
+    font-size: 8px;
+  }
+
+
+  .invite-copy-button,
+  .invite-share-button {
+    height: 43px;
+  }
+
+}
