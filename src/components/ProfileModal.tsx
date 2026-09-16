@@ -1,4 +1,3 @@
-```tsx
 import {
   ChangeEvent,
   useRef,
@@ -39,11 +38,13 @@ function ProfileModal({
 
     if (!file.type.startsWith("image/")) {
       alert("Выбери изображение");
+      event.target.value = "";
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
       alert("Изображение должно быть меньше 5 MB");
+      event.target.value = "";
       return;
     }
 
@@ -55,7 +56,17 @@ function ProfileModal({
       }
     };
 
+    reader.onerror = () => {
+      alert("Не удалось загрузить изображение");
+    };
+
     reader.readAsDataURL(file);
+
+    event.target.value = "";
+  }
+
+  function openAvatarPicker() {
+    fileInputRef.current?.click();
   }
 
   function saveProfile() {
@@ -68,12 +79,15 @@ function ProfileModal({
       return;
     }
 
-    onSave({
+    const updatedProfile: ProfileData = {
       name: cleanName,
       avatar: avatar || ""
-    });
+    };
+
+    onSave(updatedProfile);
 
     setName(cleanName);
+    setAvatar(avatar || "");
     setIsEditing(false);
   }
 
@@ -103,10 +117,15 @@ function ProfileModal({
     >
       <div
         className="profile-modal profile-modal-full"
-        onClick={(event) => event.stopPropagation()}
+        onClick={(event) =>
+          event.stopPropagation()
+        }
       >
 
-        {/* HEADER */}
+        {/* =====================================================
+            HEADER
+        ===================================================== */}
+
         <div className="profile-modal-header">
 
           <div className="profile-modal-user-mini">
@@ -159,10 +178,15 @@ function ProfileModal({
 
         </div>
 
-        {/* PROFILE CONTENT */}
+
+        {/* =====================================================
+            MAIN PROFILE
+        ===================================================== */}
+
         <div className="profile-content">
 
           {/* HERO */}
+
           <section className="profile-hero">
 
             <button
@@ -170,7 +194,7 @@ function ProfileModal({
               className="profile-main-avatar"
               onClick={() => {
                 if (isEditing) {
-                  fileInputRef.current?.click();
+                  openAvatarPicker();
                 }
               }}
               aria-label={
@@ -226,12 +250,17 @@ function ProfileModal({
 
           </section>
 
-          {/* BIO */}
+
+          {/* =================================================
+              BIO
+          ================================================= */}
+
           <section className="profile-section">
 
             <div className="profile-section-heading">
 
               <div className="profile-section-title">
+
                 <span className="profile-section-icon">
                   👥
                 </span>
@@ -239,6 +268,7 @@ function ProfileModal({
                 <span>
                   Bio
                 </span>
+
               </div>
 
               <span className="profile-section-menu">
@@ -248,14 +278,16 @@ function ProfileModal({
             </div>
 
             <p className="profile-bio">
-              {isEditing
-                ? "Расскажи немного о себе."
-                : "Enter your bio here..."}
+              Enter your bio here...
             </p>
 
           </section>
 
-          {/* GALLERY */}
+
+          {/* =================================================
+              GALLERY
+          ================================================= */}
+
           <section className="profile-section">
 
             <div className="profile-section-heading">
@@ -285,10 +317,12 @@ function ProfileModal({
                 className="profile-gallery-add"
                 onClick={() => {
                   if (isEditing) {
-                    fileInputRef.current?.click();
+                    openAvatarPicker();
                   }
                 }}
+                aria-label="Добавить фото"
               >
+
                 <span>
                   +
                 </span>
@@ -298,6 +332,7 @@ function ProfileModal({
                     ? "ADD"
                     : "PHOTO"}
                 </small>
+
               </button>
 
               {avatar && (
@@ -315,7 +350,11 @@ function ProfileModal({
 
           </section>
 
-          {/* STATS */}
+
+          {/* =================================================
+              STATS
+          ================================================= */}
+
           <section className="profile-section profile-stats-section">
 
             <div className="profile-section-heading">
@@ -341,6 +380,7 @@ function ProfileModal({
             <div className="profile-stats">
 
               {/* ONLINE */}
+
               <div className="profile-stat-row">
 
                 <div className="profile-stat-label">
@@ -363,7 +403,9 @@ function ProfileModal({
 
               </div>
 
+
               {/* JOIN DATE */}
+
               <div className="profile-stat-row">
 
                 <div className="profile-stat-label">
@@ -382,7 +424,9 @@ function ProfileModal({
 
               </div>
 
+
               {/* VIBE TIME */}
+
               <div className="profile-stat-row">
 
                 <div className="profile-stat-label">
@@ -405,7 +449,11 @@ function ProfileModal({
 
           </section>
 
-          {/* ACTIVITY */}
+
+          {/* =================================================
+              ACTIVITY
+          ================================================= */}
+
           <section className="profile-activity">
 
             <div className="profile-activity-tabs">
@@ -413,6 +461,7 @@ function ProfileModal({
               <button
                 type="button"
                 className="profile-activity-tab active"
+                aria-label="График"
               >
                 ▥
               </button>
@@ -420,20 +469,25 @@ function ProfileModal({
               <button
                 type="button"
                 className="profile-activity-tab"
+                aria-label="Сетка"
               >
                 ▦
               </button>
 
             </div>
 
+
             <div className="profile-chart">
 
               <div className="profile-chart-grid">
+
                 <span />
                 <span />
                 <span />
                 <span />
+
               </div>
+
 
               <svg
                 className="profile-chart-line"
@@ -469,6 +523,7 @@ function ProfileModal({
 
                   </linearGradient>
 
+
                   <linearGradient
                     id="profileChartFill"
                     x1="0"
@@ -493,6 +548,7 @@ function ProfileModal({
 
                 </defs>
 
+
                 <path
                   d="
                     M0 100
@@ -513,6 +569,7 @@ function ProfileModal({
                   "
                   fill="url(#profileChartFill)"
                 />
+
 
                 <path
                   d="
@@ -537,6 +594,7 @@ function ProfileModal({
 
               </svg>
 
+
               <div className="profile-chart-labels">
 
                 <span>MON</span>
@@ -555,8 +613,13 @@ function ProfileModal({
 
         </div>
 
-        {/* EDIT PANEL */}
+
+        {/* =====================================================
+            EDIT PANEL
+        ===================================================== */}
+
         {isEditing && (
+
           <div className="profile-edit-panel">
 
             <div className="profile-edit-panel-inner">
@@ -565,14 +628,16 @@ function ProfileModal({
                 EDIT PROFILE
               </div>
 
+
+              {/* AVATAR */}
+
               <div className="profile-edit-avatar-row">
 
                 <button
                   type="button"
                   className="profile-edit-avatar"
-                  onClick={() =>
-                    fileInputRef.current?.click()
-                  }
+                  onClick={openAvatarPicker}
+                  aria-label="Изменить аватар"
                 >
 
                   {avatar ? (
@@ -590,6 +655,7 @@ function ProfileModal({
 
                 </button>
 
+
                 <div>
 
                   <strong>
@@ -603,6 +669,9 @@ function ProfileModal({
                 </div>
 
               </div>
+
+
+              {/* NAME */}
 
               <div className="profile-field">
 
@@ -624,6 +693,9 @@ function ProfileModal({
 
               </div>
 
+
+              {/* SAVE */}
+
               <button
                 type="button"
                 className="profile-save-button"
@@ -631,6 +703,9 @@ function ProfileModal({
               >
                 SAVE
               </button>
+
+
+              {/* CANCEL */}
 
               <button
                 type="button"
@@ -643,6 +718,7 @@ function ProfileModal({
             </div>
 
           </div>
+
         )}
 
       </div>
@@ -651,4 +727,3 @@ function ProfileModal({
 }
 
 export default ProfileModal;
-```
