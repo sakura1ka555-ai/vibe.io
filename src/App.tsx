@@ -1,3 +1,5 @@
+import RoomCard from "./components/RoomCard";
+
 function App() {
   return (
     <div className="app">
@@ -6,21 +8,31 @@ function App() {
       </div>
 
       <h1>
-        Смотри вместе
+        Кино вместе
       </h1>
 
       <p>
-        Совместный просмотр фильмов
-        с друзьями на расстоянии
+        Создавай комнаты и смотри фильмы
+        с друзьями одновременно
       </p>
 
       <button>
-        Создать комнату
+        + Создать комнату
       </button>
 
-      <button className="secondary">
-        Войти в комнату
-      </button>
+      <h2>
+        Активные комнаты
+      </h2>
+
+      <RoomCard
+        title="Вечерний фильм 🎬"
+        users={3}
+      />
+
+      <RoomCard
+        title="Ужастики ночью 👻"
+        users={5}
+      />
     </div>
   );
 }
