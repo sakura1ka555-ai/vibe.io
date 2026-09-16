@@ -4,16 +4,13 @@ import {
   useState
 } from "react";
 
-
 import Chat from "./Chat";
 import VideoPlayer from "./VideoPlayer";
-
 
 import {
   socket,
   joinRoom
 } from "../socket";
-
 
 import {
   getTelegramUser
@@ -21,39 +18,25 @@ import {
 
 
 type PresenceUser = {
-
   id: string;
-
   name: string;
-
   position: number;
-
   time: string;
-
   state?: "play" | "pause";
-
 };
 
 
 type Reaction = {
-
   id: string;
-
   reaction: string;
-
   user: string;
-
 };
 
 
 type Props = {
-
   name: string;
-
   videoUrl: string;
-
   roomId: string;
-
 };
 
 
@@ -114,10 +97,19 @@ function WatchRoom({
       position: number;
 
       id: number;
-
     } | null>(
       null
     );
+
+
+  /*
+    =========================
+    INVITE MODAL
+  =========================
+  */
+
+  const [inviteOpen, setInviteOpen] =
+    useState(false);
 
 
   const [inviteCopied, setInviteCopied] =
@@ -126,8 +118,18 @@ function WatchRoom({
 
   /*
     =========================
-    JOIN ROOM
+    INVITE LINK
+  =========================
+  */
+
+  const inviteUrl =
+    `${window.location.origin}/?room=${encodeURIComponent(roomId)}`;
+
+
+  /*
     =========================
+    JOIN ROOM
+  =========================
   */
 
   useEffect(() => {
@@ -307,7 +309,7 @@ function WatchRoom({
   /*
     =========================
     VIDEO CONTROL
-    =========================
+  =========================
   */
 
   const handleControl =
@@ -323,13 +325,11 @@ function WatchRoom({
         socket.emit(
           "video-control",
           {
-
             roomId,
 
             action,
 
             position
-
           }
         );
 
@@ -343,23 +343,22 @@ function WatchRoom({
   /*
     =========================
     VIDEO POSITION
-    =========================
+  =========================
   */
 
   const handlePosition =
     useCallback(
       (
-        position: number
+        position:
+          number
       ) => {
 
         socket.emit(
           "video-position",
           {
-
             roomId,
 
             position
-
           }
         );
 
@@ -373,7 +372,7 @@ function WatchRoom({
   /*
     =========================
     REACTION
-    =========================
+  =========================
   */
 
   function sendReaction(
@@ -383,11 +382,9 @@ function WatchRoom({
     socket.emit(
       "reaction",
       {
-
         roomId,
 
         reaction
-
       }
     );
 
@@ -396,89 +393,11 @@ function WatchRoom({
 
   /*
     =========================
-    INVITE
-    =========================
+    COPY INVITE
+  =========================
   */
 
-  async function inviteFriend() {
-
-    const inviteUrl =
-      `${window.location.origin}/?room=${encodeURIComponent(roomId)}`;
-
-
-    const shareText =
-      `🎬 Я смотрю в VIBE\nПрисоединяйся к комнате ${roomId}`;
-
-
-    const telegramShareUrl =
-      `https://t.me/share/url?url=${encodeURIComponent(
-        inviteUrl
-      )}&text=${encodeURIComponent(
-        shareText
-      )}`;
-
-
-    /*
-      Telegram Mini App
-      */
-
-    const telegramWebApp =
-      window.Telegram?.WebApp;
-
-
-    if (
-      telegramWebApp?.openTelegramLink
-    ) {
-
-      telegramWebApp.openTelegramLink(
-        telegramShareUrl
-      );
-
-      return;
-
-    }
-
-
-    /*
-      Native share
-      */
-
-    if (
-      navigator.share
-    ) {
-
-      try {
-
-        await navigator.share({
-
-          title:
-            "VIBE",
-
-          text:
-            shareText,
-
-          url:
-            inviteUrl
-
-        });
-
-        return;
-
-      } catch {
-
-        /*
-          Пользователь закрыл
-          окно Share.
-        */
-
-      }
-
-    }
-
-
-    /*
-      Clipboard fallback
-      */
+  async function copyInviteLink() {
 
     try {
 
@@ -503,19 +422,172 @@ function WatchRoom({
         1800
       );
 
-
     } catch {
 
-      window.open(
-        telegramShareUrl,
-        "_blank",
-        "noopener,noreferrer"
+      const textarea =
+        document.createElement(
+          "textarea"
+        );
+
+
+      textarea.value =
+        inviteUrl;
+
+
+      textarea.style.position =
+        "fixed";
+
+
+      textarea.style.opacity =
+        "0";
+
+
+      document.body.appendChild(
+        textarea
+      );
+
+
+      textarea.select();
+
+
+      document.execCommand(
+        "copy"
+      );
+
+
+      textarea.remove();
+
+
+      setInviteCopied(
+        true
+      );
+
+
+      window.setTimeout(
+        () => {
+
+          setInviteCopied(
+            false
+          );
+
+        },
+        1800
       );
 
     }
 
   }
 
+
+  /*
+    =========================
+    SHARE INVITE
+  =========================
+  */
+
+  async function shareInviteLink() {
+
+    const shareText =
+      `🎬 Я смотрю в VIBE\nПрисоединяйся к комнате ${roomId}`;
+
+
+    /*
+      Telegram Mini App
+    */
+
+    const telegramWebApp =
+      window.Telegram?.WebApp;
+
+
+    const telegramShareUrl =
+      `https://t.me/share/url?url=${encodeURIComponent(
+        inviteUrl
+      )}&text=${encodeURIComponent(
+        shareText
+      )}`;
+
+
+    if (
+      telegramWebApp?.openTelegramLink
+    ) {
+
+      telegramWebApp.openTelegramLink(
+        telegramShareUrl
+      );
+
+      return;
+
+    }
+
+
+    /*
+      Native share
+    */
+
+    if (
+      navigator.share
+    ) {
+
+      try {
+
+        await navigator.share({
+          title:
+            "VIBE",
+
+          text:
+            shareText,
+
+          url:
+            inviteUrl
+        });
+
+
+        return;
+
+      } catch {
+
+        /*
+          Пользователь закрыл Share.
+        */
+
+      }
+
+    }
+
+
+    /*
+      Fallback
+    */
+
+    await copyInviteLink();
+
+  }
+
+
+  /*
+    =========================
+    CLOSE INVITE
+  =========================
+    */
+
+  function closeInvite() {
+
+    setInviteOpen(
+      false
+    );
+
+    setInviteCopied(
+      false
+    );
+
+  }
+
+
+  /*
+    =========================
+    UI
+  =========================
+  */
 
   return (
 
@@ -527,45 +599,60 @@ function WatchRoom({
 
         <header className="watch-header">
 
+
           <div className="watch-title-group">
 
+
             <div className="watch-label">
+
               VIBE ROOM
+
             </div>
 
 
             <h1>
+
               {name}
+
             </h1>
 
 
             <div className="watch-room-code">
+
               ID: {roomId}
+
             </div>
+
 
           </div>
 
 
           <div className="watch-header-actions">
 
+
             <button
+
               type="button"
+
               className="invite-button"
-              onClick={
-                inviteFriend
+
+              onClick={() =>
+                setInviteOpen(true)
               }
+
             >
 
               <span className="invite-button-icon">
+
                 ↗
+
               </span>
 
+
               <span>
-                {
-                  inviteCopied
-                    ? "COPIED"
-                    : "INVITE"
-                }
+
+                INVITE
+
               </span>
 
             </button>
@@ -573,19 +660,29 @@ function WatchRoom({
 
             <div className="watch-users">
 
+
               <span className="watch-users-dot">
+
                 ●
+
               </span>
+
 
               {users}
 
+
               <span className="watch-users-label">
+
                 watching
+
               </span>
+
 
             </div>
 
+
           </div>
+
 
         </header>
 
@@ -624,6 +721,7 @@ function WatchRoom({
 
           <div className="floating-reactions">
 
+
             {reactionsOnScreen.map(
               item => {
 
@@ -638,24 +736,34 @@ function WatchRoom({
                 return (
 
                   <div
+
                     key={
                       item.id
                     }
+
                     className="floating-reaction"
+
                     style={{
                       left:
                         `${randomLeft}%`
                     }}
+
                   >
 
+
                     <span>
+
                       {item.reaction}
+
                     </span>
 
 
                     <small>
+
                       {item.user}
+
                     </small>
+
 
                   </div>
 
@@ -663,6 +771,7 @@ function WatchRoom({
 
               }
             )}
+
 
           </div>
 
@@ -672,17 +781,22 @@ function WatchRoom({
 
         <div className="reaction-bar">
 
+
           <div className="reaction-label">
+
             REACT
+
           </div>
 
 
           <div className="reaction-buttons">
 
+
             {reactions.map(
               reaction => (
 
                 <button
+
                   key={
                     reaction
                   }
@@ -700,6 +814,7 @@ function WatchRoom({
                   aria-label={
                     `Отправить ${reaction}`
                   }
+
                 >
 
                   {reaction}
@@ -709,33 +824,47 @@ function WatchRoom({
               )
             )}
 
+
           </div>
+
 
         </div>
 
 
         <div className="watch-bottom">
 
+
           <div className="watch-bottom-status">
 
+
             <span className="status-dot">
+
               ●
+
             </span>
 
+
             VIBE ROOM
+
 
           </div>
 
 
           <div className="watch-bottom-code">
 
+
             ROOM
 
+
             <strong>
+
               {roomId}
+
             </strong>
 
+
           </div>
+
 
         </div>
 
@@ -744,6 +873,7 @@ function WatchRoom({
 
 
       <aside className="watch-sidebar">
+
 
         <Chat
 
@@ -757,7 +887,148 @@ function WatchRoom({
 
         />
 
+
       </aside>
+
+
+      {/* =================================
+          INVITE MODAL
+      ================================= */}
+
+      {inviteOpen && (
+
+        <div
+
+          className="invite-modal-backdrop"
+
+          onClick={
+            closeInvite
+          }
+
+        >
+
+
+          <div
+
+            className="invite-modal"
+
+            onClick={
+              event =>
+                event.stopPropagation()
+            }
+
+          >
+
+
+            <button
+
+              type="button"
+
+              className="invite-modal-close"
+
+              onClick={
+                closeInvite
+              }
+
+            >
+
+              ×
+
+            </button>
+
+
+            <div className="invite-modal-label">
+
+              INVITE TO VIBE
+
+            </div>
+
+
+            <h2>
+
+              Пригласи друзей
+
+            </h2>
+
+
+            <p className="invite-modal-description">
+
+              Отправь ссылку другу,
+              чтобы он сразу попал
+              в эту комнату.
+
+            </p>
+
+
+            <div className="invite-link-box">
+
+
+              <div className="invite-link">
+
+                {inviteUrl}
+
+              </div>
+
+
+            </div>
+
+
+            <button
+
+              type="button"
+
+              className="invite-copy-button"
+
+              onClick={
+                copyInviteLink
+              }
+
+            >
+
+              {inviteCopied
+                ? "✓ LINK COPIED"
+                : "COPY LINK"
+              }
+
+            </button>
+
+
+            <button
+
+              type="button"
+
+              className="invite-share-button"
+
+              onClick={
+                shareInviteLink
+              }
+
+            >
+
+              ↗ SHARE
+
+            </button>
+
+
+            <div className="invite-room-id">
+
+              ROOM&nbsp;&nbsp;
+
+              <strong>
+
+                {roomId}
+
+              </strong>
+
+            </div>
+
+
+          </div>
+
+
+        </div>
+
+      )}
 
 
     </main>
