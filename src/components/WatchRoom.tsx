@@ -1,10 +1,13 @@
 import {
+  useCallback,
   useEffect,
   useState
 } from "react";
 
+
 import Chat from "./Chat";
 import VideoPlayer from "./VideoPlayer";
+
 
 import {
   socket,
@@ -12,10 +15,32 @@ import {
 } from "../socket";
 
 
-type Props = {
+import {
+  getTelegramUser
+} from "../telegram";
+
+
+type PresenceUser = {
+
+  id: string;
+
   name: string;
+
+  position: number;
+
+  time: string;
+
+};
+
+
+type Props = {
+
+  name: string;
+
   videoUrl: string;
+
   roomId: string;
+
 };
 
 
@@ -25,20 +50,125 @@ function WatchRoom({
   roomId
 }: Props) {
 
+  const telegramUser =
+    getTelegramUser();
+
+
+  const userName =
+    telegramUser?.first_name ||
+    "Guest";
+
+
   const [users, setUsers] =
     useState(1);
 
 
+  const [presence, setPresence] =
+    useState<PresenceUser[]>([]);
+
+
+  const [initialPosition, setInitialPosition] =
+    useState(0);
+
+
+  const [initialAction, setInitialAction] =
+    useState<
+      "play" | "pause"
+    >(
+      "pause"
+    );
+
+
+  const [remoteControl, setRemoteControl] =
+    useState<{
+      action:
+        "play" | "pause";
+
+      position: number;
+
+      id: number;
+
+    } | null>(
+      null
+    );
+
+
+  /*
+    =========================
+    JOIN
+    =========================
+  */
+
   useEffect(() => {
 
-    joinRoom(roomId);
+    joinRoom(
+      roomId,
+      userName
+    );
 
 
     function handleUsers(
       count: number
     ) {
 
-      setUsers(count);
+      setUsers(
+        count
+      );
+
+    }
+
+
+    function handlePresence(
+      people: PresenceUser[]
+    ) {
+
+      setPresence(
+        people
+      );
+
+    }
+
+
+    function handleRoomState(
+      state: {
+        action:
+          "play" | "pause";
+
+        position: number;
+      }
+    ) {
+
+      setInitialAction(
+        state.action
+      );
+
+
+      setInitialPosition(
+        state.position || 0
+      );
+
+    }
+
+
+    function handleRemoteControl(
+      data: {
+        action:
+          "play" | "pause";
+
+        position: number;
+      }
+    ) {
+
+      setRemoteControl({
+        action:
+          data.action,
+
+        position:
+          data.position,
+
+        id:
+          Date.now()
+      });
 
     }
 
@@ -49,6 +179,24 @@ function WatchRoom({
     );
 
 
+    socket.on(
+      "presence",
+      handlePresence
+    );
+
+
+    socket.on(
+      "room-state",
+      handleRoomState
+    );
+
+
+    socket.on(
+      "video-control",
+      handleRemoteControl
+    );
+
+
     return () => {
 
       socket.off(
@@ -56,9 +204,96 @@ function WatchRoom({
         handleUsers
       );
 
+
+      socket.off(
+        "presence",
+        handlePresence
+      );
+
+
+      socket.off(
+        "room-state",
+        handleRoomState
+      );
+
+
+      socket.off(
+        "video-control",
+        handleRemoteControl
+      );
+
     };
 
-  }, [roomId]);
+  }, [
+    roomId,
+    userName
+  ]);
+
+
+  /*
+    =========================
+    SEND CONTROL
+    =========================
+  */
+
+  const handleControl =
+    useCallback(
+      (
+        action:
+          "play" | "pause",
+
+        position:
+          number
+      ) => {
+
+        socket.emit(
+          "video-control",
+          {
+
+            roomId,
+
+            action,
+
+            position
+
+          }
+        );
+
+      },
+      [
+        roomId
+      ]
+    );
+
+
+  /*
+    =========================
+    SEND POSITION
+    =========================
+  */
+
+  const handlePosition =
+    useCallback(
+      (
+        position: number
+      ) => {
+
+        socket.emit(
+          "video-position",
+          {
+
+            roomId,
+
+            position
+
+          }
+        );
+
+      },
+      [
+        roomId
+      ]
+    );
 
 
   return (
@@ -110,7 +345,31 @@ function WatchRoom({
         <div className="video-frame">
 
           <VideoPlayer
-            videoUrl={videoUrl}
+
+            videoUrl={
+              videoUrl
+            }
+
+            initialPosition={
+              initialPosition
+            }
+
+            initialAction={
+              initialAction
+            }
+
+            onControl={
+              handleControl
+            }
+
+            onPosition={
+              handlePosition
+            }
+
+            remoteControl={
+              remoteControl
+            }
+
           />
 
         </div>
@@ -148,7 +407,15 @@ function WatchRoom({
       <aside className="watch-sidebar">
 
         <Chat
-          roomId={roomId}
+
+          roomId={
+            roomId
+          }
+
+          presence={
+            presence
+          }
+
         />
 
       </aside>
