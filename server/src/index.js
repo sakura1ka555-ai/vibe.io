@@ -7,18 +7,43 @@ const app = Fastify();
 
 
 await app.register(cors, {
-  origin: "*",
+
+  origin: "*"
+
 });
+
+
+
+app.get("/", async ()=>{
+
+  return {
+
+    app:"VIBE SERVER",
+
+    status:"online"
+
+  };
+
+});
+
+
+
 
 
 const io = new Server(
   app.server,
   {
-    cors: {
-      origin: "*",
-    },
+
+    cors:{
+
+      origin:"*"
+
+    }
+
   }
 );
+
+
 
 
 
@@ -26,58 +51,43 @@ const rooms = {};
 
 
 
-app.get("/", async () => {
-
-  return {
-    app: "VIBE SERVER",
-    status: "online"
-  };
-
-});
-
 
 
 io.on(
   "connection",
-  (socket) => {
+  (socket)=>{
 
 
     console.log(
-      "User connected:",
+      "🟢 user:",
       socket.id
     );
 
 
 
+
+
     socket.on(
       "create-room",
-      (data) => {
+      (data)=>{
 
 
         rooms[data.roomId] = {
 
-          roomId:
-            data.roomId,
+          title:data.title,
 
-          videoUrl:
-            data.videoUrl,
+          videoUrl:data.videoUrl,
 
-          title:
-            data.title,
-
-          users: []
+          users:1
 
         };
 
 
-        console.log(
-          "Room created:",
-          data.roomId
-        );
-
-
       }
     );
+
+
+
 
 
 
@@ -85,24 +95,18 @@ io.on(
 
     socket.on(
       "join-room",
-      (roomId) => {
+      (roomId)=>{
 
 
         socket.join(roomId);
 
 
 
-        if (!rooms[roomId]) {
+        if(!rooms[roomId]){
 
           rooms[roomId] = {
 
-            roomId,
-
-            videoUrl: "",
-
-            title: "VIBE Room",
-
-            users: []
+            users:0
 
           };
 
@@ -110,22 +114,13 @@ io.on(
 
 
 
-        rooms[roomId].users.push(
-          socket.id
-        );
-
-
-
-        socket.emit(
-          "room-state",
-          rooms[roomId]
-        );
+        rooms[roomId].users++;
 
 
 
         io.to(roomId).emit(
           "users",
-          rooms[roomId].users.length
+          rooms[roomId].users
         );
 
 
@@ -136,13 +131,18 @@ io.on(
 
 
 
+
+
+
+
     socket.on(
       "video-control",
-      (data) => {
+      (data)=>{
 
 
-        socket.to(data.roomId)
-        .emit(
+        socket.to(
+          data.roomId
+        ).emit(
           "video-control",
           data
         );
@@ -155,29 +155,50 @@ io.on(
 
 
 
+
+
+
+
     socket.on(
-      "disconnect",
-      () => {
+      "chat-message",
+      (data)=>{
 
 
-        for (
-          const roomId in rooms
-        ) {
+        io.to(
+          data.roomId
+        ).emit(
+          "chat-message",
+          {
 
+            user:"Guest",
 
-          rooms[roomId].users =
-          rooms[roomId].users
-          .filter(
-            id =>
-            id !== socket.id
-          );
+            text:data.text
 
-
-        }
+          }
+        );
 
 
       }
     );
+
+
+
+
+
+
+
+    socket.on(
+      "disconnect",
+      ()=>{
+
+        console.log(
+          "🔴 left:",
+          socket.id
+        );
+
+      }
+    );
+
 
 
   }
@@ -186,17 +207,28 @@ io.on(
 
 
 
+
+
+
+const PORT =
+process.env.PORT || 3001;
+
+
+
 app.listen({
 
-  port: 3001,
+  port:PORT,
 
-  host: "0.0.0.0"
+  host:"0.0.0.0"
 
 })
-.then(() => {
+.then(()=>{
+
 
   console.log(
-    "🔥 VIBE server started"
+    "🔥 VIBE server started on",
+    PORT
   );
+
 
 });
