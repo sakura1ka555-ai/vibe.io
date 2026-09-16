@@ -8,6 +8,7 @@ import { initTelegram, getTelegramUser } from "./telegram";
 
 
 type Room = {
+  id: string;
   title: string;
   users: number;
   videoUrl: string;
@@ -24,6 +25,7 @@ function App() {
 
   const [rooms, setRooms] = useState<Room[]>([
     {
+      id: crypto.randomUUID(),
       title: "Вечерний фильм 🎬",
       users: 3,
       videoUrl:
@@ -50,6 +52,8 @@ function App() {
   ) {
 
     const newRoom: Room = {
+
+      id: crypto.randomUUID(),
 
       title,
 
@@ -158,11 +162,11 @@ function App() {
 
       {
         rooms.map(
-          (room, index) => (
+          (room) => (
 
             <div
 
-              key={index}
+              key={room.id}
 
               onClick={() =>
                 setActiveRoom(room)
