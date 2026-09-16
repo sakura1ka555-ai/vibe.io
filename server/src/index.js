@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { Server } from "socket.io";
+import Database from "better-sqlite3";
 
 
 const app =
@@ -13,6 +14,402 @@ await app.register(
     origin: "*"
   }
 );
+
+
+/*
+  =========================
+  DATABASE
+  =========================
+*/
+
+const db =
+  new Database(
+    "vibe.sqlite"
+  );
+
+
+db.pragma(
+  "journal_mode = WAL"
+);
+
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT 'Guest',
+    avatar TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS friendships (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    friend_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(user_id, friend_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS friend_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_id TEXT NOT NULL,
+    to_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    UNIQUE(from_id, to_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_users_name
+  ON users(name);
+
+  CREATE INDEX IF NOT EXISTS idx_friend_requests_to
+  ON friend_requests(to_id);
+
+  CREATE INDEX IF NOT EXISTS idx_friend_requests_from
+  ON friend_requests(from_id);
+`);
+
+
+/*
+  =========================
+  USER HELPERS
+  =========================
+*/
+
+function createVibeId() {
+
+  const chars =
+    "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+
+  let code = "";
+
+
+  for (
+    let i = 0;
+    i < 6;
+    i++
+  ) {
+
+    code +=
+      chars[
+        Math.floor(
+          Math.random() *
+          chars.length
+        )
+      ];
+
+  }
+
+
+  return `VIBE-${code}`;
+
+}
+
+
+function createUniqueVibeId() {
+
+  let id;
+
+
+  do {
+
+    id =
+      createVibeId();
+
+  } while (
+    db.prepare(
+      "SELECT id FROM users WHERE id = ?"
+    ).get(id)
+  );
+
+
+  return id;
+
+}
+
+
+function getUser(
+  userId
+) {
+
+  return db.prepare(`
+    SELECT
+      id,
+      name,
+      avatar,
+      created_at AS createdAt
+    FROM users
+    WHERE id = ?
+  `).get(userId);
+
+}
+
+
+function createUser(
+  name = "Guest",
+  avatar = ""
+) {
+
+  const id =
+    createUniqueVibeId();
+
+
+  const createdAt =
+    new Date().toISOString();
+
+
+  db.prepare(`
+    INSERT INTO users
+    (id, name, avatar, created_at)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    id,
+    name,
+    avatar,
+    createdAt
+  );
+
+
+  return getUser(
+    id
+  );
+
+}
+
+
+function updateUser(
+  userId,
+  name,
+  avatar
+) {
+
+  db.prepare(`
+    UPDATE users
+    SET
+      name = ?,
+      avatar = ?
+    WHERE id = ?
+  `).run(
+    name,
+    avatar,
+    userId
+  );
+
+
+  return getUser(
+    userId
+  );
+
+}
+
+
+function areFriends(
+  userA,
+  userB
+) {
+
+  const row =
+    db.prepare(`
+      SELECT id
+      FROM friendships
+      WHERE
+        user_id = ?
+        AND friend_id = ?
+      LIMIT 1
+    `).get(
+      userA,
+      userB
+    );
+
+
+  return Boolean(
+    row
+  );
+
+}
+
+
+function getFriends(
+  userId
+) {
+
+  return db.prepare(`
+    SELECT
+      u.id,
+      u.name,
+      u.avatar,
+      u.created_at AS createdAt
+    FROM friendships f
+    JOIN users u
+      ON u.id = f.friend_id
+    WHERE f.user_id = ?
+    ORDER BY u.name COLLATE NOCASE ASC
+  `).all(
+    userId
+  );
+
+}
+
+
+function getIncomingRequests(
+  userId
+) {
+
+  return db.prepare(`
+    SELECT
+      r.id,
+      r.created_at AS createdAt,
+      u.id AS userId,
+      u.name,
+      u.avatar
+    FROM friend_requests r
+    JOIN users u
+      ON u.id = r.from_id
+    WHERE
+      r.to_id = ?
+      AND r.status = 'pending'
+    ORDER BY r.id DESC
+  `).all(
+    userId
+  );
+
+}
+
+
+function getOutgoingRequests(
+  userId
+) {
+
+  return db.prepare(`
+    SELECT
+      r.id,
+      r.created_at AS createdAt,
+      u.id AS userId,
+      u.name,
+      u.avatar
+    FROM friend_requests r
+    JOIN users u
+      ON u.id = r.to_id
+    WHERE
+      r.from_id = ?
+      AND r.status = 'pending'
+    ORDER BY r.id DESC
+  `).all(
+    userId
+  );
+
+}
+
+
+function emitFriendsUpdate(
+  userId
+) {
+
+  const sockets =
+    io.sockets.sockets.values();
+
+
+  for (
+    const connectedSocket of sockets
+  ) {
+
+    if (
+      connectedSocket.data.userId ===
+      userId
+    ) {
+
+      connectedSocket.emit(
+        "friends-data",
+        {
+
+          friends:
+            getFriends(
+              userId
+            ),
+
+          incoming:
+            getIncomingRequests(
+              userId
+            ),
+
+          outgoing:
+            getOutgoingRequests(
+              userId
+            )
+
+        }
+      );
+
+    }
+
+  }
+
+}
+
+
+function isUserOnline(
+  userId
+) {
+
+  for (
+    const connectedSocket of
+    io.sockets.sockets.values()
+  ) {
+
+    if (
+      connectedSocket.data.userId ===
+      userId
+    ) {
+
+      return true;
+
+    }
+
+  }
+
+
+  return false;
+
+}
+
+
+function addFriendship(
+  userA,
+  userB
+) {
+
+  const transaction =
+    db.transaction(
+      () => {
+
+        db.prepare(`
+          INSERT OR IGNORE INTO friendships
+          (user_id, friend_id, created_at)
+          VALUES (?, ?, ?)
+        `).run(
+          userA,
+          userB,
+          new Date().toISOString()
+        );
+
+
+        db.prepare(`
+          INSERT OR IGNORE INTO friendships
+          (user_id, friend_id, created_at)
+          VALUES (?, ?, ?)
+        `).run(
+          userB,
+          userA,
+          new Date().toISOString()
+        );
+
+      }
+    );
+
+
+  transaction();
+
+}
 
 
 /*
@@ -33,6 +430,196 @@ app.get(
       status:
         "online"
 
+    };
+
+  }
+);
+
+
+/*
+  =========================
+  USER REGISTER
+  =========================
+*/
+
+app.post(
+  "/users",
+  async (
+    request,
+    reply
+  ) => {
+
+    const data =
+      request.body || {};
+
+
+    const name =
+      String(
+        data.name ||
+        "Guest"
+      )
+        .trim()
+        .slice(
+          0,
+          40
+        );
+
+
+    const avatar =
+      String(
+        data.avatar ||
+        ""
+      );
+
+
+    if (
+      avatar.length >
+      1500000
+    ) {
+
+      return reply
+        .code(400)
+        .send({
+
+          error:
+            "Avatar is too large"
+
+        });
+
+    }
+
+
+    const user =
+      createUser(
+        name ||
+        "Guest",
+
+        avatar
+      );
+
+
+    return {
+      user
+    };
+
+  }
+);
+
+
+/*
+  =========================
+  GET USER
+  =========================
+*/
+
+app.get(
+  "/users/:userId",
+  async (
+    request,
+    reply
+  ) => {
+
+    const userId =
+      String(
+        request.params.userId ||
+        ""
+      )
+        .trim()
+        .toUpperCase();
+
+
+    const user =
+      getUser(
+        userId
+      );
+
+
+    if (!user) {
+
+      return reply
+        .code(404)
+        .send({
+
+          error:
+            "User not found"
+
+        });
+
+    }
+
+
+    return {
+      user
+    };
+
+  }
+);
+
+
+/*
+  =========================
+  SEARCH USERS
+  =========================
+*/
+
+app.get(
+  "/users/search",
+  async (
+    request
+  ) => {
+
+    const query =
+      String(
+        request.query?.q ||
+        ""
+      )
+        .trim()
+        .slice(
+          0,
+          40
+        );
+
+
+    if (!query) {
+
+      return {
+        users: []
+      };
+
+    }
+
+
+    const like =
+      `%${query}%`;
+
+
+    const users =
+      db.prepare(`
+        SELECT
+          id,
+          name,
+          avatar,
+          created_at AS createdAt
+        FROM users
+        WHERE
+          id LIKE ?
+          OR name LIKE ?
+        ORDER BY
+          CASE
+            WHEN id = ? THEN 0
+            ELSE 1
+          END,
+          name COLLATE NOCASE ASC
+        LIMIT 20
+      `).all(
+        like,
+        like,
+        query.toUpperCase()
+      );
+
+
+    return {
+      users
     };
 
   }
@@ -213,6 +800,7 @@ const io =
         ]
 
       }
+
     }
   );
 
@@ -296,6 +884,7 @@ function getPresence(
     result.push({
 
       id:
+        connectedSocket.data.userId ||
         connectedSocket.id,
 
       name:
@@ -363,6 +952,579 @@ io.on(
 
     /*
       =========================
+      REGISTER USER
+      =========================
+    */
+
+    socket.on(
+      "register-user",
+      (data) => {
+
+        const requestedId =
+          String(
+            data?.userId ||
+            ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        let user =
+          requestedId
+            ? getUser(
+                requestedId
+              )
+            : null;
+
+
+        if (!user) {
+
+          user =
+            createUser(
+              String(
+                data?.name ||
+                "Guest"
+              )
+                .trim()
+                .slice(
+                  0,
+                  40
+                ) ||
+              "Guest",
+
+              String(
+                data?.avatar ||
+                ""
+              )
+            );
+
+        }
+
+
+        socket.data.userId =
+          user.id;
+
+
+        socket.data.userName =
+          user.name;
+
+
+        socket.data.avatar =
+          user.avatar;
+
+
+        socket.emit(
+          "user-registered",
+          {
+            user
+          }
+        );
+
+
+        socket.emit(
+          "friends-data",
+          {
+
+            friends:
+              getFriends(
+                user.id
+              ),
+
+            incoming:
+              getIncomingRequests(
+                user.id
+              ),
+
+            outgoing:
+              getOutgoingRequests(
+                user.id
+              )
+
+          }
+        );
+
+
+        console.log(
+          "👤 user registered:",
+          user.id,
+          user.name
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      SEARCH USERS
+      =========================
+    */
+
+    socket.on(
+      "search-users",
+      (data) => {
+
+        const query =
+          String(
+            data?.query ||
+            ""
+          )
+            .trim()
+            .slice(
+              0,
+              40
+            );
+
+
+        if (!query) {
+
+          socket.emit(
+            "user-search-results",
+            {
+              users: []
+            }
+          );
+
+          return;
+
+        }
+
+
+        const like =
+          `%${query}%`;
+
+
+        const users =
+          db.prepare(`
+            SELECT
+              id,
+              name,
+              avatar,
+              created_at AS createdAt
+            FROM users
+            WHERE
+              id LIKE ?
+              OR name LIKE ?
+            ORDER BY
+              name COLLATE NOCASE ASC
+            LIMIT 20
+          `).all(
+            like,
+            like
+          );
+
+
+        socket.emit(
+          "user-search-results",
+          {
+            users
+          }
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      SEND FRIEND REQUEST
+      =========================
+    */
+
+    socket.on(
+      "friend-request",
+      (data) => {
+
+        const fromId =
+          socket.data.userId;
+
+
+        const toId =
+          String(
+            data?.userId ||
+            ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        if (
+          !fromId ||
+          !toId
+        ) {
+
+          return;
+
+        }
+
+
+        if (
+          fromId ===
+          toId
+        ) {
+
+          return;
+
+        }
+
+
+        const target =
+          getUser(
+            toId
+          );
+
+
+        if (!target) {
+
+          socket.emit(
+            "friend-error",
+            {
+              message:
+                "User not found"
+            }
+          );
+
+          return;
+
+        }
+
+
+        if (
+          areFriends(
+            fromId,
+            toId
+          )
+        ) {
+
+          socket.emit(
+            "friend-error",
+            {
+              message:
+                "Already friends"
+            }
+          );
+
+          return;
+
+        }
+
+
+        const existing =
+          db.prepare(`
+            SELECT
+              id,
+              from_id AS fromId,
+              to_id AS toId,
+              status
+            FROM friend_requests
+            WHERE
+              (
+                from_id = ?
+                AND to_id = ?
+              )
+              OR
+              (
+                from_id = ?
+                AND to_id = ?
+              )
+            LIMIT 1
+          `).get(
+            fromId,
+            toId,
+            toId,
+            fromId
+          );
+
+
+        if (
+          existing &&
+          existing.status ===
+          "pending"
+        ) {
+
+          socket.emit(
+            "friend-error",
+            {
+              message:
+                "Friend request already exists"
+            }
+          );
+
+          return;
+
+        }
+
+
+        db.prepare(`
+          DELETE FROM friend_requests
+          WHERE
+            (
+              from_id = ?
+              AND to_id = ?
+            )
+            OR
+            (
+              from_id = ?
+              AND to_id = ?
+            )
+        `).run(
+          fromId,
+          toId,
+          toId,
+          fromId
+        );
+
+
+        db.prepare(`
+          INSERT INTO friend_requests
+          (from_id, to_id, status, created_at)
+          VALUES (?, ?, 'pending', ?)
+        `).run(
+          fromId,
+          toId,
+          new Date().toISOString()
+        );
+
+
+        emitFriendsUpdate(
+          fromId
+        );
+
+
+        emitFriendsUpdate(
+          toId
+        );
+
+
+        socket.emit(
+          "friend-success",
+          {
+            message:
+              "Friend request sent"
+          }
+        );
+
+
+        console.log(
+          "👥 friend request:",
+          fromId,
+          "→",
+          toId
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      ACCEPT FRIEND REQUEST
+      =========================
+    */
+
+    socket.on(
+      "friend-accept",
+      (data) => {
+
+        const userId =
+          socket.data.userId;
+
+
+        const requestId =
+          Number(
+            data?.requestId
+          );
+
+
+        if (
+          !userId ||
+          !requestId
+        ) {
+
+          return;
+
+        }
+
+
+        const request =
+          db.prepare(`
+            SELECT
+              id,
+              from_id AS fromId,
+              to_id AS toId
+            FROM friend_requests
+            WHERE
+              id = ?
+              AND to_id = ?
+              AND status = 'pending'
+          `).get(
+            requestId,
+            userId
+          );
+
+
+        if (!request) {
+
+          return;
+
+        }
+
+
+        addFriendship(
+          request.fromId,
+          request.toId
+        );
+
+
+        db.prepare(`
+          UPDATE friend_requests
+          SET status = 'accepted'
+          WHERE id = ?
+        `).run(
+          requestId
+        );
+
+
+        emitFriendsUpdate(
+          request.fromId
+        );
+
+
+        emitFriendsUpdate(
+          request.toId
+        );
+
+
+        console.log(
+          "✅ friends:",
+          request.fromId,
+          "<->",
+          request.toId
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      DECLINE FRIEND REQUEST
+      =========================
+    */
+
+    socket.on(
+      "friend-decline",
+      (data) => {
+
+        const userId =
+          socket.data.userId;
+
+
+        const requestId =
+          Number(
+            data?.requestId
+          );
+
+
+        if (
+          !userId ||
+          !requestId
+        ) {
+
+          return;
+
+        }
+
+
+        db.prepare(`
+          UPDATE friend_requests
+          SET status = 'declined'
+          WHERE
+            id = ?
+            AND to_id = ?
+            AND status = 'pending'
+        `).run(
+          requestId,
+          userId
+        );
+
+
+        emitFriendsUpdate(
+          userId
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      REMOVE FRIEND
+      =========================
+    */
+
+    socket.on(
+      "friend-remove",
+      (data) => {
+
+        const userId =
+          socket.data.userId;
+
+
+        const friendId =
+          String(
+            data?.userId ||
+            ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        if (
+          !userId ||
+          !friendId
+        ) {
+
+          return;
+
+        }
+
+
+        db.prepare(`
+          DELETE FROM friendships
+          WHERE
+            (
+              user_id = ?
+              AND friend_id = ?
+            )
+            OR
+            (
+              user_id = ?
+              AND friend_id = ?
+            )
+        `).run(
+          userId,
+          friendId,
+          friendId,
+          userId
+        );
+
+
+        emitFriendsUpdate(
+          userId
+        );
+
+
+        emitFriendsUpdate(
+          friendId
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
       JOIN ROOM
       =========================
     */
@@ -386,6 +1548,7 @@ io.on(
             typeof data === "string"
               ? "Guest"
               : data?.userName ||
+                socket.data.userName ||
                 "Guest"
           )
             .trim()
@@ -421,12 +1584,6 @@ io.on(
 
         }
 
-
-        /*
-          =========================
-          LEAVE OLD ROOM
-          =========================
-        */
 
         if (
           socket.data.roomId
@@ -469,12 +1626,6 @@ io.on(
         }
 
 
-        /*
-          =========================
-          JOIN
-          =========================
-        */
-
         socket.join(
           roomId
         );
@@ -490,6 +1641,7 @@ io.on(
 
 
         socket.data.avatar =
+          socket.data.avatar ||
           "";
 
 
@@ -503,12 +1655,6 @@ io.on(
 
         room.users++;
 
-
-        /*
-          =========================
-          ROOM STATE
-          =========================
-        */
 
         socket.emit(
           "room-state",
@@ -621,11 +1767,6 @@ io.on(
           );
 
 
-        /*
-          Защита от
-          слишком огромного avatar.
-        */
-
         if (
           avatar.length >
           1500000
@@ -645,9 +1786,35 @@ io.on(
           avatar;
 
 
+        if (
+          socket.data.userId
+        ) {
+
+          updateUser(
+            socket.data.userId,
+
+            socket.data.userName,
+
+            socket.data.avatar
+          );
+
+        }
+
+
         emitPresence(
           roomId
         );
+
+
+        if (
+          socket.data.userId
+        ) {
+
+          emitFriendsUpdate(
+            socket.data.userId
+          );
+
+        }
 
 
         console.log(
@@ -724,11 +1891,6 @@ io.on(
 
         socket.data.videoState =
           action;
-
-
-        socket.data.userName =
-          socket.data.userName ||
-          "Guest";
 
 
         socket
@@ -865,15 +2027,10 @@ io.on(
         const allowedReactions = [
 
           "❤️",
-
           "😂",
-
           "🔥",
-
           "😮",
-
           "😭",
-
           "💀"
 
         ];
@@ -942,7 +2099,11 @@ io.on(
           String(
             data?.text || ""
           )
-            .trim();
+            .trim()
+            .slice(
+              0,
+              1000
+            );
 
 
         if (
@@ -1057,6 +2218,7 @@ const PORT =
 
 
 app.listen({
+
   port:
     PORT,
 
