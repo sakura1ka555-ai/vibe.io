@@ -1,9 +1,10 @@
-import { initTelegram, getTelegramUser } from "./telegram";
 import { useState } from "react";
 
 import RoomCard from "./components/RoomCard";
 import WatchRoom from "./components/WatchRoom";
 import CreateRoom from "./components/CreateRoom";
+
+import { initTelegram, getTelegramUser } from "./telegram";
 
 
 type Room = {
@@ -13,7 +14,12 @@ type Room = {
 };
 
 
+
 function App() {
+
+  initTelegram();
+
+  const user = getTelegramUser();
 
 
   const [rooms, setRooms] = useState<Room[]>([
@@ -43,7 +49,7 @@ function App() {
     videoUrl: string
   ) {
 
-    const newRoom = {
+    const newRoom: Room = {
 
       title,
 
@@ -70,6 +76,7 @@ function App() {
 
 
 
+
   if (activeRoom) {
 
     return (
@@ -89,6 +96,7 @@ function App() {
 
 
 
+
   return (
 
     <div className="app">
@@ -101,7 +109,7 @@ function App() {
 
 
       <h1>
-        Кино вместе
+        Привет, {user?.first_name || "друг"} 👋
       </h1>
 
 
@@ -114,9 +122,11 @@ function App() {
 
 
       <button
+
         onClick={() =>
           setShowCreate(true)
         }
+
       >
         + Создать комнату
       </button>
@@ -139,11 +149,9 @@ function App() {
 
 
 
-
       <h2>
         Активные комнаты
       </h2>
-
 
 
 
