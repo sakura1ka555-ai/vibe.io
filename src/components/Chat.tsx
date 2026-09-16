@@ -1,81 +1,83 @@
-import { useState, useEffect } from "react";
+import {
+  useEffect,
+  useState
+} from "react";
 
 import { socket } from "../socket";
 
 
 type Message = {
-  user:string;
-  text:string;
+  user: string;
+  text: string;
 };
 
+
+type Props = {
+  roomId: string;
+};
 
 
 function Chat({
   roomId
-}:{
-  roomId:string;
-}) {
+}: Props) {
 
-
-  const [messages,setMessages] =
+  const [messages, setMessages] =
     useState<Message[]>([]);
 
-
-  const [text,setText] =
+  const [text, setText] =
     useState("");
 
 
+  useEffect(() => {
 
+    function handleMessage(
+      message: Message
+    ) {
 
-  useEffect(()=>{
+      setMessages(
+        previous => [
+          ...previous,
+          message
+        ]
+      );
+
+    }
 
 
     socket.on(
       "chat-message",
-      (msg)=>{
-
-        setMessages(
-          prev=>[
-            ...prev,
-            msg
-          ]
-        );
-
-      }
+      handleMessage
     );
 
 
-
-    return ()=>{
+    return () => {
 
       socket.off(
-        "chat-message"
+        "chat-message",
+        handleMessage
       );
 
     };
 
-
-  },[]);
-
+  }, []);
 
 
+  function sendMessage() {
+
+    const message =
+      text.trim();
 
 
-
-
-  function send(){
-
-
-    if(!text.trim())
+    if (!message) {
       return;
-
+    }
 
 
     socket.emit(
       "chat-message",
       {
         roomId,
-        text
+        text: message
       }
     );
 
@@ -85,75 +87,123 @@ function Chat({
   }
 
 
+  function handleKeyDown(
+    event:
+      React.KeyboardEvent<HTMLInputElement>
+  ) {
 
+    if (
+      event.key ===
+      "Enter"
+    ) {
 
+      event.preventDefault();
+
+      sendMessage();
+
+    }
+
+  }
 
 
   return (
 
-    <aside className="chat">
+    <div className="chat">
 
 
-      <h3>
-        💬 Чат
-      </h3>
+      <div className="chat-header">
 
+        <div className="chat-title">
+          Чат
+        </div>
+
+        <div className="chat-room">
+          {roomId}
+        </div>
+
+      </div>
 
 
       <div className="messages">
 
-        {
-          messages.map(
-            (m,i)=>(
+        {messages.length === 0 && (
 
-              <div key={i}
-              className="message">
+          <div className="chat-empty">
+            Здесь появятся сообщения
+          </div>
 
-                <b>
-                  {m.user}
-                </b>
+        )}
 
-                <span>
-                  {m.text}
-                </span>
 
-              </div>
+        {messages.map(
+          (
+            message,
+            index
+          ) => (
 
-            )
+            <div
+              key={index}
+              className="message"
+            >
+
+              <b>
+                {message.user}
+              </b>
+
+              <span>
+                {message.text}
+              </span>
+
+            </div>
+
           )
-        }
+        )}
 
       </div>
-
-
 
 
       <div className="chat-input">
 
-
         <input
+
+          type="text"
 
           value={text}
 
           onChange={
-            e=>setText(e.target.value)
+            event =>
+              setText(
+                event.target.value
+              )
+          }
+
+          onKeyDown={
+            handleKeyDown
           }
 
           placeholder="Сообщение..."
 
+          autoComplete="off"
+
         />
 
 
-        <button onClick={send}>
+        <button
+
+          type="button"
+
+          onClick={
+            sendMessage
+          }
+
+        >
           →
         </button>
-
 
       </div>
 
 
-
-    </aside>
+    </div>
 
   );
 
