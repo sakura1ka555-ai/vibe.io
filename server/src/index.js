@@ -21,130 +21,192 @@ const io = new Server(
 );
 
 
-// хранилище комнат
+// состояние комнат
 const rooms = {};
 
 
-// проверка сервера
+
 app.get("/", async () => {
+
   return {
     app: "VIBE SERVER",
-    status: "online",
+    status: "online"
   };
+
 });
+
 
 
 io.on("connection", (socket) => {
 
+
   console.log(
-    "User connected:",
+    "Connected:",
     socket.id
   );
 
 
-  // вход в комнату
+
   socket.on(
     "join-room",
     (roomId) => {
 
+
       socket.join(roomId);
 
 
+
       if (!rooms[roomId]) {
-        rooms[roomId] = [];
+
+        rooms[roomId] = {
+
+          videoUrl:
+          "https://www.w3schools.com/html/mov_bbb.mp4",
+
+          position: 0,
+
+          playing: false,
+
+          users: []
+
+        };
+
       }
 
 
-      rooms[roomId].push(socket.id);
+
+      rooms[roomId].users.push(
+        socket.id
+      );
+
+
+
+      // отправляем новое состояние
+      socket.emit(
+        "room-state",
+        rooms[roomId]
+      );
+
 
 
       io.to(roomId).emit(
         "users",
-        rooms[roomId].length
+        rooms[roomId].users.length
       );
 
-
-      console.log(
-        `User ${socket.id} joined ${roomId}`
-      );
 
     }
   );
 
 
 
-  // управление видео
+
   socket.on(
     "video-control",
     (data) => {
 
-      socket.to(data.roomId).emit(
+
+      const room =
+        rooms[data.roomId];
+
+
+      if (!room) return;
+
+
+
+      room.position =
+        data.position;
+
+
+
+      if (
+        data.action === "play"
+      ) {
+
+        room.playing = true;
+
+      }
+
+
+
+      if (
+        data.action === "pause"
+      ) {
+
+        room.playing = false;
+
+      }
+
+
+
+      socket.to(data.roomId)
+      .emit(
         "video-control",
-        {
-          action: data.action,
-          position: data.position,
-        }
+        data
       );
 
-
-      console.log(
-        "Video event:",
-        data.action
-      );
 
     }
   );
 
 
 
-  // отключение пользователя
+
   socket.on(
     "disconnect",
     () => {
 
 
-      console.log(
-        "User disconnected:",
-        socket.id
-      );
+      for (
+        const roomId in rooms
+      ) {
 
 
-      for (const roomId in rooms) {
-
-        rooms[roomId] =
-          rooms[roomId].filter(
-            (id) => id !== socket.id
+        rooms[roomId].users =
+          rooms[roomId].users
+          .filter(
+            id => id !== socket.id
           );
+
 
 
         io.to(roomId).emit(
           "users",
-          rooms[roomId].length
+          rooms[roomId].users.length
         );
 
 
-        if (rooms[roomId].length === 0) {
+
+        if (
+          rooms[roomId].users.length === 0
+        ) {
+
           delete rooms[roomId];
+
         }
 
       }
 
+
     }
   );
+
 
 });
 
 
 
-// запуск сервера
 app.listen({
+
   port: 3001,
-  host: "0.0.0.0",
+
+  host: "0.0.0.0"
+
 })
 .then(() => {
 
   console.log(
-    "🔥 VIBE server started on port 3001"
+    "🔥 VIBE SERVER running"
   );
 
 });
