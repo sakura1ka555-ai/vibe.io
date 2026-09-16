@@ -21,7 +21,7 @@ const io = new Server(
 );
 
 
-// состояние комнат
+
 const rooms = {};
 
 
@@ -37,136 +37,89 @@ app.get("/", async () => {
 
 
 
-io.on("connection", (socket) => {
+io.on(
+  "connection",
+  (socket) => {
 
 
-  console.log(
-    "Connected:",
-    socket.id
-  );
-
-
-
-  socket.on(
-    "join-room",
-    (roomId) => {
-
-
-      socket.join(roomId);
+    console.log(
+      "User connected:",
+      socket.id
+    );
 
 
 
-      if (!rooms[roomId]) {
+    socket.on(
+      "create-room",
+      (data) => {
 
-        rooms[roomId] = {
+
+        rooms[data.roomId] = {
+
+          roomId:
+            data.roomId,
 
           videoUrl:
-          "https://www.w3schools.com/html/mov_bbb.mp4",
+            data.videoUrl,
 
-          position: 0,
-
-          playing: false,
+          title:
+            data.title,
 
           users: []
 
         };
 
-      }
 
+        console.log(
+          "Room created:",
+          data.roomId
+        );
 
-
-      rooms[roomId].users.push(
-        socket.id
-      );
-
-
-
-      // отправляем новое состояние
-      socket.emit(
-        "room-state",
-        rooms[roomId]
-      );
-
-
-
-      io.to(roomId).emit(
-        "users",
-        rooms[roomId].users.length
-      );
-
-
-    }
-  );
-
-
-
-
-  socket.on(
-    "video-control",
-    (data) => {
-
-
-      const room =
-        rooms[data.roomId];
-
-
-      if (!room) return;
-
-
-
-      room.position =
-        data.position;
-
-
-
-      if (
-        data.action === "play"
-      ) {
-
-        room.playing = true;
 
       }
-
-
-
-      if (
-        data.action === "pause"
-      ) {
-
-        room.playing = false;
-
-      }
-
-
-
-      socket.to(data.roomId)
-      .emit(
-        "video-control",
-        data
-      );
-
-
-    }
-  );
+    );
 
 
 
 
-  socket.on(
-    "disconnect",
-    () => {
+
+    socket.on(
+      "join-room",
+      (roomId) => {
 
 
-      for (
-        const roomId in rooms
-      ) {
+        socket.join(roomId);
 
 
-        rooms[roomId].users =
-          rooms[roomId].users
-          .filter(
-            id => id !== socket.id
-          );
+
+        if (!rooms[roomId]) {
+
+          rooms[roomId] = {
+
+            roomId,
+
+            videoUrl: "",
+
+            title: "VIBE Room",
+
+            users: []
+
+          };
+
+        }
+
+
+
+        rooms[roomId].users.push(
+          socket.id
+        );
+
+
+
+        socket.emit(
+          "room-state",
+          rooms[roomId]
+        );
 
 
 
@@ -176,23 +129,60 @@ io.on("connection", (socket) => {
         );
 
 
+      }
+    );
 
-        if (
-          rooms[roomId].users.length === 0
+
+
+
+
+    socket.on(
+      "video-control",
+      (data) => {
+
+
+        socket.to(data.roomId)
+        .emit(
+          "video-control",
+          data
+        );
+
+
+      }
+    );
+
+
+
+
+
+    socket.on(
+      "disconnect",
+      () => {
+
+
+        for (
+          const roomId in rooms
         ) {
 
-          delete rooms[roomId];
+
+          rooms[roomId].users =
+          rooms[roomId].users
+          .filter(
+            id =>
+            id !== socket.id
+          );
+
 
         }
 
+
       }
+    );
 
 
-    }
-  );
+  }
+);
 
-
-});
 
 
 
@@ -206,7 +196,7 @@ app.listen({
 .then(() => {
 
   console.log(
-    "🔥 VIBE SERVER running"
+    "🔥 VIBE server started"
   );
 
 });
