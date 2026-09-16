@@ -78,15 +78,9 @@ button {
 }
 
 
-/* =================================
-   BRAND
-================================= */
-
 .brand {
   display: flex;
-
   align-items: center;
-
   gap: 12px;
 }
 
@@ -105,7 +99,6 @@ button {
   height: 25px;
 
   display: flex;
-
   align-items: center;
 
   padding:
@@ -128,10 +121,6 @@ button {
   letter-spacing: 1.2px;
 }
 
-
-/* =================================
-   HERO
-================================= */
 
 .hero {
   width: 100%;
@@ -172,10 +161,6 @@ button {
   line-height: 1.65;
 }
 
-
-/* =================================
-   ACTIONS
-================================= */
 
 .actions {
   display: flex;
@@ -258,10 +243,6 @@ button {
     rgba(103, 48, 193, .30);
 }
 
-
-/* =================================
-   PROFILE
-================================= */
 
 .profile {
   margin-top: 45px;
@@ -848,10 +829,6 @@ button {
 }
 
 
-/* =================================
-   YOUTUBE PLAYER
-================================= */
-
 .youtube-player {
   position: absolute;
 
@@ -880,10 +857,6 @@ button {
 }
 
 
-/* =================================
-   OTHER EMBEDDED PLAYERS
-================================= */
-
 .embedded-player {
   position: absolute;
 
@@ -897,6 +870,278 @@ button {
   border: 0;
 
   background: #000;
+}
+
+
+/* =================================
+   REACTIONS
+================================= */
+
+.floating-reactions {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 20;
+
+  pointer-events: none;
+
+  overflow: hidden;
+}
+
+
+.floating-reaction {
+  position: absolute;
+
+  left: calc(
+    10% +
+    (var(--reaction-x, 50) * 1%)
+  );
+
+  bottom: 55px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 2px;
+
+  pointer-events: none;
+
+  animation:
+    vibe-reaction-float
+    2.8s
+    cubic-bezier(.18,.75,.25,1)
+    forwards;
+}
+
+
+.floating-reaction span {
+  display: block;
+
+  font-size: 34px;
+
+  line-height: 1;
+
+  filter:
+    drop-shadow(
+      0 6px 14px
+      rgba(0,0,0,.45)
+    );
+
+  animation:
+    vibe-reaction-pop
+    .35s
+    cubic-bezier(.2,1.5,.4,1)
+    both;
+}
+
+
+.floating-reaction small {
+  padding:
+    3px 7px;
+
+  border:
+    1px solid
+    rgba(255,255,255,.10);
+
+  border-radius: 999px;
+
+  background:
+    rgba(8,5,13,.65);
+
+  color: rgba(255,255,255,.70);
+
+  font-size: 8px;
+
+  backdrop-filter:
+    blur(8px);
+
+  white-space: nowrap;
+}
+
+
+@keyframes vibe-reaction-float {
+
+  0% {
+
+    opacity: 0;
+
+    transform:
+      translateY(45px)
+      scale(.72);
+
+  }
+
+
+  10% {
+
+    opacity: 1;
+
+  }
+
+
+  35% {
+
+    transform:
+      translateY(-25%)
+      scale(1);
+
+  }
+
+
+  70% {
+
+    opacity: 1;
+
+  }
+
+
+  100% {
+
+    opacity: 0;
+
+    transform:
+      translateY(-360px)
+      scale(.88);
+
+  }
+
+}
+
+
+@keyframes vibe-reaction-pop {
+
+  0% {
+
+    transform:
+      scale(.3)
+      rotate(-8deg);
+
+  }
+
+
+  70% {
+
+    transform:
+      scale(1.12)
+      rotate(3deg);
+
+  }
+
+
+  100% {
+
+    transform:
+      scale(1)
+      rotate(0);
+
+  }
+
+}
+
+
+/* =================================
+   REACTION BAR
+================================= */
+
+.reaction-bar {
+  min-height: 53px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 14px;
+
+  margin-top: 9px;
+
+  padding:
+    5px 12px;
+
+  border:
+    1px solid
+    rgba(255,255,255,.065);
+
+  border-radius: 13px;
+
+  background:
+    rgba(255,255,255,.025);
+
+  backdrop-filter:
+    blur(16px);
+}
+
+
+.reaction-label {
+  color: #5f5869;
+
+  font-size: 8px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.5px;
+}
+
+
+.reaction-buttons {
+  display: flex;
+
+  align-items: center;
+
+  gap: 4px;
+}
+
+
+.reaction-button {
+  width: 39px;
+  height: 37px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border:
+    1px solid
+    transparent;
+
+  border-radius: 10px;
+
+  background:
+    transparent;
+
+  font-size: 19px;
+
+  transition:
+    transform .16s ease,
+    background .16s ease,
+    border-color .16s ease;
+}
+
+
+.reaction-button:hover {
+  transform:
+    translateY(-2px)
+    scale(1.08);
+
+  border-color:
+    rgba(180,120,255,.18);
+
+  background:
+    rgba(153,88,243,.10);
+}
+
+
+.reaction-button:active {
+  transform:
+    scale(.92);
 }
 
 
@@ -1512,6 +1757,32 @@ button {
     display: none;
   }
 
+
+  .reaction-bar {
+    gap: 7px;
+
+    padding:
+      5px 8px;
+  }
+
+
+  .reaction-label {
+    display: none;
+  }
+
+
+  .reaction-button {
+    width: 36px;
+    height: 35px;
+
+    font-size: 18px;
+  }
+
+
+  .floating-reaction span {
+    font-size: 29px;
+  }
+
 }
 
 
@@ -1532,6 +1803,18 @@ button {
   .room-modal {
     padding:
       26px 18px;
+  }
+
+
+  .reaction-buttons {
+    gap: 1px;
+  }
+
+
+  .reaction-button {
+    width: 33px;
+
+    font-size: 17px;
   }
 
 }
