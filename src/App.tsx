@@ -1,8 +1,8 @@
 import { useState } from "react";
 
+import CreateRoom from "./components/CreateRoom";
 import RoomCard from "./components/RoomCard";
 import WatchRoom from "./components/WatchRoom";
-import CreateRoom from "./components/CreateRoom";
 
 import { initTelegram, getTelegramUser } from "./telegram";
 import { socket } from "./socket";
@@ -25,21 +25,11 @@ function App() {
 
 
 
-  const [rooms, setRooms] = useState<Room[]>([
-    {
-      id: crypto.randomUUID(),
-      title: "Вечерний фильм 🎬",
-      users: 3,
-      videoUrl:
-        "https://www.w3schools.com/html/mov_bbb.mp4"
-    }
-  ]);
+  const [rooms, setRooms] = useState<Room[]>([]);
 
 
-
-  const [showCreate, setShowCreate] =
+  const [createOpen, setCreateOpen] =
     useState(false);
-
 
 
   const [activeRoom, setActiveRoom] =
@@ -48,19 +38,20 @@ function App() {
 
 
 
+
   function createRoom(
-    title: string,
-    videoUrl: string
+    title:string,
+    videoUrl:string
   ) {
 
 
-    const newRoom: Room = {
+    const room:Room = {
 
       id: crypto.randomUUID(),
 
       title,
 
-      users: 1,
+      users:1,
 
       videoUrl
 
@@ -71,9 +62,9 @@ function App() {
     socket.emit(
       "create-room",
       {
-        roomId: newRoom.id,
-        title: newRoom.title,
-        videoUrl: newRoom.videoUrl
+        roomId:room.id,
+        title:room.title,
+        videoUrl:room.videoUrl
       }
     );
 
@@ -81,16 +72,13 @@ function App() {
 
     setRooms([
       ...rooms,
-      newRoom
+      room
     ]);
 
 
 
-    setActiveRoom(newRoom);
+    setActiveRoom(room);
 
-
-
-    setShowCreate(false);
 
   }
 
@@ -98,8 +86,7 @@ function App() {
 
 
 
-
-  if (activeRoom) {
+  if(activeRoom){
 
     return (
 
@@ -125,55 +112,111 @@ function App() {
 
   return (
 
-    <div className="app">
+    <main className="home">
 
 
-      <div className="logo">
-        VIBE
+      <div className="brand">
+
+
+        <div className="logo">
+          VIBE
+        </div>
+
+
+
+        <div className="status">
+
+          ● ONLINE
+
+        </div>
+
+
       </div>
 
 
 
 
-      <h1>
-        Привет, {user?.first_name || "друг"} 👋
-      </h1>
+
+      <section className="hero">
+
+
+        <h1>
+
+          Смотри вместе.
+
+          <br/>
+
+          Чувствуй момент.
+
+        </h1>
+
+
+
+        <p>
+
+          Совместный просмотр
+          фильмов с друзьями
+          где бы вы ни были.
+
+        </p>
+
+
+
+      </section>
 
 
 
 
-      <p>
-        Смотри фильмы вместе
-        с друзьями онлайн
-      </p>
+
+
+
+      <section className="actions">
+
+
+        <button
+
+          className="primary"
+
+          onClick={() =>
+            setCreateOpen(true)
+          }
+
+        >
+
+          + Создать комнату
+
+        </button>
 
 
 
 
-      <button
+        <button
 
-        onClick={() =>
-          setShowCreate(true)
-        }
+          className="secondary"
 
-      >
-        + Создать комнату
-      </button>
+        >
+
+          Войти по ссылке
+
+        </button>
+
+
+      </section>
+
 
 
 
 
 
       {
-        showCreate && (
+        createOpen &&
 
-          <CreateRoom
+        <CreateRoom
 
-            onCreate={createRoom}
+          onCreate={createRoom}
 
-          />
+        />
 
-        )
       }
 
 
@@ -182,9 +225,16 @@ function App() {
 
 
 
-      <h2>
-        Активные комнаты
-      </h2>
+      {
+        user &&
+
+        <div className="profile">
+
+          {user.first_name}
+
+        </div>
+
+      }
 
 
 
@@ -193,32 +243,38 @@ function App() {
 
 
       {
-        rooms.map(
-          (room) => (
+        rooms.length > 0 &&
 
-            <div
-
-              key={room.id}
-
-              onClick={() =>
-                setActiveRoom(room)
-              }
-
-            >
-
-              <RoomCard
-
-                title={room.title}
-
-                users={room.users}
-
-              />
+        <section className="rooms">
 
 
-            </div>
+          <h2>
+            Комнаты
+          </h2>
 
-          )
-        )
+
+
+          {
+            rooms.map(
+              room => (
+
+                <RoomCard
+
+                  key={room.id}
+
+                  title={room.title}
+
+                  users={room.users}
+
+                />
+
+              )
+            )
+          }
+
+
+        </section>
+
       }
 
 
@@ -226,12 +282,11 @@ function App() {
 
 
 
-    </div>
+    </main>
 
   );
 
 }
-
 
 
 export default App;
