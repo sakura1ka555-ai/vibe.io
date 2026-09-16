@@ -274,7 +274,11 @@ function getPresence(
       time:
         formatPosition(
           connectedSocket.data.position
-        )
+        ),
+
+      state:
+        connectedSocket.data.videoState ||
+        "pause"
 
     });
 
@@ -363,8 +367,7 @@ io.on(
 
 
         /*
-          Если уже
-          в этой комнате
+          Уже в этой комнате
         */
 
         if (
@@ -378,8 +381,7 @@ io.on(
 
 
         /*
-          Уходим
-          из старой комнаты
+          Уходим из старой комнаты
         */
 
         if (
@@ -438,6 +440,10 @@ io.on(
 
         socket.data.position =
           room.playback.position;
+
+
+        socket.data.videoState =
+          room.playback.action;
 
 
         room.users++;
@@ -553,6 +559,10 @@ io.on(
           position;
 
 
+        socket.data.videoState =
+          action;
+
+
         socket.data.userName =
           socket.data.userName ||
           "Guest";
@@ -560,7 +570,7 @@ io.on(
 
         /*
           Отправляем
-          всем остальным
+          остальным
         */
 
         socket
@@ -624,11 +634,6 @@ io.on(
           position;
 
 
-        /*
-          Позицию самого видео
-          сохраняем в комнате
-        */
-
         const room =
           rooms.get(roomId);
 
@@ -641,12 +646,113 @@ io.on(
         }
 
 
-        /*
-          Обновляем участников
-        */
-
         emitPresence(
           roomId
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      VIBE REACTIONS
+      =========================
+    */
+
+    socket.on(
+      "reaction",
+      (data) => {
+
+        const roomId =
+          String(
+            data?.roomId || ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        const reaction =
+          String(
+            data?.reaction || ""
+          )
+            .trim();
+
+
+        if (
+          !roomId ||
+          !reaction
+        ) {
+
+          return;
+
+        }
+
+
+        if (
+          !rooms.has(roomId)
+        ) {
+
+          return;
+
+        }
+
+
+        /*
+          Разрешённые реакции.
+          Это защищает сервер
+          от случайного мусора.
+        */
+
+        const allowedReactions = [
+          "❤️",
+          "😂",
+          "🔥",
+          "😮",
+          "😭",
+          "💀"
+        ];
+
+
+        if (
+          !allowedReactions.includes(
+            reaction
+          )
+        ) {
+
+          return;
+
+        }
+
+
+        /*
+          Отправляем ВСЕМ
+          участникам комнаты,
+          включая отправителя.
+        */
+
+        io.to(roomId).emit(
+          "reaction",
+          {
+
+            id:
+              `${socket.id}-${Date.now()}`,
+
+            reaction,
+
+            user:
+              socket.data.userName ||
+              "Guest"
+
+          }
+        );
+
+
+        console.log(
+          "💜 reaction:",
+          roomId,
+          socket.data.userName,
+          reaction
         );
 
       }
@@ -681,14 +787,18 @@ io.on(
           !roomId ||
           !text
         ) {
+
           return;
+
         }
 
 
         if (
           !rooms.has(roomId)
         ) {
+
           return;
+
         }
 
 
