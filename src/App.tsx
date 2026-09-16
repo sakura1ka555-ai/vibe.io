@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getTelegramUser } from "./telegram";
 import RoomCard from "./components/RoomCard";
 import WatchRoom from "./components/WatchRoom";
 
