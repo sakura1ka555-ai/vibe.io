@@ -3,7 +3,8 @@
 }
 
 html,
-body {
+body,
+#root {
   margin: 0;
   padding: 0;
   min-height: 100%;
@@ -45,18 +46,9 @@ a {
 }
 
 
-/* =========================
-   ROOT
-========================= */
-
-#root {
-  min-height: 100vh;
-}
-
-
-/* =========================
+/* =========================================
    HOME
-========================= */
+========================================= */
 
 .home {
   min-height: 100vh;
@@ -69,9 +61,9 @@ a {
 }
 
 
-/* =========================
+/* =========================================
    BRAND
-========================= */
+========================================= */
 
 .brand {
   display: flex;
@@ -113,9 +105,9 @@ a {
 }
 
 
-/* =========================
+/* =========================================
    HERO
-========================= */
+========================================= */
 
 .hero {
   width: 100%;
@@ -153,9 +145,9 @@ a {
 }
 
 
-/* =========================
-   MAIN ACTIONS
-========================= */
+/* =========================================
+   HOME ACTIONS
+========================================= */
 
 .actions {
   display: flex;
@@ -183,12 +175,8 @@ a {
     box-shadow .2s ease;
 }
 
-
-/* =========================
-   CREATE ROOM
-========================= */
-
-.primary {
+.primary,
+.secondary {
   border:
     1px solid
     rgba(255, 255, 255, 0.11);
@@ -198,14 +186,14 @@ a {
   background:
     rgba(255, 255, 255, 0.045);
 
-  box-shadow: none;
-
   backdrop-filter:
     blur(15px);
 }
 
-.primary:hover {
-  transform: translateY(-2px);
+.primary:hover,
+.secondary:hover {
+  transform:
+    translateY(-2px);
 
   border-color:
     rgba(172, 116, 255, 0.35);
@@ -219,38 +207,9 @@ a {
 }
 
 
-/* =========================
-   JOIN ROOM
-========================= */
-
-.secondary {
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.11);
-
-  color: #ddd6e7;
-
-  background:
-    rgba(255, 255, 255, 0.045);
-
-  backdrop-filter:
-    blur(15px);
-}
-
-.secondary:hover {
-  transform: translateY(-2px);
-
-  border-color:
-    rgba(172, 116, 255, 0.35);
-
-  background:
-    rgba(155, 91, 255, 0.09);
-}
-
-
-/* =========================
+/* =========================================
    PROFILE
-========================= */
+========================================= */
 
 .profile {
   margin-top: 45px;
@@ -275,9 +234,9 @@ a {
 }
 
 
-/* =========================
+/* =========================================
    ROOMS
-========================= */
+========================================= */
 
 .rooms {
   width: 100%;
@@ -331,9 +290,9 @@ a {
 }
 
 
-/* =========================
-   MODAL BACKDROP
-========================= */
+/* =========================================
+   MODAL
+========================================= */
 
 .modal-backdrop {
   position: fixed;
@@ -355,11 +314,6 @@ a {
   backdrop-filter:
     blur(18px);
 }
-
-
-/* =========================
-   MODAL
-========================= */
 
 .room-modal {
   position: relative;
@@ -413,11 +367,6 @@ a {
 
 }
 
-
-/* =========================
-   MODAL CLOSE
-========================= */
-
 .modal-close {
   position: absolute;
 
@@ -460,11 +409,6 @@ a {
     rgba(255, 255, 255, 0.09);
 }
 
-
-/* =========================
-   MODAL HEADER
-========================= */
-
 .modal-label {
   margin-bottom: 11px;
 
@@ -499,9 +443,9 @@ a {
 }
 
 
-/* =========================
-   VIDEO SOURCE TABS
-========================= */
+/* =========================================
+   SOURCE TABS
+========================================= */
 
 .source-tabs {
   display: grid;
@@ -560,16 +504,12 @@ a {
     rgba(143, 78, 255, 0.13);
 
   color: #c39aff;
-
-  box-shadow:
-    inset 0 0 20px
-    rgba(139, 75, 255, 0.05);
 }
 
 
-/* =========================
-   OPEN VIDEO SERVICE
-========================= */
+/* =========================================
+   OPEN SOURCE
+========================================= */
 
 .open-source {
   width: 100%;
@@ -622,9 +562,9 @@ a {
 }
 
 
-/* =========================
-   VIDEO URL
-========================= */
+/* =========================================
+   INPUT
+========================================= */
 
 .video-url-block {
   width: 100%;
@@ -665,19 +605,10 @@ a {
 
   font-size: 14px;
 
-  box-shadow:
-    inset 0 1px 0
-    rgba(255, 255, 255, 0.025);
-
   transition:
     border-color .2s,
     background .2s,
     box-shadow .2s;
-}
-
-.room-modal input:hover {
-  border-color:
-    rgba(255, 255, 255, 0.17);
 }
 
 .room-modal input:focus {
@@ -697,9 +628,9 @@ a {
 }
 
 
-/* =========================
-   CREATE ROOM BUTTON
-========================= */
+/* =========================================
+   CREATE BUTTON
+========================================= */
 
 .create-room-button {
   width: 100%;
@@ -743,96 +674,124 @@ a {
     rgba(137, 70, 238, 0.32);
 }
 
-.create-room-button:active {
-  transform:
-    translateY(0);
-}
 
-
-/* =========================
-   ROOM ID
-========================= */
-
-.room-id {
-  margin-top: 4px;
-
-  color: #716a7c;
-
-  font-size: 10px;
-
-  letter-spacing: 1px;
-}
-
-
-/* =========================
+/* =========================================
    WATCH ROOM
-========================= */
+========================================= */
 
 .watch-room {
+  width: 100%;
   min-height: 100vh;
 
   display: grid;
 
   grid-template-columns:
     minmax(0, 1fr)
-    340px;
+    330px;
 
   gap: 18px;
 
-  padding: 20px;
+  padding: 18px;
 
   background:
     radial-gradient(
       circle at 30% 0%,
-      #1d1030,
-      #08070c 60%
+      rgba(50, 24, 79, .7) 0%,
+      rgba(10, 8, 15, .95) 55%,
+      #07060a 100%
     );
 }
 
-.video-section {
+
+/* =========================================
+   MAIN VIDEO COLUMN
+========================================= */
+
+.watch-main {
   min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
 }
 
 
-/* =========================
-   ROOM INFO
-========================= */
+/* =========================================
+   WATCH HEADER
+========================================= */
 
-.room-info {
-  min-height: 48px;
+.watch-header {
+  min-height: 66px;
 
   display: flex;
 
   align-items: center;
   justify-content: space-between;
 
+  gap: 20px;
+
   margin-bottom: 12px;
+
+  padding:
+    0 4px;
 }
 
-.room-info h1 {
+.watch-title-group {
+  min-width: 0;
+}
+
+.watch-label {
+  margin-bottom: 5px;
+
+  color: #a978ff;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 2px;
+}
+
+.watch-header h1 {
+  max-width: 700px;
+
   margin: 0;
+
+  overflow: hidden;
+
+  color: #ffffff;
 
   font-size: 20px;
   font-weight: 600;
+
+  line-height: 1.2;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
 }
 
-.members {
-  color: #918a9c;
+.watch-room-code {
+  margin-top: 5px;
 
-  font-size: 12px;
+  color: #70697b;
+
+  font-size: 10px;
+
+  letter-spacing: 1.5px;
 }
 
+.watch-users {
+  flex-shrink: 0;
 
-/* =========================
-   VIDEO FRAME
-========================= */
+  display: flex;
 
-.video-frame {
-  width: 100%;
+  align-items: center;
 
-  aspect-ratio: 16 / 9;
+  gap: 6px;
 
-  overflow: hidden;
+  padding:
+    8px 12px;
 
   border:
     1px solid
@@ -840,19 +799,65 @@ a {
 
   border-radius: 20px;
 
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  color: #c8c1d1;
+
+  font-size: 11px;
+}
+
+.watch-users-dot {
+  color: #a978ff;
+
+  font-size: 8px;
+}
+
+.watch-users-label {
+  color: #777080;
+
+  font-size: 10px;
+}
+
+
+/* =========================================
+   VIDEO
+========================================= */
+
+.video-frame {
+  position: relative;
+
+  width: 100%;
+
+  aspect-ratio: 16 / 9;
+
+  min-height: 0;
+
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.09);
+
+  border-radius: 18px;
+
   background: #000;
 
   box-shadow:
     0 25px 70px
-    rgba(0, 0, 0, .35);
+    rgba(0, 0, 0, .4);
 }
 
 
-/* =========================
-   EMBEDDED PLAYER
-========================= */
+/* =========================================
+   PLAYER
+========================================= */
 
 .embedded-player {
+  position: absolute;
+
+  inset: 0;
+
   display: block;
 
   width: 100%;
@@ -867,11 +872,15 @@ a {
 }
 
 
-/* =========================
+/* =========================================
    PLAYER MESSAGE
-========================= */
+========================================= */
 
 .player-message {
+  position: absolute;
+
+  inset: 0;
+
   width: 100%;
   height: 100%;
 
@@ -882,15 +891,15 @@ a {
   align-items: center;
   justify-content: center;
 
-  text-align: center;
-
   padding: 30px;
+
+  text-align: center;
 
   background:
     radial-gradient(
       circle at center,
       #211334 0%,
-      #09070d 65%
+      #09070d 68%
     );
 }
 
@@ -902,7 +911,7 @@ a {
 }
 
 .player-message-text {
-  max-width: 350px;
+  max-width: 360px;
 
   margin-top: 10px;
 
@@ -938,55 +947,122 @@ a {
   font-size: 12px;
 
   text-decoration: none;
-
-  transition: .2s;
-}
-
-.player-open-link:hover {
-  background:
-    rgba(155, 91, 255, 0.12);
-
-  border-color:
-    rgba(155, 91, 255, 0.3);
 }
 
 
-/* =========================
+/* =========================================
+   BOTTOM INFO
+========================================= */
+
+.watch-bottom {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  margin-top: 10px;
+
+  padding:
+    0 4px;
+}
+
+.watch-bottom-status {
+  color: #716a7a;
+
+  font-size: 10px;
+}
+
+.status-dot {
+  margin-right: 6px;
+
+  color: #9b5cff;
+
+  font-size: 7px;
+}
+
+.watch-bottom-code {
+  color: #5e5868;
+
+  font-size: 9px;
+
+  letter-spacing: 1.5px;
+}
+
+.watch-bottom-code strong {
+  margin-left: 7px;
+
+  color: #8d8498;
+
+  font-weight: 600;
+}
+
+
+/* =========================================
+   SIDEBAR
+========================================= */
+
+.watch-sidebar {
+  min-width: 0;
+
+  height:
+    calc(100vh - 36px);
+
+  display: flex;
+
+  overflow: hidden;
+}
+
+
+/* =========================================
    CHAT
-========================= */
+========================================= */
 
-.chat {
+.watch-sidebar .chat {
   width: 100%;
-  height: calc(100vh - 40px);
+  height: 100%;
 
   display: flex;
   flex-direction: column;
 
-  padding: 20px;
+  overflow: hidden;
+
+  padding: 18px;
 
   border:
     1px solid
     rgba(255, 255, 255, 0.09);
 
-  border-radius: 21px;
+  border-radius: 18px;
 
   background:
-    rgba(255, 255, 255, 0.045);
+    rgba(255, 255, 255, 0.04);
 
   backdrop-filter:
     blur(25px);
+
+  box-shadow:
+    0 20px 60px
+    rgba(0, 0, 0, .18);
 }
 
-.chat h3 {
-  margin:
-    0 0 20px;
+.watch-sidebar .chat h3 {
+  flex-shrink: 0;
 
-  font-size: 14px;
+  margin:
+    0 0 18px;
+
+  color: #eee9f3;
+
+  font-size: 13px;
   font-weight: 600;
 }
 
 .messages {
   flex: 1;
+
+  min-height: 0;
 
   overflow-y: auto;
 
@@ -995,36 +1071,42 @@ a {
 
 .message {
   display: flex;
+
   flex-direction: column;
 
   gap: 4px;
 
-  margin-bottom: 16px;
+  margin-bottom: 15px;
 }
 
 .message b {
   color: #b98aff;
 
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .message span {
   color: #d4cfda;
 
-  font-size: 13px;
+  font-size: 12px;
 
   line-height: 1.45;
+
+  overflow-wrap: anywhere;
 }
 
 
-/* =========================
+/* =========================================
    CHAT INPUT
-========================= */
+========================================= */
 
 .chat-input {
+  flex-shrink: 0;
+
   display: flex;
 
-  gap: 8px;
+  gap: 7px;
 
   margin-top: 12px;
 }
@@ -1033,7 +1115,7 @@ a {
   min-width: 0;
   flex: 1;
 
-  height: 42px;
+  height: 40px;
 
   padding:
     0 12px;
@@ -1047,11 +1129,16 @@ a {
   border-radius: 11px;
 
   background:
-    rgba(255, 255, 255, 0.055);
+    rgba(255, 255, 255, 0.05);
 
   color: white;
 
   font-size: 12px;
+}
+
+.chat-input input:focus {
+  border-color:
+    rgba(155, 91, 255, .45);
 }
 
 .chat-input input::placeholder {
@@ -1059,61 +1146,61 @@ a {
 }
 
 .chat-input button {
-  width: 42px;
-  height: 42px;
+  flex-shrink: 0;
+
+  width: 40px;
+  height: 40px;
 
   margin: 0;
-
   padding: 0;
-
-  border: none;
-
-  border-radius: 11px;
-
-  background:
-    #9255ed;
-
-  color: white;
-
-  font-size: 17px;
-}
-
-
-/* =========================
-   WATCH BUTTONS
-========================= */
-
-.watch-room button {
-  margin-top: 12px;
-
-  padding:
-    10px 16px;
 
   border:
     1px solid
-    rgba(255, 255, 255, 0.1);
+    rgba(186, 132, 255, .25);
 
   border-radius: 11px;
 
   background:
-    rgba(255, 255, 255, 0.055);
+    #8550dc;
 
-  color: #e8e2ee;
+  color: white;
 
-  font-size: 12px;
-
-  transition: .2s;
-}
-
-.watch-room button:hover {
-  background:
-    rgba(255, 255, 255, 0.1);
+  font-size: 16px;
 }
 
 
-/* =========================
+/* =========================================
    MOBILE
-========================= */
+========================================= */
+
+@media (max-width: 900px) {
+
+  .watch-room {
+    grid-template-columns: 1fr;
+
+    padding: 12px;
+
+    gap: 12px;
+  }
+
+  .watch-sidebar {
+    height: 360px;
+  }
+
+  .watch-main {
+    width: 100%;
+  }
+
+  .video-frame {
+    border-radius: 15px;
+  }
+
+}
+
+
+/* =========================================
+   MOBILE HOME
+========================================= */
 
 @media (max-width: 800px) {
 
@@ -1121,11 +1208,9 @@ a {
     padding-top: 28px;
   }
 
-
   .hero {
     margin-top: 70px;
   }
-
 
   .hero h1 {
     font-size: 37px;
@@ -1133,21 +1218,17 @@ a {
     letter-spacing: -1px;
   }
 
-
   .hero p {
     font-size: 14px;
   }
-
 
   .actions {
     margin-top: 36px;
   }
 
-
   .actions button {
     width: 210px;
   }
-
 
   .room-modal {
     padding:
@@ -1156,26 +1237,27 @@ a {
     border-radius: 21px;
   }
 
-
-  .watch-room {
-    grid-template-columns: 1fr;
-
-    padding: 12px;
+  .watch-header {
+    min-height: 58px;
   }
 
+  .watch-header h1 {
+    font-size: 17px;
+  }
 
-  .chat {
-    height: 360px;
+  .watch-users {
+    padding:
+      7px 10px;
   }
 
 }
 
 
-/* =========================
+/* =========================================
    SMALL PHONES
-========================= */
+========================================= */
 
-@media (max-width: 420px) {
+@media (max-width: 520px) {
 
   .logo {
     font-size: 27px;
@@ -1183,25 +1265,49 @@ a {
     letter-spacing: 7px;
   }
 
-
   .hero h1 {
     font-size: 33px;
   }
-
 
   .room-modal h2 {
     font-size: 24px;
   }
 
-
   .source-tab {
     font-size: 8px;
   }
 
-
   .room-modal {
     padding:
       25px 18px;
+  }
+
+  .watch-room {
+    padding: 8px;
+  }
+
+  .watch-header {
+    align-items: flex-start;
+  }
+
+  .watch-users {
+    margin-top: 3px;
+  }
+
+  .watch-users-label {
+    display: none;
+  }
+
+  .watch-bottom {
+    align-items: flex-start;
+  }
+
+  .watch-bottom-code {
+    display: none;
+  }
+
+  .watch-sidebar {
+    height: 340px;
   }
 
 }
