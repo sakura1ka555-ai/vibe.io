@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState
+} from "react";
 
 import Chat from "./Chat";
 import VideoPlayer from "./VideoPlayer";
@@ -63,15 +66,10 @@ function WatchRoom({
     <main className="watch-room">
 
 
-      {/* =========================
-          VIDEO AREA
-      ========================= */}
-
       <section className="watch-main">
 
 
         <header className="watch-header">
-
 
           <div className="watch-title-group">
 
@@ -86,7 +84,7 @@ function WatchRoom({
 
 
             <div className="watch-room-code">
-              {roomId}
+              ID: {roomId}
             </div>
 
           </div>
@@ -106,7 +104,6 @@ function WatchRoom({
 
           </div>
 
-
         </header>
 
 
@@ -121,14 +118,13 @@ function WatchRoom({
 
         <div className="watch-bottom">
 
-
           <div className="watch-bottom-status">
 
             <span className="status-dot">
               ●
             </span>
 
-            Синхронизация включена
+            VIBE ROOM
 
           </div>
 
@@ -143,16 +139,11 @@ function WatchRoom({
 
           </div>
 
-
         </div>
 
 
       </section>
 
-
-      {/* =========================
-          CHAT
-      ========================= */}
 
       <aside className="watch-sidebar">
 
