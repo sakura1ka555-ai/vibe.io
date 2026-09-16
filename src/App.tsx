@@ -1,3 +1,4 @@
+import { initTelegram, getTelegramUser } from "./telegram";
 import { useState } from "react";
 
 import RoomCard from "./components/RoomCard";
