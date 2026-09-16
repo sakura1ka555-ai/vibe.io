@@ -6,6 +6,12 @@ type Props = {
 };
 
 
+/*
+  =========================
+  YOUTUBE
+  =========================
+*/
+
 function getYouTubeId(url: string) {
 
   try {
@@ -34,9 +40,7 @@ function getYouTubeId(url: string) {
     ) {
 
       const id =
-        parsed.searchParams.get(
-          "v"
-        );
+        parsed.searchParams.get("v");
 
       if (id) {
         return id;
@@ -93,6 +97,12 @@ function getYouTubeId(url: string) {
 
 }
 
+
+/*
+  =========================
+  RUTUBE
+  =========================
+*/
 
 function getRutubeId(url: string) {
 
@@ -167,6 +177,121 @@ function getRutubeId(url: string) {
 }
 
 
+/*
+  =========================
+  VK VIDEO
+  =========================
+
+  Поддерживаем:
+
+  https://vkvideo.ru/video-79337779_456243692
+
+  и
+
+  https://vk.ru/video-79337779_456243692
+
+  и
+
+  https://vk.com/video-79337779_456243692
+
+  Превращаем их в:
+
+  https://vkvideo.ru/video_ext.php?oid=-79337779&id=456243692
+*/
+
+function getVKVideoData(url: string) {
+
+  try {
+
+    const parsed =
+      new URL(url);
+
+
+    /*
+      Если пользователь уже
+      вставил готовую embed-ссылку
+    */
+
+    if (
+      parsed.pathname.includes(
+        "video_ext.php"
+      )
+    ) {
+
+      const oid =
+        parsed.searchParams.get(
+          "oid"
+        );
+
+      const id =
+        parsed.searchParams.get(
+          "id"
+        );
+
+      const hash =
+        parsed.searchParams.get(
+          "hash"
+        );
+
+
+      if (
+        oid &&
+        id
+      ) {
+
+        return {
+          oid,
+          id,
+          hash
+        };
+
+      }
+
+    }
+
+
+    /*
+      Обычная ссылка:
+
+      /video-79337779_456243692
+    */
+
+    const match =
+      parsed.pathname.match(
+        /video(-?\d+)_([0-9]+)/
+      );
+
+
+    if (!match) {
+      return null;
+    }
+
+
+    return {
+
+      oid: match[1],
+
+      id: match[2],
+
+      hash: null
+
+    };
+
+  } catch {
+
+    return null;
+
+  }
+
+}
+
+
+/*
+  =========================
+  TYPE
+  =========================
+*/
+
 function getVideoType(url: string) {
 
   const lower =
@@ -200,10 +325,13 @@ function getVideoType(url: string) {
 
   if (
     lower.includes(
+      "vkvideo.ru"
+    ) ||
+    lower.includes(
       "vk.com"
     ) ||
     lower.includes(
-      "vkvideo.ru"
+      "vk.ru"
     )
   ) {
 
@@ -217,33 +345,61 @@ function getVideoType(url: string) {
 }
 
 
+/*
+  =========================
+  PLAYER
+  =========================
+*/
+
 function VideoPlayer({
   videoUrl
 }: Props) {
 
+
   const type =
     useMemo(
-      () => getVideoType(videoUrl),
+      () =>
+        getVideoType(
+          videoUrl
+        ),
       [videoUrl]
     );
 
 
   const youtubeId =
     useMemo(
-      () => getYouTubeId(videoUrl),
+      () =>
+        getYouTubeId(
+          videoUrl
+        ),
       [videoUrl]
     );
 
 
   const rutubeId =
     useMemo(
-      () => getRutubeId(videoUrl),
+      () =>
+        getRutubeId(
+          videoUrl
+        ),
+      [videoUrl]
+    );
+
+
+  const vkData =
+    useMemo(
+      () =>
+        getVKVideoData(
+          videoUrl
+        ),
       [videoUrl]
     );
 
 
   /*
+    =========================
     YOUTUBE
+    =========================
   */
 
   if (
@@ -283,7 +439,9 @@ function VideoPlayer({
 
 
   /*
+    =========================
     RUTUBE
+    =========================
   */
 
   if (
@@ -305,7 +463,10 @@ function VideoPlayer({
 
         allow="
           autoplay;
-          clipboard-write
+          clipboard-write;
+          encrypted-media;
+          fullscreen;
+          picture-in-picture
         "
 
         allowFullScreen
@@ -318,40 +479,84 @@ function VideoPlayer({
 
 
   /*
-    VK
+    =========================
+    VK VIDEO
+    =========================
   */
 
-  if (type === "vk") {
+  if (
+    type === "vk" &&
+    vkData
+  ) {
+
+    const params =
+      new URLSearchParams();
+
+
+    params.set(
+      "oid",
+      vkData.oid
+    );
+
+
+    params.set(
+      "id",
+      vkData.id
+    );
+
+
+    /*
+      Если VK дал hash,
+      обязательно сохраняем его.
+    */
+
+    if (vkData.hash) {
+
+      params.set(
+        "hash",
+        vkData.hash
+      );
+
+    }
+
+
+    /*
+      HD 3 = 1280x720.
+      Это стандартный вариант
+      для embed-плеера.
+    */
+
+    params.set(
+      "hd",
+      "3"
+    );
+
 
     return (
 
-      <div className="player-message">
+      <iframe
 
-        <div className="player-message-title">
-          VK Видео
-        </div>
+        className="embedded-player"
 
-        <div className="player-message-text">
+        src={
+          `https://vkvideo.ru/video_ext.php?${params.toString()}`
+        }
 
-          Для VK нужен специальный
-          embed-плеер.
+        title="VK Video player"
 
-          <br />
+        allow="
+          autoplay;
+          encrypted-media;
+          fullscreen;
+          picture-in-picture;
+          screen-wake-lock
+        "
 
-          Сейчас подключаем его отдельно.
+        frameBorder="0"
 
-        </div>
+        allowFullScreen
 
-        <a
-          href={videoUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="player-open-link"
-        >
-          Открыть видео в VK →
-        </a>
-
-      </div>
+      />
 
     );
 
@@ -359,7 +564,9 @@ function VideoPlayer({
 
 
   /*
-    НЕИЗВЕСТНАЯ ССЫЛКА
+    =========================
+    ОШИБКА
+    =========================
   */
 
   return (
@@ -367,17 +574,20 @@ function VideoPlayer({
     <div className="player-message">
 
       <div className="player-message-title">
-        Видео не найдено
+
+        Не удалось открыть видео
+
       </div>
+
 
       <div className="player-message-text">
 
-        Проверь ссылку на видео.
+        Проверь ссылку.
 
         <br />
 
-        Поддерживаются YouTube,
-        RUTUBE и VK Видео.
+        Сейчас поддерживаются
+        YouTube, RUTUBE и VK Видео.
 
       </div>
 
