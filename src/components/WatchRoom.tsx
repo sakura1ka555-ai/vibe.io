@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { joinRoom } from "../socket";
+import { useEffect, useState } from "react";
+import { joinRoom, socket } from "../socket";
 
 
 type WatchRoomProps = {
@@ -9,9 +9,26 @@ type WatchRoomProps = {
 
 function WatchRoom({ name }: WatchRoomProps) {
 
+  const [users, setUsers] = useState(1);
+
+
   useEffect(() => {
 
     joinRoom(name);
+
+
+    socket.on(
+      "users",
+      (count: number) => {
+        setUsers(count);
+      }
+    );
+
+
+    return () => {
+      socket.off("users");
+    };
+
 
   }, [name]);
 
@@ -36,7 +53,7 @@ function WatchRoom({ name }: WatchRoomProps) {
         </h3>
 
         <p>
-          👤 Ты
+          👥 Сейчас смотрят: {users}
         </p>
 
       </div>
@@ -50,7 +67,6 @@ function WatchRoom({ name }: WatchRoomProps) {
       <button>
         🔗 Пригласить друзей
       </button>
-
 
     </div>
   );
