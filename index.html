@@ -8,60 +8,110 @@
     <style>
         body { background-color: #0d0d0f; font-family: system-ui, -apple-system, sans-serif; }
         .hide-scroll::-webkit-scrollbar { display: none; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="text-white min-h-screen flex flex-col justify-between p-6 relative overflow-hidden select-none">
 
     <!-- Задний Rave-градиент -->
     <div class="absolute top-0 right-0 w-[250px] h-[250px] pointer-events-none opacity-20" style="background: radial-gradient(circle, rgba(147,51,234,0.3) 0%, rgba(0,0,0,0) 70%);"></div>
+    <div class="absolute bottom-0 left-0 w-[300px] h-[300px] pointer-events-none opacity-20" style="background: radial-gradient(circle, rgba(79,70,229,0.3) 0%, rgba(0,0,0,0) 70%);"></div>
 
-    <div class="w-full max-w-md mx-auto flex flex-col justify-between flex-1 relative z-10">
+    <!-- КОНТЕЙНЕР ЭКРАНОВ -->
+    <div id="app-container" class="w-full max-w-md mx-auto flex flex-col justify-between flex-1 relative z-10">
         
-        <!-- Шапка -->
-        <div class="text-center my-8">
-            <h1 class="text-5xl font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-white to-neutral-400">VIBE</h1>
-            <p class="text-[10px] text-white/40 tracking-wider uppercase mt-1">Совместный просмотр секунда в секунду</p>
-        </div>
-
-        <!-- Блок поиска -->
-        <div class="flex flex-col gap-2 relative mb-auto">
-            <label id="input-label" class="text-[10px] font-bold text-purple-400 uppercase tracking-wider ml-1">Поиск фильма или сериала</label>
-            
-            <!-- Поле ввода -->
-            <div class="w-full bg-[#121215] border border-white/5 rounded-2xl p-4 flex items-center justify-between focus-within:border-purple-500/30 transition-all relative">
-                <input id="search-input" type="text" placeholder="Введите название фильма..." class="bg-transparent border-none outline-none flex-1 text-xs text-white placeholder-white/20 pr-8">
-                <button id="clear-btn" class="hidden absolute right-4 text-white/40 text-xs hover:text-white cursor-pointer">✕</button>
-                <span id="search-icon" class="text-white/20 absolute right-4 text-xs">🔍</span>
+        <!-- ЭКРАН 1: СОЗДАНИЕ КОМНАТЫ (ГЛАВНЫЙ) -->
+        <div id="screen-create" class="flex flex-col justify-between flex-1 w-full animate-fade-in">
+            <div class="text-center my-8">
+                <h1 class="text-5xl font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-white to-neutral-400">VIBE</h1>
+                <p class="text-[10px] text-white/40 tracking-wider uppercase mt-1">Совместный просмотр секунда в секунду</p>
             </div>
 
-            <!-- Меню табов и выпадающего списка -->
-            <div class="absolute top-[68px] left-0 right-0 bg-[#0d0d0f] border border-white/5 rounded-2xl shadow-2xl overflow-hidden z-50 flex flex-col w-full">
-                <!-- Табы переключения -->
-                <div class="flex items-center gap-1.5 p-2 bg-[#121215] border-b border-white/5 overflow-x-auto hide-scroll">
-                    <button id="tab-catalog" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#24242b] text-white border border-white/10 cursor-pointer transition-all">Каталог</button>
-                    <button id="tab-vk" class="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white/40 cursor-pointer transition-all">ВК Видео</button>
-                    <button id="tab-rutube" class="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white/40 cursor-pointer transition-all">RuTube</button>
-                    <button id="tab-youtube" class="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white/40 cursor-pointer transition-all">YouTube</button>
+            <div class="flex flex-col gap-2 relative mb-auto">
+                <label id="input-label" class="text-[10px] font-bold text-purple-400 uppercase tracking-wider ml-1">Поиск фильма или сериала</label>
+                
+                <div class="w-full bg-[#121215] border border-white/5 rounded-2xl p-4 flex items-center justify-between focus-within:border-purple-500/30 transition-all relative">
+                    <input id="search-input" type="text" placeholder="Введите название фильма..." class="bg-transparent border-none outline-none flex-1 text-xs text-white placeholder-white/20 pr-8">
+                    <button id="clear-btn" class="hidden absolute right-4 text-white/40 text-xs hover:text-white cursor-pointer">✕</button>
+                    <span id="search-icon" class="text-white/20 absolute right-4 text-xs">🔍</span>
                 </div>
 
-                <!-- Список фильмов -->
-                <div id="results-box" class="flex flex-col max-h-[250px] overflow-y-auto p-1.5 gap-0.5 bg-[#0d0d0f]"></div>
+                <div class="absolute top-[68px] left-0 right-0 bg-[#0d0d0f] border border-white/5 rounded-2xl shadow-2xl overflow-hidden z-50 flex flex-col w-full">
+                    <div class="flex items-center gap-1.5 p-2 bg-[#121215] border-b border-white/5 overflow-x-auto hide-scroll">
+                        <button id="tab-catalog" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#24242b] text-white border border-white/10 cursor-pointer transition-all">Каталог</button>
+                        <button id="tab-vk" class="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white/40 cursor-pointer transition-all">ВК Видео</button>
+                        <button id="tab-rutube" class="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white/40 cursor-pointer transition-all">RuTube</button>
+                        <button id="tab-youtube" class="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white/40 cursor-pointer transition-all">YouTube</button>
+                    </div>
+                    <div id="results-box" class="flex flex-col max-h-[230px] overflow-y-auto p-1.5 gap-0.5 bg-[#0d0d0f]"></div>
+                </div>
+                <p id="loading-txt" class="hidden text-[10px] text-purple-400 ml-2 animate-pulse mt-1">Поиск по базам TMDB...</p>
+                
+                <label class="text-[10px] font-bold text-white/40 uppercase tracking-wider ml-1 mt-4">Синхронизация</label>
+                <div class="grid grid-cols-2 gap-2 bg-[#121215] border border-white/5 p-1 rounded-2xl">
+                    <button class="py-2 rounded-xl text-[11px] font-bold bg-purple-600 text-white shadow-sm">С синхронизацией</button>
+                    <button class="py-2 rounded-xl text-[11px] font-bold text-white/40">Свободный</button>
+                </div>
             </div>
-            <p id="loading-txt" class="hidden text-[10px] text-purple-400 ml-2 animate-pulse mt-1">Поиск по базам TMDB...</p>
+
+            <button id="start-btn" disabled class="w-full py-4 bg-white/5 text-white/20 border border-transparent font-black rounded-2xl text-xs uppercase tracking-wider mb-2 transition-all cursor-not-allowed">
+                Открыть кинозал 🎬
+            </button>
         </div>
 
-        <!-- Кнопка запуска -->
-        <button id="start-btn" disabled class="w-full py-4 bg-white/5 text-white/20 border border-transparent font-black rounded-2xl text-xs uppercase tracking-wider mb-2 transition-all cursor-not-allowed">
-            Открыть кинозал 🎬
-        </button>
+                <!-- ЭКРАН 2: КИНОЗАЛ (ПЛЕЕР И ЧАТ) -->
+        <div id="screen-room" class="hidden flex-col justify-between flex-1 w-full h-full animate-fade-in">
+            <!-- Плеер кинозала -->
+            <div class="w-full aspect-video bg-black relative border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+                <iframe id="main-player" src="" width="100%" height="100%" allowfullscreen class="w-full h-full border-none"></iframe>
+            </div>
+
+            <!-- Информационная панель под плеером -->
+            <div class="p-3 flex items-center justify-between border border-white/5 bg-[#121215]/60 rounded-2xl mt-3 backdrop-blur-md">
+                <div class="text-left">
+                    <span class="text-[9px] text-white/30 uppercase font-bold tracking-wider">Код комнаты</span>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <h3 id="room-id-txt" class="text-xs font-black text-purple-400 tracking-wider uppercase">XXXXX</h3>
+                        <button id="copy-btn" class="p-1 bg-white/5 hover:bg-white/10 rounded text-white/40 cursor-pointer text-[10px]">📋 Копировать</button>
+                    </div>
+                </div>
+
+                <!-- Переключатель вкладок чата -->
+                <div class="flex bg-white/5 p-0.5 rounded-xl border border-white/5">
+                    <button id="tab-chat" class="px-4 py-1.5 rounded-lg text-[10px] font-bold bg-[#24242b] text-white">Чат</button>
+                    <button id="tab-friends" class="px-4 py-1.5 rounded-lg text-[10px] font-bold text-white/30">Друзья</button>
+                </div>
+            </div>
+
+            <!-- Контейнер чата -->
+            <div id="box-chat" class="flex-1 flex flex-col justify-between p-3 border border-white/5 rounded-2xl mt-2 min-h-[200px] bg-[#0d0d0f]">
+                <div id="chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-2 pr-1 mb-2 text-left hide-scroll">
+                    <p class="text-[10px] text-white/20 text-center my-auto italic">В чате кинозала пока пусто. Напишите привет!</p>
+                </div>
+                <div class="p-2 bg-[#121215] border border-white/5 rounded-xl flex gap-2">
+                    <input id="chat-input" type="text" placeholder="Напишите сообщение..." class="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder-white/20">
+                </div>
+            </div>
+
+            <!-- Контейнер участников -->
+            <div id="box-friends" class="hidden flex-1 p-6 border border-white/5 rounded-2xl mt-2 text-center flex-col items-center justify-center bg-[#0d0d0f]">
+                <span class="text-xl mb-1">👥</span>
+                <p class="text-xs text-white/80 font-bold">Участники просмотра</p>
+                <p class="text-[10px] text-white/20 max-w-[200px] mt-1 leading-normal">Отправьте ссылку на сайт и код комнаты друзьям, чтобы смотреть кино вместе!</p>
+            </div>
+        </div>
     </div>
 
-    <!-- Вся логика без бэкенда напрямую на клиенте -->
+    <!-- ВСЯ ЛОГИКА ДВИЖКА БЕЗ БЭКЕНДА -->
     <script>
         let currentTab = 'catalog';
         let selectedVideoUrl = '';
+        let generatedRoomId = '';
         const tmdbKey = '3eca5710d29b207567e9f3b8900010c2';
 
+        const screenCreate = document.getElementById('screen-create');
+        const screenRoom = document.getElementById('screen-room');
         const searchInput = document.getElementById('search-input');
         const clearBtn = document.getElementById('clear-btn');
         const searchIcon = document.getElementById('search-icon');
@@ -69,6 +119,15 @@
         const loadingTxt = document.getElementById('loading-txt');
         const inputLabel = document.getElementById('input-label');
         const startBtn = document.getElementById('start-btn');
+        const mainPlayer = document.getElementById('main-player');
+        const roomIdTxt = document.getElementById('room-id-txt');
+        const copyBtn = document.getElementById('copy-btn');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const btnTabChat = document.getElementById('tab-chat');
+        const btnTabFriends = document.getElementById('tab-friends');
+        const boxChat = document.getElementById('box-chat');
+        const boxFriends = document.getElementById('box-friends');
 
         const tabs = {
             catalog: document.getElementById('tab-catalog'),
@@ -77,7 +136,7 @@
             youtube: document.getElementById('tab-youtube')
         };
 
-        // Переключение вкладок дизайна
+        // Табы меню настройки
         Object.keys(tabs).forEach(tabName => {
             tabs[tabName].addEventListener('click', () => {
                 currentTab = tabName;
@@ -107,11 +166,10 @@
             });
         });
 
-        // Живой поиск фильмов напрямую через API TMDB
+        // Живой поиск фильма через базу TMDB
         let debounceTimer;
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
-            
             if (query.length > 0) {
                 clearBtn.classList.remove('hidden');
                 searchIcon.classList.add('hidden');
@@ -134,15 +192,15 @@
             debounceTimer = setTimeout(async () => {
                 loadingTxt.classList.remove('hidden');
                 try {
-                    const res = await fetch(`https://themoviedb.org{tmdbKey}&query=${encodeURIComponent(query)}&language=ru-RU&page=1`);
+                    const res = await fetch('https://api.themoviedb.org/3/search/movie?api_key=' + tmdbKey + '&query=' + encodeURIComponent(query) + '&language=ru-RU&page=1');
                     const data = await res.json();
                     resultsBox.innerHTML = '';
                     
                     if (data && data.results && data.results.length > 0) {
                         data.results.slice(0, 8).forEach(movie => {
-                            const poster = movie.poster_path ? `https://tmdb.org{movie.poster_path}` : 'https://unsplash.com';
+                            const poster = movie.poster_path ? 'https://tmdb.org' + movie.poster_path : 'https://unsplash.com';
                             const year = movie.release_date ? movie.release_date.split('-')[0] : '----';
-                            const playerUrl = `https://vseerialy.xyz{movie.id}&ads=0&autoplay=1`;
+                            const playerUrl = 'https://vseerialy.xyz' + movie.id + '&ads=0&autoplay=1';
 
                             const btn = document.createElement('div');
                             btn.className = "w-full flex items-center gap-3 p-2 hover:bg-white/[0.04] rounded-xl text-left cursor-pointer group transition-all";
@@ -168,10 +226,10 @@
             }, 400);
         });
 
-        // Парсер ссылок Ютуб/ВК/Рутуб на лету
+        // Безопасный парсер внешних ссылок без Dollar Signs
         function parseDirectLink(url) {
             let iframeUrl = url.trim();
-            let isValid = false;
+                        let isValid = false;
 
             if (iframeUrl.includes('vk.com') || iframeUrl.includes('vkvideo.ru')) {
                 const match = iframeUrl.match(/video(-?\d+_\d+)/);
@@ -203,27 +261,3 @@
             }
         }
 
-        // Очистка инпута по крестику
-        clearBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            searchInput.disabled = false;
-            selectedVideoUrl = '';
-            resultsBox.innerHTML = currentTab !== 'catalog' ? '<div class="p-4 text-center text-[10px] text-white/30 italic leading-normal">Откройте вкладку ' + currentTab.toUpperCase() + ', скопируйте ссылку на video и вставьте её выше.</div>' : '';
-            clearBtn.classList.add('hidden');
-            searchIcon.classList.remove('hidden');
-            updateButtonState(false);
-        });
-
-        // Переключение состояния неоновой кнопки
-        function updateButtonState(active) {
-            if (active) {
-                startBtn.disabled = false;
-                startBtn.className = "w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 font-black rounded-2xl text-xs uppercase tracking-wider mb-2 border border-purple-500/20 shadow-lg shadow-purple-600/20 active:scale-95 transition-all cursor-pointer text-white";
-            } else {
-                startBtn.disabled = true;
-                startBtn.className = "w-full py-4 bg-white/5 text-white/20 border border-transparent font-black rounded-2xl text-xs uppercase tracking-wider mb-2 transition-all cursor-not-allowed";
-            }
-        }
-    </script>
-</body>
-</html>
