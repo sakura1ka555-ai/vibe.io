@@ -5,6 +5,7 @@ import WatchRoom from "./components/WatchRoom";
 import CreateRoom from "./components/CreateRoom";
 
 import { initTelegram, getTelegramUser } from "./telegram";
+import { socket } from "./socket";
 
 
 type Room = {
@@ -21,6 +22,7 @@ function App() {
   initTelegram();
 
   const user = getTelegramUser();
+
 
 
   const [rooms, setRooms] = useState<Room[]>([
@@ -51,6 +53,7 @@ function App() {
     videoUrl: string
   ) {
 
+
     const newRoom: Room = {
 
       id: crypto.randomUUID(),
@@ -64,18 +67,33 @@ function App() {
     };
 
 
+
+    socket.emit(
+      "create-room",
+      {
+        roomId: newRoom.id,
+        title: newRoom.title,
+        videoUrl: newRoom.videoUrl
+      }
+    );
+
+
+
     setRooms([
       ...rooms,
       newRoom
     ]);
 
 
+
     setActiveRoom(newRoom);
+
 
 
     setShowCreate(false);
 
   }
+
 
 
 
@@ -103,6 +121,8 @@ function App() {
 
 
 
+
+
   return (
 
     <div className="app">
@@ -114,9 +134,11 @@ function App() {
 
 
 
+
       <h1>
         Привет, {user?.first_name || "друг"} 👋
       </h1>
+
 
 
 
@@ -127,13 +149,17 @@ function App() {
 
 
 
+
       <button
+
         onClick={() =>
           setShowCreate(true)
         }
+
       >
         + Создать комнату
       </button>
+
 
 
 
@@ -154,9 +180,14 @@ function App() {
 
 
 
+
+
       <h2>
         Активные комнаты
       </h2>
+
+
+
 
 
 
@@ -183,6 +214,7 @@ function App() {
 
               />
 
+
             </div>
 
           )
@@ -191,11 +223,15 @@ function App() {
 
 
 
+
+
+
     </div>
 
   );
 
 }
+
 
 
 export default App;
