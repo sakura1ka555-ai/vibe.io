@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState
 } from "react";
 
@@ -29,6 +30,7 @@ function App() {
 
   initTelegram();
 
+
   const user =
     getTelegramUser();
 
@@ -57,74 +59,14 @@ function App() {
     useState(false);
 
 
-  /*
-    =========================
-    URL ROOM
-    =========================
-
-    Поддерживаем:
-
-    ?room=ABC123
-
-    а также:
-
-    ?roomId=ABC123
-  */
-
-  useEffect(() => {
-
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
-
-
-    const urlRoom =
-      (
-        params.get("room") ||
-        params.get("roomId") ||
-        ""
-      )
-        .trim()
-        .toUpperCase();
-
-
-    if (!urlRoom) {
-
-      return;
-
-    }
-
-
-    /*
-      Сразу записываем ID
-      в поле комнаты.
-    */
-
-    setRoomCode(
-      urlRoom
-    );
-
-
-    /*
-      Автоматически открываем
-      окно входа.
-
-      Это безопаснее, чем сразу
-      входить без подтверждения:
-      пользователь понимает,
-      куда он попал.
-    */
-
-    setJoinOpen(true);
-
-  }, []);
+  const autoJoinStarted =
+    useRef(false);
 
 
   /*
     =========================
     CREATE ROOM
-    =========================
+  =========================
   */
 
   async function createRoom(
@@ -140,12 +82,14 @@ function App() {
 
     const room: Room = {
 
-      id: roomId,
+      id:
+        roomId,
 
       title:
         `Комната ${roomId}`,
 
-      users: 0,
+      users:
+        0,
 
       videoUrl
 
@@ -158,7 +102,8 @@ function App() {
         await fetch(
           `${SERVER_URL}/rooms`,
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
               "Content-Type":
@@ -197,10 +142,14 @@ function App() {
       );
 
 
-      setCreateOpen(false);
+      setCreateOpen(
+        false
+      );
 
-      setActiveRoom(room);
 
+      setActiveRoom(
+        room
+      );
 
     } catch (error) {
 
@@ -221,16 +170,16 @@ function App() {
   /*
     =========================
     JOIN ROOM
-    =========================
+  =========================
   */
 
   async function joinRoom(
-    codeOverride?: string
+    codeFromUrl?: string
   ) {
 
     const code =
       (
-        codeOverride ??
+        codeFromUrl ??
         roomCode
       )
         .trim()
@@ -248,7 +197,9 @@ function App() {
     }
 
 
-    setJoining(true);
+    setJoining(
+      true
+    );
 
 
     try {
@@ -267,8 +218,6 @@ function App() {
         alert(
           "Комната не найдена"
         );
-
-        setJoining(false);
 
         return;
 
@@ -296,8 +245,6 @@ function App() {
           "Комната не найдена"
         );
 
-        setJoining(false);
-
         return;
 
       }
@@ -318,10 +265,12 @@ function App() {
           `Комната ${code}`,
 
         users:
-          room.users || 0,
+          room.users ||
+          0,
 
         videoUrl:
-          room.videoUrl || ""
+          room.videoUrl ||
+          ""
 
       };
 
@@ -331,30 +280,40 @@ function App() {
       );
 
 
-      setJoinOpen(false);
+      setJoinOpen(
+        false
+      );
 
-      setRoomCode("");
+
+      setRoomCode(
+        ""
+      );
 
 
       /*
-        Убираем ?room=ABC123
-        из адресной строки.
-
-        Саму страницу при этом
-        НЕ перезагружаем.
+        Убираем ?room=XXXX
+        из адресной строки,
+        но страницу не перезагружаем.
       */
 
-      const cleanUrl =
-        window.location.origin +
-        window.location.pathname;
+      try {
+
+        const cleanUrl =
+          window.location.origin +
+          window.location.pathname;
 
 
-      window.history.replaceState(
-        {},
-        "",
-        cleanUrl
-      );
+        window.history.replaceState(
+          {},
+          "",
+          cleanUrl
+        );
 
+      } catch {
+
+        // ничего
+
+      }
 
     } catch (error) {
 
@@ -369,7 +328,9 @@ function App() {
 
     } finally {
 
-      setJoining(false);
+      setJoining(
+        false
+      );
 
     }
 
@@ -378,8 +339,65 @@ function App() {
 
   /*
     =========================
-    KEYBOARD
+    AUTO JOIN FROM LINK
+  =========================
+  */
+
+  useEffect(() => {
+
+    if (
+      autoJoinStarted.current
+    ) {
+
+      return;
+
+    }
+
+
+    autoJoinStarted.current =
+      true;
+
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+
+    const roomFromLink =
+      params.get(
+        "room"
+      );
+
+
+    if (
+      roomFromLink
+    ) {
+
+      const code =
+        roomFromLink
+          .trim()
+          .toUpperCase();
+
+
+      setRoomCode(
+        code
+      );
+
+
+      void joinRoom(
+        code
+      );
+
+    }
+
+  }, []);
+
+
+  /*
     =========================
+    KEYBOARD
+  =========================
   */
 
   function handleRoomCodeKeyDown(
@@ -395,9 +413,11 @@ function App() {
       event.preventDefault();
 
 
-      if (!joining) {
+      if (
+        !joining
+      ) {
 
-        joinRoom();
+        void joinRoom();
 
       }
 
@@ -409,10 +429,12 @@ function App() {
   /*
     =========================
     ACTIVE ROOM
-    =========================
+  =========================
   */
 
-  if (activeRoom) {
+  if (
+    activeRoom
+  ) {
 
     return (
 
@@ -440,7 +462,7 @@ function App() {
   /*
     =========================
     HOME
-    =========================
+  =========================
   */
 
   return (
@@ -450,19 +472,26 @@ function App() {
 
       <div className="brand">
 
+
         <div className="logo">
+
           VIBE
+
         </div>
 
 
         <div className="status">
+
           ● ONLINE
+
         </div>
+
 
       </div>
 
 
       <section className="hero">
+
 
         <h1>
 
@@ -483,6 +512,7 @@ function App() {
 
         </p>
 
+
       </section>
 
 
@@ -496,7 +526,9 @@ function App() {
           className="primary"
 
           onClick={() =>
-            setCreateOpen(true)
+            setCreateOpen(
+              true
+            )
           }
 
         >
@@ -513,7 +545,9 @@ function App() {
           className="secondary"
 
           onClick={() =>
-            setJoinOpen(true)
+            setJoinOpen(
+              true
+            )
           }
 
         >
@@ -539,7 +573,9 @@ function App() {
           }
 
           onClose={() =>
-            setCreateOpen(false)
+            setCreateOpen(
+              false
+            )
           }
 
         />
@@ -566,7 +602,9 @@ function App() {
               className="modal-close"
 
               onClick={() =>
-                setJoinOpen(false)
+                setJoinOpen(
+                  false
+                )
               }
 
             >
@@ -648,7 +686,7 @@ function App() {
               className="join-submit-button"
 
               onClick={() =>
-                joinRoom()
+                void joinRoom()
               }
 
               disabled={
@@ -666,6 +704,7 @@ function App() {
 
 
           </div>
+
 
         </div>
 
@@ -694,6 +733,7 @@ function App() {
       {rooms.length > 0 && (
 
         <section className="rooms">
+
 
           <h2>
 
