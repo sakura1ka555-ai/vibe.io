@@ -4,67 +4,44 @@ import { joinRoom, socket } from "../socket";
 
 type WatchRoomProps = {
   name: string;
+  videoUrl: string;
 };
 
 
-function WatchRoom({ name }: WatchRoomProps) {
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+function WatchRoom({
+  name,
+  videoUrl
+}: WatchRoomProps) {
 
-  const [users, setUsers] = useState(1);
+
+  const videoRef =
+    useRef<HTMLVideoElement>(null);
 
 
-  const [videoUrl, setVideoUrl] = useState(
-    "https://www.w3schools.com/html/mov_bbb.mp4"
-  );
+  const [users, setUsers] =
+    useState(1);
+
 
 
   useEffect(() => {
 
+
     joinRoom(name);
+
 
 
     socket.on(
       "users",
       (count:number) => {
+
         setUsers(count);
-      }
-    );
-
-
-    // получаем состояние комнаты
-    socket.on(
-      "room-state",
-      (room) => {
-
-        setVideoUrl(
-          room.videoUrl
-        );
-
-
-        const video =
-          videoRef.current;
-
-
-        if (!video) return;
-
-
-        video.currentTime =
-          room.position;
-
-
-        if (room.playing) {
-
-          video.play();
-
-        }
 
       }
     );
 
 
 
-    // команды от других людей
     socket.on(
       "video-control",
       (data) => {
@@ -101,6 +78,7 @@ function WatchRoom({ name }: WatchRoomProps) {
 
         }
 
+
       }
     );
 
@@ -109,8 +87,6 @@ function WatchRoom({ name }: WatchRoomProps) {
     return () => {
 
       socket.off("users");
-
-      socket.off("room-state");
 
       socket.off("video-control");
 
@@ -122,7 +98,9 @@ function WatchRoom({ name }: WatchRoomProps) {
 
 
 
+
   function playVideo() {
+
 
     const video =
       videoRef.current;
@@ -131,7 +109,9 @@ function WatchRoom({ name }: WatchRoomProps) {
     if (!video) return;
 
 
+
     video.play();
+
 
 
     socket.emit(
@@ -148,6 +128,7 @@ function WatchRoom({ name }: WatchRoomProps) {
       }
     );
 
+
   }
 
 
@@ -156,6 +137,7 @@ function WatchRoom({ name }: WatchRoomProps) {
 
   function pauseVideo() {
 
+
     const video =
       videoRef.current;
 
@@ -163,7 +145,9 @@ function WatchRoom({ name }: WatchRoomProps) {
     if (!video) return;
 
 
+
     video.pause();
+
 
 
     socket.emit(
@@ -179,6 +163,7 @@ function WatchRoom({ name }: WatchRoomProps) {
 
       }
     );
+
 
   }
 
