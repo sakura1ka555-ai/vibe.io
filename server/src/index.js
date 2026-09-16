@@ -21,9 +21,11 @@ const io = new Server(
 );
 
 
+// хранилище комнат
 const rooms = {};
 
 
+// проверка сервера
 app.get("/", async () => {
   return {
     app: "VIBE SERVER",
@@ -40,6 +42,7 @@ io.on("connection", (socket) => {
   );
 
 
+  // вход в комнату
   socket.on(
     "join-room",
     (roomId) => {
@@ -60,18 +63,71 @@ io.on("connection", (socket) => {
         rooms[roomId].length
       );
 
+
+      console.log(
+        `User ${socket.id} joined ${roomId}`
+      );
+
     }
   );
 
 
+
+  // управление видео
+  socket.on(
+    "video-control",
+    (data) => {
+
+      socket.to(data.roomId).emit(
+        "video-control",
+        {
+          action: data.action,
+          position: data.position,
+        }
+      );
+
+
+      console.log(
+        "Video event:",
+        data.action
+      );
+
+    }
+  );
+
+
+
+  // отключение пользователя
   socket.on(
     "disconnect",
     () => {
+
 
       console.log(
         "User disconnected:",
         socket.id
       );
+
+
+      for (const roomId in rooms) {
+
+        rooms[roomId] =
+          rooms[roomId].filter(
+            (id) => id !== socket.id
+          );
+
+
+        io.to(roomId).emit(
+          "users",
+          rooms[roomId].length
+        );
+
+
+        if (rooms[roomId].length === 0) {
+          delete rooms[roomId];
+        }
+
+      }
 
     }
   );
@@ -79,6 +135,8 @@ io.on("connection", (socket) => {
 });
 
 
+
+// запуск сервера
 app.listen({
   port: 3001,
   host: "0.0.0.0",
@@ -86,7 +144,7 @@ app.listen({
 .then(() => {
 
   console.log(
-    "VIBE server started on 3001"
+    "🔥 VIBE server started on port 3001"
   );
 
 });
