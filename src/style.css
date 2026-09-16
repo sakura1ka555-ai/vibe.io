@@ -2,682 +2,927 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
 
 body {
-
-  margin: 0;
-
   min-height: 100vh;
-
   background:
     radial-gradient(
-      circle at top,
-      #28104d 0%,
-      #0b0812 45%,
+      circle at 50% -10%,
+      #35145f 0%,
+      #160c26 28%,
+      #09070d 65%,
       #050507 100%
     );
-
   color: #ffffff;
-
   font-family:
     Inter,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-
 }
 
-
-
-
-
-#root {
-
-  min-height:100vh;
-
+button,
+input {
+  font-family: inherit;
 }
-
-
-
-
-
-/* HOME */
-
-.home {
-
-  min-height:100vh;
-
-  display:flex;
-
-  flex-direction:column;
-
-  align-items:center;
-
-  padding:40px 20px;
-
-}
-
-
-
-
-
-.brand {
-
-  display:flex;
-
-  align-items:center;
-
-  gap:14px;
-
-}
-
-
-
-
-
-.logo {
-
-  font-size:34px;
-
-  font-weight:800;
-
-  letter-spacing:10px;
-
-}
-
-
-
-
-
-.status {
-
-  font-size:11px;
-
-  color:#c29cff;
-
-  border:
-
-  1px solid rgba(194,156,255,.35);
-
-  padding:5px 12px;
-
-  border-radius:20px;
-
-}
-
-
-
-
-
-.hero {
-
-  text-align:center;
-
-  max-width:550px;
-
-  margin-top:90px;
-
-}
-
-
-
-
-
-.hero h1 {
-
-  font-size:48px;
-
-  line-height:1.1;
-
-  font-weight:700;
-
-  margin:0;
-
-}
-
-
-
-
-
-.hero p {
-
-  color:#aaa3b8;
-
-  font-size:17px;
-
-  line-height:1.6;
-
-  margin-top:25px;
-
-}
-
-
-
-
-
-.actions {
-
-  display:flex;
-
-  flex-direction:column;
-
-  gap:14px;
-
-  margin-top:50px;
-
-}
-
-
-
-
 
 button {
-
-  cursor:pointer;
-
-  font-size:14px;
-
-  font-weight:500;
-
-  padding:13px 30px;
-
-  border-radius:14px;
-
-  transition:.25s;
-
+  cursor: pointer;
 }
 
 
+/* =========================
+   HOME
+========================= */
 
+#root {
+  min-height: 100vh;
+}
 
-
-.primary {
-
-  background:
-
-  linear-gradient(
-    135deg,
-    #a15cff,
-    #7137db
-  );
-
-  border:none;
-
-  color:white;
-
-  box-shadow:
-
-  0 15px 45px
-
-  rgba(161,92,255,.25);
-
+.home {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 38px 20px 60px;
 }
 
 
+/* =========================
+   BRAND
+========================= */
 
-
-
-.primary:hover {
-
-  transform:translateY(-2px);
-
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
 }
-
-
-
-
-
-.secondary {
-
-  background:
-
-  rgba(255,255,255,.04);
-
-  border:
-
-  1px solid rgba(255,255,255,.12);
-
-  color:white;
-
-}
-
-
-
-
-
-.secondary:hover {
-
-  background:
-
-  rgba(255,255,255,.08);
-
-}
-
-
-
-
-
-.profile {
-
-  margin-top:50px;
-
-  padding:10px 20px;
-
-  border-radius:30px;
-
-  background:
-
-  rgba(255,255,255,.06);
-
-  color:#d8d0e5;
-
-}
-
-
-
-
-
-/* ROOMS */
-
-.rooms {
-
-  width:100%;
-
-  max-width:520px;
-
-  margin-top:50px;
-
-}
-
-
-
-
-
-.rooms h2 {
-
-  font-size:18px;
-
-  font-weight:500;
-
-}
-
-
-
-
-
-.room-card {
-
-
-  background:
-
-  rgba(255,255,255,.05);
-
-
-  border:
-
-  1px solid rgba(255,255,255,.1);
-
-
-  border-radius:20px;
-
-
-  padding:20px;
-
-
-  margin-top:15px;
-
-
-  backdrop-filter:blur(20px);
-
-
-}
-
-
-
-
-
-.room-card h2 {
-
-  margin:0;
-
-}
-
-
-
-
-
-.room-card p {
-
-  color:#aaa;
-
-}
-
-
-
-
-
-.room-card button {
-
-  background:white;
-
-  color:#111;
-
-  border:none;
-
-}
-
-
-
-
-
-/* WATCH ROOM */
-
-
-.watch-room {
-
-  min-height:100vh;
-
-  display:flex;
-
-  gap:20px;
-
-  padding:20px;
-
-}
-
-
-
-
-
-.video-section {
-
-  flex:1;
-
-}
-
-
-
-
-
-.video-player {
-
-  width:100%;
-
-  max-height:75vh;
-
-  border-radius:22px;
-
-  background:#000;
-
-}
-
-
-
-
-
-.room-info {
-
-  display:flex;
-
-  justify-content:space-between;
-
-  align-items:center;
-
-}
-
-
-
-
-
-.room-info h1 {
-
-  font-size:22px;
-
-}
-
-
-
-
-
-.members {
-
-  color:#aaa;
-
-  font-size:14px;
-
-}
-
-
-
-
-
-/* CHAT */
-
-
-.chat {
-
-  width:340px;
-
-  height:75vh;
-
-  display:flex;
-
-  flex-direction:column;
-
-
-  background:
-
-  rgba(255,255,255,.05);
-
-
-  border:
-
-  1px solid rgba(255,255,255,.1);
-
-
-  border-radius:22px;
-
-
-  padding:20px;
-
-
-  backdrop-filter:blur(20px);
-
-}
-
-
-
-
-
-.chat h3 {
-
-  margin-top:0;
-
-}
-
-
-
-
-
-.messages {
-
-  flex:1;
-
-  overflow-y:auto;
-
-}
-
-
-
-
-
-.message {
-
-  display:flex;
-
-  flex-direction:column;
-
-  gap:4px;
-
-  margin-bottom:15px;
-
-}
-
-
-
-
-
-.message b {
-
-  color:#c69cff;
-
-}
-
-
-
-
-
-.message span {
-
-  color:#ddd;
-
-}
-
-
-
-
-
-.chat-input {
-
-  display:flex;
-
-  gap:10px;
-
-}
-
-
-
-
-
-.chat-input input {
-
-  flex:1;
-
-  background:
-
-  rgba(255,255,255,.08);
-
-
-  border:
-
-  1px solid rgba(255,255,255,.1);
-
-
-  border-radius:12px;
-
-
-  padding:12px;
-
-
-  color:white;
-
-}
-
-
-
-
-
-.chat-input button {
-
-  padding:10px 16px;
-
-  background:#9b5cff;
-
-  border:none;
-
-  color:white;
-
-}
-
-
-
-
-
-/* ROOM BUTTONS */
-
-
-.watch-room button {
-
-  background:
-
-  rgba(255,255,255,.08);
-
-
-  color:white;
-
-
-  border:
-
-  1px solid rgba(255,255,255,.12);
-
-
-  margin-top:12px;
-
-}
-
-
-
-
-
-.watch-room button:hover {
-
-  background:
-
-  rgba(255,255,255,.15);
-
-}
-
-
-
-
-
-/* MOBILE */
-
-
-@media(max-width:800px){
-
-
-.watch-room {
-
-  flex-direction:column;
-
-}
-
-
-
-.chat {
-
-  width:100%;
-
-  height:350px;
-
-}
-
-
-
-.hero h1 {
-
-  font-size:36px;
-
-}
-
 
 .logo {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 9px;
+}
 
-  font-size:28px;
+.status {
+  display: flex;
+  align-items: center;
+  height: 25px;
+  padding: 0 11px;
+
+  border: 1px solid rgba(183, 133, 255, 0.28);
+  border-radius: 20px;
+
+  background: rgba(154, 88, 255, 0.07);
+
+  color: #c49aff;
+
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+}
+
+
+/* =========================
+   HERO
+========================= */
+
+.hero {
+  width: 100%;
+  max-width: 620px;
+
+  margin-top: 92px;
+
+  text-align: center;
+}
+
+.hero h1 {
+  margin: 0;
+
+  font-size: 50px;
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -1.8px;
+
+  text-shadow:
+    0 10px 50px rgba(139, 74, 255, 0.18);
+}
+
+.hero p {
+  max-width: 500px;
+
+  margin: 24px auto 0;
+
+  color: #9b94a8;
+
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+
+/* =========================
+   MAIN BUTTONS
+========================= */
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  gap: 12px;
+
+  margin-top: 44px;
+}
+
+.actions button {
+  width: 220px;
+  height: 46px;
+
+  border-radius: 13px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  transition:
+    transform .2s ease,
+    background .2s ease,
+    border-color .2s ease,
+    box-shadow .2s ease;
+}
+
+
+/* CREATE */
+
+.primary {
+  border: 1px solid rgba(186, 132, 255, 0.5);
+
+  color: #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #a15cff,
+      #7035d2
+    );
+
+  box-shadow:
+    0 12px 35px
+    rgba(132, 65, 235, 0.25);
+}
+
+.primary:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 16px 45px
+    rgba(132, 65, 235, 0.38);
+}
+
+
+/* JOIN */
+
+.secondary {
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.11);
+
+  color: #ddd6e7;
+
+  background:
+    rgba(255, 255, 255, 0.045);
+
+  backdrop-filter: blur(15px);
+}
+
+.secondary:hover {
+  transform: translateY(-2px);
+
+  border-color:
+    rgba(172, 116, 255, 0.35);
+
+  background:
+    rgba(155, 91, 255, 0.09);
+}
+
+
+/* =========================
+   PROFILE
+========================= */
+
+.profile {
+  margin-top: 45px;
+
+  padding: 9px 18px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  border-radius: 30px;
+
+  background:
+    rgba(255, 255, 255, 0.045);
+
+  color: #aaa3b7;
+
+  font-size: 12px;
+
+  backdrop-filter: blur(15px);
+}
+
+
+/* =========================
+   ROOMS
+========================= */
+
+.rooms {
+  width: 100%;
+  max-width: 520px;
+
+  margin-top: 45px;
+}
+
+.rooms h2 {
+  margin: 0 0 15px;
+
+  color: #c8c1d2;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.room-card {
+  padding: 19px;
+
+  margin-top: 12px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.09);
+
+  border-radius: 18px;
+
+  background:
+    rgba(255, 255, 255, 0.045);
+
+  backdrop-filter: blur(20px);
+}
+
+.room-card h2 {
+  margin: 0;
+
+  color: #ffffff;
+
+  font-size: 16px;
+}
+
+.room-card p {
+  margin: 7px 0;
+
+  color: #8f899a;
+
+  font-size: 12px;
+}
+
+
+/* =========================
+   MODAL BACKDROP
+========================= */
+
+.modal-backdrop {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 1000;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background:
+    rgba(3, 2, 7, 0.76);
+
+  backdrop-filter:
+    blur(18px);
+}
+
+
+/* =========================
+   MODAL
+========================= */
+
+.room-modal {
+  position: relative;
+
+  width: 100%;
+  max-width: 430px;
+
+  padding: 32px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.1);
+
+  border-radius: 24px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(38, 23, 58, 0.98),
+      rgba(13, 10, 19, 0.99)
+    );
+
+  box-shadow:
+    0 35px 100px
+    rgba(0, 0, 0, 0.7);
+
+  backdrop-filter:
+    blur(30px);
+
+  animation:
+    modalAppear .22s ease;
+}
+
+@keyframes modalAppear {
+
+  from {
+    opacity: 0;
+    transform:
+      translateY(12px)
+      scale(.98);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
 
 }
 
+
+/* =========================
+   CLOSE
+========================= */
+
+.modal-close {
+  position: absolute;
+
+  top: 16px;
+  right: 16px;
+
+  width: 34px;
+  height: 34px;
+
+  padding: 0;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  border-radius: 50%;
+
+  background:
+    rgba(255, 255, 255, 0.045);
+
+  color: #aaa3b2;
+
+  font-size: 22px;
+  font-weight: 300;
+
+  line-height: 1;
+
+  transition: .2s;
+}
+
+.modal-close:hover {
+  color: white;
+
+  background:
+    rgba(255, 255, 255, 0.09);
+}
+
+
+/* =========================
+   MODAL TITLE
+========================= */
+
+.modal-label {
+  margin-bottom: 11px;
+
+  color: #a978ff;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 2px;
+}
+
+.room-modal h2 {
+  margin: 0;
+
+  color: white;
+
+  font-size: 27px;
+  font-weight: 650;
+
+  letter-spacing: -0.5px;
+}
+
+.modal-description {
+  margin:
+    10px 0 27px;
+
+  color: #918a9c;
+
+  font-size: 13px;
+
+  line-height: 1.55;
+}
+
+
+/* =========================
+   LABEL
+========================= */
+
+.room-modal label {
+  display: block;
+
+  margin-bottom: 9px;
+
+  color: #c9c1d3;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  letter-spacing: .2px;
+}
+
+
+/* =========================
+   INPUT
+========================= */
+
+.room-modal input {
+  display: block;
+
+  width: 100%;
+  height: 48px;
+
+  padding:
+    0 15px;
+
+  outline: none;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.11);
+
+  border-radius: 13px;
+
+  background:
+    rgba(255, 255, 255, 0.055);
+
+  color: white;
+
+  font-size: 14px;
+
+  box-shadow:
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.025);
+
+  transition:
+    border-color .2s,
+    background .2s,
+    box-shadow .2s;
+}
+
+.room-modal input:hover {
+  border-color:
+    rgba(255, 255, 255, 0.17);
+}
+
+.room-modal input:focus {
+  border-color:
+    rgba(164, 96, 255, 0.65);
+
+  background:
+    rgba(255, 255, 255, 0.07);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(143, 78, 255, 0.08);
+}
+
+.room-modal input::placeholder {
+  color: #696271;
+}
+
+
+/* =========================
+   CREATE / JOIN BUTTON
+========================= */
+
+.create-room-button {
+  width: 100%;
+  height: 46px;
+
+  margin-top: 18px;
+
+  border:
+    1px solid
+    rgba(186, 132, 255, 0.35);
+
+  border-radius: 13px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #995cff,
+      #7036d5
+    );
+
+  color: white;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  box-shadow:
+    0 10px 30px
+    rgba(137, 70, 238, 0.2);
+
+  transition:
+    transform .2s,
+    box-shadow .2s;
+}
+
+.create-room-button:hover {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 14px 38px
+    rgba(137, 70, 238, 0.32);
+}
+
+.create-room-button:active {
+  transform: translateY(0);
+}
+
+
+/* =========================
+   ROOM ID INPUT
+========================= */
+
+.room-modal input[maxlength="6"] {
+  text-transform: uppercase;
+
+  letter-spacing: 4px;
+
+  font-size: 17px;
+  font-weight: 600;
+
+  text-align: center;
+}
+
+
+/* =========================
+   WATCH ROOM
+========================= */
+
+.watch-room {
+  min-height: 100vh;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    340px;
+
+  gap: 18px;
+
+  padding: 20px;
+
+  background:
+    radial-gradient(
+      circle at 30% 0%,
+      #1d1030,
+      #08070c 60%
+    );
+}
+
+.video-section {
+  min-width: 0;
+}
+
+
+/* =========================
+   ROOM INFO
+========================= */
+
+.room-info {
+  min-height: 48px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 12px;
+}
+
+.room-info h1 {
+  margin: 0;
+
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.members {
+  color: #918a9c;
+
+  font-size: 12px;
+}
+
+
+/* =========================
+   VIDEO
+========================= */
+
+.video-frame {
+  width: 100%;
+
+  aspect-ratio: 16 / 9;
+
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  border-radius: 20px;
+
+  background: #000;
+
+  box-shadow:
+    0 25px 70px
+    rgba(0, 0, 0, .35);
+}
+
+.video-player {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+
+  background: #000;
+}
+
+
+/* =========================
+   WATCH BUTTONS
+========================= */
+
+.watch-room button {
+  margin-top: 12px;
+
+  padding:
+    10px 16px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.1);
+
+  border-radius: 11px;
+
+  background:
+    rgba(255, 255, 255, 0.055);
+
+  color: #e8e2ee;
+
+  font-size: 12px;
+
+  transition: .2s;
+}
+
+.watch-room button:hover {
+  background:
+    rgba(255, 255, 255, 0.1);
+}
+
+
+/* =========================
+   CHAT
+========================= */
+
+.chat {
+  width: 100%;
+  height: calc(100vh - 40px);
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 20px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.09);
+
+  border-radius: 21px;
+
+  background:
+    rgba(255, 255, 255, 0.045);
+
+  backdrop-filter:
+    blur(25px);
+}
+
+.chat h3 {
+  margin:
+    0 0 20px;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.messages {
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding-right: 5px;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  margin-bottom: 16px;
+}
+
+.message b {
+  color: #b98aff;
+
+  font-size: 11px;
+}
+
+.message span {
+  color: #d4cfda;
+
+  font-size: 13px;
+
+  line-height: 1.45;
+}
+
+
+/* =========================
+   CHAT INPUT
+========================= */
+
+.chat-input {
+  display: flex;
+
+  gap: 8px;
+
+  margin-top: 12px;
+}
+
+.chat-input input {
+  min-width: 0;
+  flex: 1;
+
+  height: 42px;
+
+  padding:
+    0 12px;
+
+  outline: none;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.09);
+
+  border-radius: 11px;
+
+  background:
+    rgba(255, 255, 255, 0.055);
+
+  color: white;
+
+  font-size: 12px;
+}
+
+.chat-input input::placeholder {
+  color: #696371;
+}
+
+.chat-input button {
+  width: 42px;
+  height: 42px;
+
+  margin: 0;
+
+  padding: 0;
+
+  border: none;
+
+  border-radius: 11px;
+
+  background:
+    #9255ed;
+
+  color: white;
+
+  font-size: 17px;
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 800px) {
+
+  .home {
+    padding-top: 28px;
+  }
+
+  .hero {
+    margin-top: 70px;
+  }
+
+  .hero h1 {
+    font-size: 37px;
+    letter-spacing: -1px;
+  }
+
+  .hero p {
+    font-size: 14px;
+  }
+
+  .actions {
+    margin-top: 36px;
+  }
+
+  .actions button {
+    width: 210px;
+  }
+
+  .room-modal {
+    padding: 27px 22px;
+    border-radius: 21px;
+  }
+
+  .watch-room {
+    grid-template-columns: 1fr;
+
+    padding: 12px;
+  }
+
+  .chat {
+    height: 360px;
+  }
+
+}
+
+
+/* =========================
+   SMALL PHONES
+========================= */
+
+@media (max-width: 420px) {
+
+  .logo {
+    font-size: 27px;
+    letter-spacing: 7px;
+  }
+
+  .hero h1 {
+    font-size: 33px;
+  }
+
+  .room-modal h2 {
+    font-size: 24px;
+  }
 
 }
