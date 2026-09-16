@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useMemo,
   useRef
 } from "react";
 
@@ -23,23 +22,94 @@ type Props = {
 
   remoteControl?: {
     action: "play" | "pause";
-
     position: number;
-
     id: number;
   } | null;
 };
 
 
-/*
-  =========================
-  YOUTUBE ID
-  =========================
-*/
+/* =================================
+   TYPES
+================================= */
+
+type YouTubePlayer = {
+
+  playVideo: () => void;
+
+  pauseVideo: () => void;
+
+  seekTo: (
+    seconds: number,
+    allowSeekAhead: boolean
+  ) => void;
+
+  getCurrentTime: () => number;
+
+  destroy: () => void;
+
+};
+
+
+type YouTubeEvent = {
+
+  target: YouTubePlayer;
+
+  data?: number;
+
+};
+
+
+type YouTubePlayerConstructor = new (
+  element: HTMLElement,
+  options: {
+    videoId: string;
+
+    playerVars?: {
+      autoplay?: number;
+      controls?: number;
+      playsinline?: number;
+      origin?: string;
+      rel?: number;
+    };
+
+    events?: {
+
+      onReady?: (
+        event: YouTubeEvent
+      ) => void;
+
+      onStateChange?: (
+        event: YouTubeEvent
+      ) => void;
+
+    };
+
+  }
+) => YouTubePlayer;
+
+
+declare global {
+
+  interface Window {
+
+    YT?: {
+      Player: YouTubePlayerConstructor;
+    };
+
+    onYouTubeIframeAPIReady?: () => void;
+
+  }
+
+}
+
+
+/* =================================
+   YOUTUBE ID
+================================= */
 
 function getYouTubeId(
   url: string
-) {
+): string | null {
 
   try {
 
@@ -47,35 +117,56 @@ function getYouTubeId(
       new URL(url);
 
 
+    const host =
+      parsed.hostname
+        .toLowerCase()
+        .replace(
+          /^www\./,
+          ""
+        );
+
+
+    /*
+      youtu.be/VIDEO_ID
+    */
+
     if (
-      parsed.hostname.includes(
-        "youtu.be"
-      )
+      host === "youtu.be"
     ) {
 
       return parsed.pathname
-        .replace("/", "")
-        .split("/")[0];
+        .split("/")
+        .filter(Boolean)[0]
+        || null;
 
     }
 
 
+    /*
+      youtube.com/watch?v=VIDEO_ID
+    */
+
     if (
-      parsed.hostname.includes(
-        "youtube.com"
-      )
+      host === "youtube.com" ||
+      host === "m.youtube.com"
     ) {
 
-      const id =
+      const videoId =
         parsed.searchParams.get(
           "v"
         );
 
 
-      if (id) {
-        return id;
+      if (videoId) {
+
+        return videoId;
+
       }
 
+
+      /*
+        youtube.com/embed/VIDEO_ID
+      */
 
       const parts =
         parsed.pathname
@@ -90,7 +181,7 @@ function getYouTubeId(
 
 
       if (
-        embedIndex !== -1 &&
+        embedIndex >= 0 &&
         parts[embedIndex + 1]
       ) {
 
@@ -101,6 +192,10 @@ function getYouTubeId(
       }
 
 
+      /*
+        youtube.com/shorts/VIDEO_ID
+      */
+
       const shortsIndex =
         parts.indexOf(
           "shorts"
@@ -108,7 +203,7 @@ function getYouTubeId(
 
 
       if (
-        shortsIndex !== -1 &&
+        shortsIndex >= 0 &&
         parts[shortsIndex + 1]
       ) {
 
@@ -132,15 +227,13 @@ function getYouTubeId(
 }
 
 
-/*
-  =========================
-  RUTUBE
-  =========================
-*/
+/* =================================
+   RUTUBE ID
+================================= */
 
 function getRutubeId(
   url: string
-) {
+): string | null {
 
   try {
 
@@ -161,30 +254,12 @@ function getRutubeId(
 
 
     if (
-      videoIndex !== -1 &&
+      videoIndex >= 0 &&
       parts[videoIndex + 1]
     ) {
 
       return parts[
         videoIndex + 1
-      ];
-
-    }
-
-
-    const privateIndex =
-      parts.indexOf(
-        "private"
-      );
-
-
-    if (
-      privateIndex !== -1 &&
-      parts[privateIndex + 1]
-    ) {
-
-      return parts[
-        privateIndex + 1
       ];
 
     }
@@ -197,7 +272,7 @@ function getRutubeId(
 
 
     if (
-      embedIndex !== -1 &&
+      embedIndex >= 0 &&
       parts[embedIndex + 1]
     ) {
 
@@ -219,11 +294,9 @@ function getRutubeId(
 }
 
 
-/*
-  =========================
-  VK
-  =========================
-*/
+/* =================================
+   VK DATA
+================================= */
 
 function getVKVideoData(
   url: string
@@ -280,7 +353,9 @@ function getVKVideoData(
 
 
     if (!match) {
+
       return null;
+
     }
 
 
@@ -306,86 +381,9 @@ function getVKVideoData(
 }
 
 
-/*
-  =========================
-  YOUTUBE API TYPES
-  =========================
-*/
-
-type YouTubePlayer = {
-
-  playVideo: () => void;
-
-  pauseVideo: () => void;
-
-  seekTo: (
-    seconds: number,
-    allowSeekAhead: boolean
-  ) => void;
-
-  getCurrentTime: () => number;
-
-  destroy: () => void;
-
-};
-
-
-type YouTubeEvent = {
-
-  target: YouTubePlayer;
-
-  data: number;
-
-};
-
-
-type YouTubeConstructor =
-  new (
-    element: HTMLElement,
-    options: {
-      videoId: string;
-
-      playerVars?: Record<
-        string,
-        number | string
-      >;
-
-      events?: {
-
-        onReady?: (
-          event: YouTubeEvent
-        ) => void;
-
-        onStateChange?: (
-          event: YouTubeEvent
-        ) => void;
-
-      };
-
-    }
-  ) => YouTubePlayer;
-
-
-declare global {
-
-  interface Window {
-
-    YT?: {
-      Player: YouTubeConstructor;
-    };
-
-    onYouTubeIframeAPIReady?: () => void;
-
-  }
-
-}
-
-
-/*
-  =========================
-  PLAYER
-  =========================
-*/
+/* =================================
+   PLAYER
+================================= */
 
 function VideoPlayer({
   videoUrl,
@@ -396,37 +394,7 @@ function VideoPlayer({
   remoteControl
 }: Props) {
 
-  const youtubeId =
-    useMemo(
-      () =>
-        getYouTubeId(
-          videoUrl
-        ),
-      [videoUrl]
-    );
-
-
-  const rutubeId =
-    useMemo(
-      () =>
-        getRutubeId(
-          videoUrl
-        ),
-      [videoUrl]
-    );
-
-
-  const vkData =
-    useMemo(
-      () =>
-        getVKVideoData(
-          videoUrl
-        ),
-      [videoUrl]
-    );
-
-
-  const playerElement =
+  const playerContainer =
     useRef<HTMLDivElement | null>(
       null
     );
@@ -442,12 +410,65 @@ function VideoPlayer({
     useRef(false);
 
 
-  const remoteAction =
+  const applyingRemote =
     useRef(false);
 
 
-  const lastReportedSecond =
-    useRef(-1);
+  const lastRemoteId =
+    useRef<number | null>(
+      null
+    );
+
+
+  const positionCallback =
+    useRef(onPosition);
+
+
+  const controlCallback =
+    useRef(onControl);
+
+
+  const youtubeId =
+    getYouTubeId(
+      videoUrl
+    );
+
+
+  const rutubeId =
+    getRutubeId(
+      videoUrl
+    );
+
+
+  const vkData =
+    getVKVideoData(
+      videoUrl
+    );
+
+
+  /*
+    Keep callbacks current
+    without recreating player
+  */
+
+  useEffect(() => {
+
+    positionCallback.current =
+      onPosition;
+
+  }, [
+    onPosition
+  ]);
+
+
+  useEffect(() => {
+
+    controlCallback.current =
+      onControl;
+
+  }, [
+    onControl
+  ]);
 
 
   /*
@@ -459,28 +480,33 @@ function VideoPlayer({
   useEffect(() => {
 
     if (!youtubeId) {
+
       return;
+
     }
+
+
+    let cancelled =
+      false;
 
 
     function createPlayer() {
 
       if (
-        !playerElement.current ||
-        !window.YT?.Player
+        cancelled ||
+        !playerContainer.current ||
+        !window.YT?.Player ||
+        player.current
       ) {
-        return;
-      }
 
-
-      if (player.current) {
         return;
+
       }
 
 
       player.current =
         new window.YT.Player(
-          playerElement.current,
+          playerContainer.current,
           {
 
             videoId:
@@ -494,7 +520,7 @@ function VideoPlayer({
 
               playsinline: 1,
 
-              enablejsapi: 1,
+              rel: 0,
 
               origin:
                 window.location.origin
@@ -507,9 +533,21 @@ function VideoPlayer({
                 event
               ) => {
 
+                if (cancelled) {
+
+                  return;
+
+                }
+
+
                 ready.current =
                   true;
 
+
+                /*
+                  Put new viewer at
+                  current room position.
+                */
 
                 if (
                   initialPosition > 0
@@ -523,14 +561,13 @@ function VideoPlayer({
                 }
 
 
-                if (
-                  initialAction ===
-                  "play"
-                ) {
+                /*
+                  Do NOT autoplay
+                  automatically.
 
-                  event.target.playVideo();
-
-                }
+                  Browser autoplay
+                  restrictions can block it.
+                */
 
               },
 
@@ -540,7 +577,16 @@ function VideoPlayer({
               ) => {
 
                 if (
-                  remoteAction.current
+                  applyingRemote.current
+                ) {
+
+                  return;
+
+                }
+
+
+                if (
+                  !event.target
                 ) {
 
                   return;
@@ -553,11 +599,15 @@ function VideoPlayer({
                     .getCurrentTime();
 
 
+                /*
+                  1 = PLAYING
+                */
+
                 if (
                   event.data === 1
                 ) {
 
-                  onControl?.(
+                  controlCallback.current?.(
                     "play",
                     position
                   );
@@ -565,11 +615,15 @@ function VideoPlayer({
                 }
 
 
+                /*
+                  2 = PAUSED
+                */
+
                 if (
                   event.data === 2
                 ) {
 
-                  onControl?.(
+                  controlCallback.current?.(
                     "pause",
                     position
                   );
@@ -587,7 +641,7 @@ function VideoPlayer({
 
 
     /*
-      API уже загружен
+      API already loaded
     */
 
     if (
@@ -612,13 +666,13 @@ function VideoPlayer({
         };
 
 
-      const existing =
+      const existingScript =
         document.querySelector(
           'script[src="https://www.youtube.com/iframe_api"]'
         );
 
 
-      if (!existing) {
+      if (!existingScript) {
 
         const script =
           document.createElement(
@@ -645,6 +699,10 @@ function VideoPlayer({
 
     return () => {
 
+      cancelled =
+        true;
+
+
       ready.current =
         false;
 
@@ -663,81 +721,50 @@ function VideoPlayer({
     };
 
   }, [
-    youtubeId,
-    initialPosition,
-    initialAction,
-    onControl
+    youtubeId
   ]);
 
 
   /*
     =========================
-    REPORT POSITION
+    INITIAL STATE
     =========================
   */
 
   useEffect(() => {
 
-    if (!youtubeId) {
+    if (
+      !ready.current ||
+      !player.current
+    ) {
+
       return;
+
     }
 
 
-    const interval =
-      window.setInterval(
-        () => {
+    if (
+      initialPosition > 0
+    ) {
 
-          if (
-            !ready.current ||
-            !player.current
-          ) {
-            return;
-          }
-
-
-          const position =
-            player.current
-              .getCurrentTime();
-
-
-          const second =
-            Math.floor(
-              position
-            );
-
-
-          if (
-            second ===
-            lastReportedSecond.current
-          ) {
-            return;
-          }
-
-
-          lastReportedSecond.current =
-            second;
-
-
-          onPosition?.(
-            position
-          );
-
-        },
-        1000
+      player.current.seekTo(
+        initialPosition,
+        true
       );
 
+    }
 
-    return () => {
 
-      window.clearInterval(
-        interval
-      );
+    /*
+      We intentionally don't
+      autoplay here.
 
-    };
+      User must press play once.
+    */
 
   }, [
-    youtubeId,
-    onPosition
+    initialPosition,
+    initialAction
   ]);
 
 
@@ -760,11 +787,29 @@ function VideoPlayer({
     }
 
 
-    remoteAction.current =
+    if (
+      lastRemoteId.current ===
+      remoteControl.id
+    ) {
+
+      return;
+
+    }
+
+
+    lastRemoteId.current =
+      remoteControl.id;
+
+
+    applyingRemote.current =
       true;
 
 
-    player.current.seekTo(
+    const target =
+      player.current;
+
+
+    target.seekTo(
       remoteControl.position,
       true
     );
@@ -775,11 +820,11 @@ function VideoPlayer({
       "play"
     ) {
 
-      player.current.playVideo();
+      target.playVideo();
 
     } else {
 
-      player.current.pauseVideo();
+      target.pauseVideo();
 
     }
 
@@ -787,15 +832,71 @@ function VideoPlayer({
     window.setTimeout(
       () => {
 
-        remoteAction.current =
+        applyingRemote.current =
           false;
 
       },
-      500
+      800
     );
 
   }, [
     remoteControl
+  ]);
+
+
+  /*
+    =========================
+    CURRENT POSITION
+    =========================
+  */
+
+  useEffect(() => {
+
+    if (!youtubeId) {
+
+      return;
+
+    }
+
+
+    const timer =
+      window.setInterval(
+        () => {
+
+          if (
+            !ready.current ||
+            !player.current
+          ) {
+
+            return;
+
+          }
+
+
+          const position =
+            player.current
+              .getCurrentTime();
+
+
+          positionCallback.current?.(
+            position
+          );
+
+        },
+        1000
+      );
+
+
+    return () => {
+
+      window.clearInterval(
+        timer
+      );
+
+    };
+
+  }, [
+    youtubeId
   ]);
 
 
@@ -811,9 +912,9 @@ function VideoPlayer({
 
       <div
         ref={
-          playerElement
+          playerContainer
         }
-        className="embedded-player"
+        className="youtube-player"
       />
 
     );
@@ -937,8 +1038,15 @@ function VideoPlayer({
 
     <div className="player-message">
 
+      <div className="player-message-icon">
+        V
+      </div>
+
+
       <div className="player-message-title">
+
         Видео не найдено
+
       </div>
 
 
