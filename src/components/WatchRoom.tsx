@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
-import { joinRoom, socket } from "../socket";
+import Chat from "./Chat";
+import { socket, joinRoom } from "../socket";
 
 
-type WatchRoomProps = {
+type Props = {
   name: string;
   videoUrl: string;
   roomId: string;
@@ -15,25 +16,21 @@ function WatchRoom({
   name,
   videoUrl,
   roomId
-}: WatchRoomProps) {
+}: Props) {
 
 
   const videoRef =
     useRef<HTMLVideoElement>(null);
 
 
-  const [currentVideo, setCurrentVideo] =
-    useState(videoUrl);
-
-
-  const [users, setUsers] =
+  const [users,setUsers] =
     useState(1);
 
 
 
 
 
-  useEffect(() => {
+  useEffect(()=>{
 
 
     joinRoom(roomId);
@@ -42,7 +39,7 @@ function WatchRoom({
 
     socket.on(
       "users",
-      (count:number) => {
+      (count:number)=>{
 
         setUsers(count);
 
@@ -51,38 +48,17 @@ function WatchRoom({
 
 
 
-
-    socket.on(
-      "room-state",
-      (room) => {
-
-
-        if(room.videoUrl) {
-
-          setCurrentVideo(
-            room.videoUrl
-          );
-
-        }
-
-
-      }
-    );
-
-
-
-
-
     socket.on(
       "video-control",
-      (data) => {
+      (data)=>{
 
 
         const video =
           videoRef.current;
 
 
-        if(!video) return;
+        if(!video)
+          return;
 
 
 
@@ -91,7 +67,7 @@ function WatchRoom({
 
 
 
-        if(data.action === "play") {
+        if(data.action==="play"){
 
           video.play();
 
@@ -99,7 +75,7 @@ function WatchRoom({
 
 
 
-        if(data.action === "pause") {
+        if(data.action==="pause"){
 
           video.pause();
 
@@ -113,18 +89,16 @@ function WatchRoom({
 
 
 
-    return () => {
+    return ()=>{
 
       socket.off("users");
-
-      socket.off("room-state");
 
       socket.off("video-control");
 
     };
 
 
-  }, [roomId]);
+  },[roomId]);
 
 
 
@@ -133,19 +107,32 @@ function WatchRoom({
 
 
 
-  function playVideo() {
+  function control(
+    action:string
+  ){
 
 
     const video =
       videoRef.current;
 
 
-    if(!video) return;
+    if(!video)
+      return;
 
 
 
-    video.play();
+    if(action==="play"){
 
+      video.play();
+
+    }
+
+
+    if(action==="pause"){
+
+      video.pause();
+
+    }
 
 
 
@@ -155,7 +142,7 @@ function WatchRoom({
 
         roomId,
 
-        action:"play",
+        action,
 
         position:
           video.currentTime
@@ -163,74 +150,8 @@ function WatchRoom({
       }
     );
 
-
   }
 
-
-
-
-
-
-
-  function pauseVideo() {
-
-
-    const video =
-      videoRef.current;
-
-
-    if(!video) return;
-
-
-
-    video.pause();
-
-
-
-
-    socket.emit(
-      "video-control",
-      {
-
-        roomId,
-
-        action:"pause",
-
-        position:
-          video.currentTime
-
-      }
-    );
-
-
-  }
-
-
-
-
-
-
-
-  function invite() {
-
-
-    const link =
-    `https://t.me/VIBE_BOT/app?startapp=${roomId}`;
-
-
-
-    navigator.clipboard.writeText(
-      link
-    );
-
-
-
-    alert(
-      "Ссылка скопирована 💜"
-    );
-
-
-  }
 
 
 
@@ -243,64 +164,87 @@ function WatchRoom({
     <div className="watch-room">
 
 
-      <h1>
-        🎬 {name}
-      </h1>
+
+      <div className="video-section">
+
+
+        <div className="room-info">
+
+          <h1>
+            🎬 {name}
+          </h1>
+
+
+          <div className="members">
+
+            👥 {users}
+
+          </div>
+
+
+        </div>
 
 
 
 
-      <video
 
-        ref={videoRef}
+        <video
 
-        src={currentVideo}
+          ref={videoRef}
 
-        className="video-player"
+          src={videoUrl}
 
-        controls
+          className="video-player"
 
-      />
+          controls
+
+        />
 
 
 
 
-      <div className="members">
 
-        👥 Сейчас смотрят:
-        {" "}
-        {users}
+        <button
+
+          onClick={()=>
+            control("play")
+          }
+
+        >
+          ▶ Смотреть вместе
+        </button>
+
+
+
+
+
+        <button
+
+          onClick={()=>
+            control("pause")
+          }
+
+        >
+          ⏸ Пауза
+        </button>
+
+
+
 
       </div>
 
 
 
 
-      <button onClick={playVideo}>
-
-        ▶️ Смотреть вместе
-
-      </button>
 
 
+      <Chat
+
+        roomId={roomId}
+
+      />
 
 
-
-      <button onClick={pauseVideo}>
-
-        ⏸ Пауза для всех
-
-      </button>
-
-
-
-
-
-      <button onClick={invite}>
-
-        🔗 Пригласить друзей
-
-      </button>
 
 
 
@@ -310,7 +254,6 @@ function WatchRoom({
   );
 
 }
-
 
 
 export default WatchRoom;
