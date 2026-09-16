@@ -9,6 +9,8 @@ type Room = {
 };
 
 function App() {
+  const user = getTelegramUser();
+  
   const [rooms, setRooms] = useState<Room[]>([
     {
       title: "Вечерний фильм 🎬",
