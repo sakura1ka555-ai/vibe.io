@@ -11,6 +11,7 @@ body {
 
 body {
   min-height: 100vh;
+
   background:
     radial-gradient(
       circle at 50% -10%,
@@ -19,7 +20,9 @@ body {
       #09070d 65%,
       #050507 100%
     );
+
   color: #ffffff;
+
   font-family:
     Inter,
     -apple-system,
@@ -39,18 +42,25 @@ button {
 
 
 /* =========================
-   HOME
+   ROOT
 ========================= */
 
 #root {
   min-height: 100vh;
 }
 
+
+/* =========================
+   HOME
+========================= */
+
 .home {
   min-height: 100vh;
+
   display: flex;
   flex-direction: column;
   align-items: center;
+
   padding: 38px 20px 60px;
 }
 
@@ -62,30 +72,39 @@ button {
 .brand {
   display: flex;
   align-items: center;
+
   gap: 13px;
 }
 
 .logo {
   font-size: 30px;
   font-weight: 800;
+
   letter-spacing: 9px;
 }
 
 .status {
   display: flex;
   align-items: center;
+
   height: 25px;
+
   padding: 0 11px;
 
-  border: 1px solid rgba(183, 133, 255, 0.28);
+  border:
+    1px solid
+    rgba(183, 133, 255, 0.28);
+
   border-radius: 20px;
 
-  background: rgba(154, 88, 255, 0.07);
+  background:
+    rgba(154, 88, 255, 0.07);
 
   color: #c49aff;
 
   font-size: 10px;
   font-weight: 600;
+
   letter-spacing: 1.2px;
 }
 
@@ -108,11 +127,14 @@ button {
 
   font-size: 50px;
   line-height: 1.08;
+
   font-weight: 700;
+
   letter-spacing: -1.8px;
 
   text-shadow:
-    0 10px 50px rgba(139, 74, 255, 0.18);
+    0 10px 50px
+    rgba(139, 74, 255, 0.18);
 }
 
 .hero p {
@@ -128,7 +150,7 @@ button {
 
 
 /* =========================
-   MAIN BUTTONS
+   MAIN ACTIONS
 ========================= */
 
 .actions {
@@ -158,35 +180,44 @@ button {
 }
 
 
-/* CREATE */
+/* =========================
+   CREATE ROOM
+========================= */
 
 .primary {
-  border: 1px solid rgba(186, 132, 255, 0.5);
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.11);
 
-  color: #ffffff;
+  color: #eee8f5;
 
   background:
-    linear-gradient(
-      135deg,
-      #a15cff,
-      #7035d2
-    );
+    rgba(255, 255, 255, 0.045);
 
-  box-shadow:
-    0 12px 35px
-    rgba(132, 65, 235, 0.25);
+  box-shadow: none;
+
+  backdrop-filter:
+    blur(15px);
 }
 
 .primary:hover {
   transform: translateY(-2px);
 
+  border-color:
+    rgba(172, 116, 255, 0.35);
+
+  background:
+    rgba(155, 91, 255, 0.09);
+
   box-shadow:
-    0 16px 45px
-    rgba(132, 65, 235, 0.38);
+    0 10px 35px
+    rgba(113, 55, 210, 0.12);
 }
 
 
-/* JOIN */
+/* =========================
+   JOIN ROOM
+========================= */
 
 .secondary {
   border:
@@ -198,7 +229,8 @@ button {
   background:
     rgba(255, 255, 255, 0.045);
 
-  backdrop-filter: blur(15px);
+  backdrop-filter:
+    blur(15px);
 }
 
 .secondary:hover {
@@ -234,7 +266,8 @@ button {
 
   font-size: 12px;
 
-  backdrop-filter: blur(15px);
+  backdrop-filter:
+    blur(15px);
 }
 
 
@@ -250,7 +283,8 @@ button {
 }
 
 .rooms h2 {
-  margin: 0 0 15px;
+  margin:
+    0 0 15px;
 
   color: #c8c1d2;
 
@@ -272,7 +306,8 @@ button {
   background:
     rgba(255, 255, 255, 0.045);
 
-  backdrop-filter: blur(20px);
+  backdrop-filter:
+    blur(20px);
 }
 
 .room-card h2 {
@@ -293,7 +328,7 @@ button {
 
 
 /* =========================
-   MODAL BACKDROP
+   MODAL
 ========================= */
 
 .modal-backdrop {
@@ -316,11 +351,6 @@ button {
   backdrop-filter:
     blur(18px);
 }
-
-
-/* =========================
-   MODAL
-========================= */
 
 .room-modal {
   position: relative;
@@ -358,6 +388,7 @@ button {
 
   from {
     opacity: 0;
+
     transform:
       translateY(12px)
       scale(.98);
@@ -365,11 +396,11 @@ button {
 
   to {
     opacity: 1;
+
     transform:
       translateY(0)
       scale(1);
   }
-
 }
 
 
@@ -421,7 +452,7 @@ button {
 
 
 /* =========================
-   MODAL TITLE
+   MODAL HEADER
 ========================= */
 
 .modal-label {
@@ -443,12 +474,12 @@ button {
   font-size: 27px;
   font-weight: 650;
 
-  letter-spacing: -0.5px;
+  letter-spacing: -.5px;
 }
 
 .modal-description {
   margin:
-    10px 0 27px;
+    10px 0 24px;
 
   color: #918a9c;
 
@@ -459,8 +490,135 @@ button {
 
 
 /* =========================
-   LABEL
+   SOURCE TABS
 ========================= */
+
+.source-tabs {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 7px;
+
+  margin-bottom: 12px;
+}
+
+.source-tab {
+  height: 38px;
+
+  padding: 0 8px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  border-radius: 10px;
+
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  color: #817a8c;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: .7px;
+
+  transition:
+    background .2s,
+    border-color .2s,
+    color .2s,
+    transform .2s;
+}
+
+.source-tab:hover {
+  color: #d7cde2;
+
+  border-color:
+    rgba(255, 255, 255, 0.14);
+
+  background:
+    rgba(255, 255, 255, 0.06);
+}
+
+.source-tab.active {
+  border-color:
+    rgba(157, 93, 255, 0.45);
+
+  background:
+    rgba(143, 78, 255, 0.13);
+
+  color: #c39aff;
+
+  box-shadow:
+    inset 0 0 20px
+    rgba(139, 75, 255, 0.05);
+}
+
+
+/* =========================
+   OPEN SOURCE
+========================= */
+
+.open-source {
+  width: 100%;
+
+  height: 39px;
+
+  margin-bottom: 22px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  border-radius: 11px;
+
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  color: #aaa2b5;
+
+  font-size: 11px;
+  font-weight: 500;
+
+  transition:
+    background .2s,
+    border-color .2s,
+    color .2s;
+}
+
+.open-source span {
+  color: #a978ff;
+
+  font-size: 15px;
+}
+
+.open-source:hover {
+  border-color:
+    rgba(161, 92, 255, 0.3);
+
+  background:
+    rgba(161, 92, 255, 0.08);
+
+  color: #e4dceb;
+}
+
+
+/* =========================
+   VIDEO URL
+========================= */
+
+.video-url-block {
+  width: 100%;
+}
 
 .room-modal label {
   display: block;
@@ -471,14 +629,7 @@ button {
 
   font-size: 11px;
   font-weight: 600;
-
-  letter-spacing: .2px;
 }
-
-
-/* =========================
-   INPUT
-========================= */
 
 .room-modal input {
   display: block;
@@ -537,7 +688,7 @@ button {
 
 
 /* =========================
-   CREATE / JOIN BUTTON
+   CREATE ROOM BUTTON
 ========================= */
 
 .create-room-button {
@@ -574,7 +725,8 @@ button {
 }
 
 .create-room-button:hover {
-  transform: translateY(-1px);
+  transform:
+    translateY(-1px);
 
   box-shadow:
     0 14px 38px
@@ -582,23 +734,8 @@ button {
 }
 
 .create-room-button:active {
-  transform: translateY(0);
-}
-
-
-/* =========================
-   ROOM ID INPUT
-========================= */
-
-.room-modal input[maxlength="6"] {
-  text-transform: uppercase;
-
-  letter-spacing: 4px;
-
-  font-size: 17px;
-  font-weight: 600;
-
-  text-align: center;
+  transform:
+    translateY(0);
 }
 
 
@@ -631,11 +768,6 @@ button {
   min-width: 0;
 }
 
-
-/* =========================
-   ROOM INFO
-========================= */
-
 .room-info {
   min-height: 48px;
 
@@ -659,11 +791,6 @@ button {
 
   font-size: 12px;
 }
-
-
-/* =========================
-   VIDEO
-========================= */
 
 .video-frame {
   width: 100%;
@@ -794,11 +921,6 @@ button {
   line-height: 1.45;
 }
 
-
-/* =========================
-   CHAT INPUT
-========================= */
-
 .chat-input {
   display: flex;
 
@@ -873,6 +995,7 @@ button {
 
   .hero h1 {
     font-size: 37px;
+
     letter-spacing: -1px;
   }
 
@@ -889,7 +1012,9 @@ button {
   }
 
   .room-modal {
-    padding: 27px 22px;
+    padding:
+      27px 22px;
+
     border-radius: 21px;
   }
 
@@ -914,6 +1039,7 @@ button {
 
   .logo {
     font-size: 27px;
+
     letter-spacing: 7px;
   }
 
@@ -923,6 +1049,10 @@ button {
 
   .room-modal h2 {
     font-size: 24px;
+  }
+
+  .source-tab {
+    font-size: 8px;
   }
 
 }
