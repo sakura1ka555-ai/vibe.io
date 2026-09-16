@@ -9,7 +9,7 @@ import { io } from "socket.io-client";
 
 const SERVER_URL =
   import.meta.env.VITE_SERVER_URL ||
-  "http://localhost:3001";
+  "https://vibe-server-la2z.onrender.com";
 
 
 export const socket =
