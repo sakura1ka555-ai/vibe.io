@@ -1,8 +1,7 @@
 import { io } from "socket.io-client";
 
 
-const SERVER_URL =
-  "http://localhost:3001";
+const SERVER_URL = "http://localhost:3001";
 
 
 export const socket = io(
@@ -11,3 +10,17 @@ export const socket = io(
     autoConnect: false,
   }
 );
+
+
+export function joinRoom(roomId: string) {
+
+  if (!socket.connected) {
+    socket.connect();
+  }
+
+  socket.emit(
+    "join-room",
+    roomId
+  );
+
+}
