@@ -14,8 +14,9 @@ function WatchRoom({ name }: WatchRoomProps) {
   const [users, setUsers] = useState(1);
 
 
-  const videoUrl =
-    "https://www.w3schools.com/html/mov_bbb.mp4";
+  const [videoUrl, setVideoUrl] = useState(
+    "https://www.w3schools.com/html/mov_bbb.mp4"
+  );
 
 
   useEffect(() => {
@@ -31,9 +32,15 @@ function WatchRoom({ name }: WatchRoomProps) {
     );
 
 
+    // получаем состояние комнаты
     socket.on(
-      "video-control",
-      (data) => {
+      "room-state",
+      (room) => {
+
+        setVideoUrl(
+          room.videoUrl
+        );
+
 
         const video =
           videoRef.current;
@@ -42,22 +49,13 @@ function WatchRoom({ name }: WatchRoomProps) {
         if (!video) return;
 
 
-        if (data.action === "play") {
+        video.currentTime =
+          room.position;
 
-          video.currentTime =
-            data.position;
+
+        if (room.playing) {
 
           video.play();
-
-        }
-
-
-        if (data.action === "pause") {
-
-          video.pause();
-
-          video.currentTime =
-            data.position;
 
         }
 
@@ -65,15 +63,62 @@ function WatchRoom({ name }: WatchRoomProps) {
     );
 
 
+
+    // команды от других людей
+    socket.on(
+      "video-control",
+      (data) => {
+
+
+        const video =
+          videoRef.current;
+
+
+        if (!video) return;
+
+
+
+        video.currentTime =
+          data.position;
+
+
+
+        if (
+          data.action === "play"
+        ) {
+
+          video.play();
+
+        }
+
+
+
+        if (
+          data.action === "pause"
+        ) {
+
+          video.pause();
+
+        }
+
+      }
+    );
+
+
+
     return () => {
 
       socket.off("users");
+
+      socket.off("room-state");
+
       socket.off("video-control");
 
     };
 
 
   }, [name]);
+
 
 
 
@@ -92,13 +137,20 @@ function WatchRoom({ name }: WatchRoomProps) {
     socket.emit(
       "video-control",
       {
+
         roomId: name,
+
         action: "play",
-        position: video.currentTime
+
+        position:
+          video.currentTime
+
       }
     );
 
   }
+
+
 
 
 
@@ -117,9 +169,14 @@ function WatchRoom({ name }: WatchRoomProps) {
     socket.emit(
       "video-control",
       {
+
         roomId: name,
+
         action: "pause",
-        position: video.currentTime
+
+        position:
+          video.currentTime
+
       }
     );
 
@@ -127,20 +184,30 @@ function WatchRoom({ name }: WatchRoomProps) {
 
 
 
+
   return (
+
     <div className="watch-room">
+
 
       <h1>
         🎬 {name}
       </h1>
 
 
+
       <video
+
         ref={videoRef}
+
         src={videoUrl}
+
         className="video-player"
+
         controls
+
       />
+
 
 
       <div className="members">
@@ -152,18 +219,22 @@ function WatchRoom({ name }: WatchRoomProps) {
       </div>
 
 
+
       <button onClick={playVideo}>
-        ▶️ Запустить всем
+        ▶️ Смотреть вместе
       </button>
 
 
+
       <button onClick={pauseVideo}>
-        ⏸ Остановить всем
+        ⏸ Пауза для всех
       </button>
 
 
     </div>
+
   );
+
 }
 
 
