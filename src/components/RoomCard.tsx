@@ -3,20 +3,36 @@ type RoomCardProps = {
   users: number;
 };
 
-function RoomCard({ title, users }: RoomCardProps) {
+
+function RoomCard({
+  title,
+  users
+}: RoomCardProps) {
+
+
   return (
+
     <div className="room-card">
-      <h2>{title}</h2>
+
+      <h2>
+        {title}
+      </h2>
+
 
       <p>
         👥 {users} участников
       </p>
 
+
       <button>
         Войти
       </button>
+
     </div>
+
   );
+
 }
+
 
 export default RoomCard;
