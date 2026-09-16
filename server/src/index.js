@@ -3,7 +3,8 @@ import cors from "@fastify/cors";
 import { Server } from "socket.io";
 
 
-const app = Fastify();
+const app =
+  Fastify();
 
 
 await app.register(
@@ -25,8 +26,13 @@ app.get(
   async () => {
 
     return {
-      app: "VIBE SERVER",
-      status: "online"
+
+      app:
+        "VIBE SERVER",
+
+      status:
+        "online"
+
     };
 
   }
@@ -73,8 +79,10 @@ app.post(
       return reply
         .code(400)
         .send({
+
           error:
             "Room ID is required"
+
         });
 
     }
@@ -93,11 +101,17 @@ app.post(
         data.videoUrl ||
         "",
 
-      users: 0,
+      users:
+        0,
 
       playback: {
-        action: "pause",
-        position: 0
+
+        action:
+          "pause",
+
+        position:
+          0
+
       }
 
     };
@@ -145,7 +159,9 @@ app.get(
 
 
     const room =
-      rooms.get(roomId);
+      rooms.get(
+        roomId
+      );
 
 
     console.log(
@@ -159,8 +175,10 @@ app.get(
       return reply
         .code(404)
         .send({
+
           error:
             "Room not found"
+
         });
 
     }
@@ -185,11 +203,15 @@ const io =
     app.server,
     {
       cors: {
-        origin: "*",
+
+        origin:
+          "*",
+
         methods: [
           "GET",
           "POST"
         ]
+
       }
     }
   );
@@ -225,13 +247,25 @@ function formatPosition(
 
 
   return (
+
     String(minutes)
-      .padStart(2, "0")
+      .padStart(
+        2,
+        "0"
+      )
+
     +
+
     ":"
+
     +
+
     String(secs)
-      .padStart(2, "0")
+      .padStart(
+        2,
+        "0"
+      )
+
   );
 
 }
@@ -253,7 +287,9 @@ function getPresence(
       connectedSocket.data.roomId !==
       roomId
     ) {
+
       continue;
+
     }
 
 
@@ -266,9 +302,14 @@ function getPresence(
         connectedSocket.data.userName ||
         "Guest",
 
+      avatar:
+        connectedSocket.data.avatar ||
+        "",
+
       position:
         Number(
-          connectedSocket.data.position || 0
+          connectedSocket.data.position ||
+          0
         ),
 
       time:
@@ -296,7 +337,9 @@ function emitPresence(
 
   io.to(roomId).emit(
     "presence",
-    getPresence(roomId)
+    getPresence(
+      roomId
+    )
   );
 
 }
@@ -342,7 +385,8 @@ io.on(
           String(
             typeof data === "string"
               ? "Guest"
-              : data?.userName || "Guest"
+              : data?.userName ||
+                "Guest"
           )
             .trim()
             .slice(
@@ -352,7 +396,9 @@ io.on(
 
 
         const room =
-          rooms.get(roomId);
+          rooms.get(
+            roomId
+          );
 
 
         if (!room) {
@@ -366,10 +412,6 @@ io.on(
         }
 
 
-        /*
-          Уже в этой комнате
-        */
-
         if (
           socket.data.roomId ===
           roomId
@@ -381,7 +423,9 @@ io.on(
 
 
         /*
-          Уходим из старой комнаты
+          =========================
+          LEAVE OLD ROOM
+          =========================
         */
 
         if (
@@ -425,6 +469,12 @@ io.on(
         }
 
 
+        /*
+          =========================
+          JOIN
+          =========================
+        */
+
         socket.join(
           roomId
         );
@@ -435,7 +485,12 @@ io.on(
 
 
         socket.data.userName =
-          userName || "Guest";
+          userName ||
+          "Guest";
+
+
+        socket.data.avatar =
+          "";
 
 
         socket.data.position =
@@ -450,7 +505,9 @@ io.on(
 
 
         /*
-          Состояние комнаты
+          =========================
+          ROOM STATE
+          =========================
         */
 
         socket.emit(
@@ -476,7 +533,9 @@ io.on(
         );
 
 
-        io.to(roomId).emit(
+        io.to(
+          roomId
+        ).emit(
           "users",
           room.users
         );
@@ -493,6 +552,108 @@ io.on(
           socket.data.userName,
           "users:",
           room.users
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      PROFILE UPDATE
+      =========================
+    */
+
+    socket.on(
+      "profile-update",
+      (data) => {
+
+        const roomId =
+          String(
+            data?.roomId || ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        if (!roomId) {
+          return;
+        }
+
+
+        if (
+          socket.data.roomId !==
+          roomId
+        ) {
+
+          return;
+
+        }
+
+
+        const room =
+          rooms.get(
+            roomId
+          );
+
+
+        if (!room) {
+          return;
+        }
+
+
+        const name =
+          String(
+            data?.name ||
+            "Guest"
+          )
+            .trim()
+            .slice(
+              0,
+              40
+            );
+
+
+        const avatar =
+          String(
+            data?.avatar ||
+            ""
+          );
+
+
+        /*
+          Защита от
+          слишком огромного avatar.
+        */
+
+        if (
+          avatar.length >
+          1500000
+        ) {
+
+          return;
+
+        }
+
+
+        socket.data.userName =
+          name ||
+          "Guest";
+
+
+        socket.data.avatar =
+          avatar;
+
+
+        emitPresence(
+          roomId
+        );
+
+
+        console.log(
+          "👤 profile updated:",
+          roomId,
+          socket.data.userName
         );
 
       }
@@ -523,7 +684,9 @@ io.on(
 
 
         const room =
-          rooms.get(roomId);
+          rooms.get(
+            roomId
+          );
 
 
         if (!room) {
@@ -568,13 +731,10 @@ io.on(
           "Guest";
 
 
-        /*
-          Отправляем
-          остальным
-        */
-
         socket
-          .to(roomId)
+          .to(
+            roomId
+          )
           .emit(
             "video-control",
             {
@@ -635,7 +795,9 @@ io.on(
 
 
         const room =
-          rooms.get(roomId);
+          rooms.get(
+            roomId
+          );
 
 
         if (room) {
@@ -656,7 +818,7 @@ io.on(
 
     /*
       =========================
-      VIBE REACTIONS
+      REACTIONS
       =========================
     */
 
@@ -690,7 +852,9 @@ io.on(
 
 
         if (
-          !rooms.has(roomId)
+          !rooms.has(
+            roomId
+          )
         ) {
 
           return;
@@ -698,19 +862,20 @@ io.on(
         }
 
 
-        /*
-          Разрешённые реакции.
-          Это защищает сервер
-          от случайного мусора.
-        */
-
         const allowedReactions = [
+
           "❤️",
+
           "😂",
+
           "🔥",
+
           "😮",
+
           "😭",
+
           "💀"
+
         ];
 
 
@@ -725,13 +890,9 @@ io.on(
         }
 
 
-        /*
-          Отправляем ВСЕМ
-          участникам комнаты,
-          включая отправителя.
-        */
-
-        io.to(roomId).emit(
+        io.to(
+          roomId
+        ).emit(
           "reaction",
           {
 
@@ -780,7 +941,8 @@ io.on(
         const text =
           String(
             data?.text || ""
-          ).trim();
+          )
+            .trim();
 
 
         if (
@@ -794,7 +956,9 @@ io.on(
 
 
         if (
-          !rooms.has(roomId)
+          !rooms.has(
+            roomId
+          )
         ) {
 
           return;
@@ -802,7 +966,9 @@ io.on(
         }
 
 
-        io.to(roomId).emit(
+        io.to(
+          roomId
+        ).emit(
           "chat-message",
           {
 
@@ -836,7 +1002,9 @@ io.on(
         if (roomId) {
 
           const room =
-            rooms.get(roomId);
+            rooms.get(
+              roomId
+            );
 
 
           if (room) {
@@ -848,7 +1016,9 @@ io.on(
               );
 
 
-            io.to(roomId).emit(
+            io.to(
+              roomId
+            ).emit(
               "users",
               room.users
             );
@@ -882,12 +1052,17 @@ io.on(
 */
 
 const PORT =
-  process.env.PORT || 3001;
+  process.env.PORT ||
+  3001;
 
 
 app.listen({
-  port: PORT,
-  host: "0.0.0.0"
+  port:
+    PORT,
+
+  host:
+    "0.0.0.0"
+
 })
 .then(
   () => {
@@ -905,7 +1080,10 @@ app.listen({
       error
     );
 
-    process.exit(1);
+
+    process.exit(
+      1
+    );
 
   }
 );
