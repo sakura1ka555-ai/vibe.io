@@ -1,4 +1,7 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useState
+} from "react";
 
 import CreateRoom from "./components/CreateRoom";
 import RoomCard from "./components/RoomCard";
@@ -24,31 +27,38 @@ function App() {
 
   initTelegram();
 
-  const user = getTelegramUser();
+  const user =
+    getTelegramUser();
 
 
   const [rooms, setRooms] =
     useState<Room[]>([]);
 
-
   const [createOpen, setCreateOpen] =
     useState(false);
-
 
   const [joinOpen, setJoinOpen] =
     useState(false);
 
-
   const [roomCode, setRoomCode] =
     useState("");
-
 
   const [activeRoom, setActiveRoom] =
     useState<Room | null>(null);
 
+  const [joining, setJoining] =
+    useState(false);
 
 
-  function createRoom(videoUrl: string) {
+  /*
+    =========================
+    CREATE ROOM
+    =========================
+  */
+
+  function createRoom(
+    videoUrl: string
+  ) {
 
     const roomId =
       Math.random()
@@ -61,9 +71,10 @@ function App() {
 
       id: roomId,
 
-      title: `Комната ${roomId}`,
+      title:
+        `Комната ${roomId}`,
 
-      users: 1,
+      users: 0,
 
       videoUrl
 
@@ -80,19 +91,26 @@ function App() {
     );
 
 
-    setRooms(prev => [
-      ...prev,
-      room
-    ]);
+    setRooms(
+      previous => [
+        ...previous,
+        room
+      ]
+    );
 
-
-    setActiveRoom(room);
 
     setCreateOpen(false);
+
+    setActiveRoom(room);
 
   }
 
 
+  /*
+    =========================
+    JOIN ROOM
+    =========================
+  */
 
   function joinRoom() {
 
@@ -103,17 +121,29 @@ function App() {
 
 
     if (!code) {
+
+      alert(
+        "Введи ID комнаты"
+      );
+
       return;
+
     }
+
+
+    setJoining(true);
 
 
     socket.emit(
       "get-room",
       code,
-      (room: Room | null) => {
-
+      (
+        room: Room | null
+      ) => {
 
         if (!room) {
+
+          setJoining(false);
 
           alert(
             "Комната не найдена"
@@ -124,11 +154,32 @@ function App() {
         }
 
 
-        setActiveRoom(room);
+        const foundRoom: Room = {
+
+          id:
+            room.id,
+
+          title:
+            room.title,
+
+          users:
+            room.users,
+
+          videoUrl:
+            room.videoUrl
+
+        };
+
+
+        setActiveRoom(
+          foundRoom
+        );
 
         setJoinOpen(false);
 
         setRoomCode("");
+
+        setJoining(false);
 
       }
     );
@@ -136,6 +187,48 @@ function App() {
   }
 
 
+  /*
+    =========================
+    SOCKET ERRORS
+    =========================
+  */
+
+  useEffect(() => {
+
+    function roomNotFound() {
+
+      setJoining(false);
+
+      alert(
+        "Комната не найдена"
+      );
+
+    }
+
+
+    socket.on(
+      "room-not-found",
+      roomNotFound
+    );
+
+
+    return () => {
+
+      socket.off(
+        "room-not-found",
+        roomNotFound
+      );
+
+    };
+
+  }, []);
+
+
+  /*
+    =========================
+    WATCH ROOM
+    =========================
+  */
 
   if (activeRoom) {
 
@@ -143,11 +236,17 @@ function App() {
 
       <WatchRoom
 
-        name={activeRoom.title}
+        name={
+          activeRoom.title
+        }
 
-        videoUrl={activeRoom.videoUrl}
+        videoUrl={
+          activeRoom.videoUrl
+        }
 
-        roomId={activeRoom.id}
+        roomId={
+          activeRoom.id
+        }
 
       />
 
@@ -156,6 +255,11 @@ function App() {
   }
 
 
+  /*
+    =========================
+    HOME
+    =========================
+  */
 
   return (
 
@@ -175,75 +279,57 @@ function App() {
       </div>
 
 
-
       <section className="hero">
 
         <h1>
-
           Смотри вместе.
-
           <br />
-
           Чувствуй момент.
-
         </h1>
 
 
         <p>
-
           Совместный просмотр
           фильмов с друзьями
           где бы вы ни были.
-
         </p>
 
       </section>
 
 
-
       <section className="actions">
 
-
         <button
-
+          type="button"
           className="primary"
-
           onClick={() =>
             setCreateOpen(true)
           }
-
         >
-
           + Создать комнату
-
         </button>
-
 
 
         <button
-
+          type="button"
           className="secondary"
-
           onClick={() =>
             setJoinOpen(true)
           }
-
         >
-
           Войти в комнату
-
         </button>
 
-
       </section>
-
 
 
       {createOpen && (
 
         <CreateRoom
 
-          onCreate={createRoom}
+          onCreate={
+            createRoom
+          }
 
           onClose={() =>
             setCreateOpen(false)
@@ -252,7 +338,6 @@ function App() {
         />
 
       )}
-
 
 
       {joinOpen && (
@@ -264,6 +349,8 @@ function App() {
 
             <button
 
+              type="button"
+
               className="modal-close"
 
               onClick={() =>
@@ -271,11 +358,8 @@ function App() {
               }
 
             >
-
               ×
-
             </button>
-
 
 
             <div className="modal-label">
@@ -283,57 +367,83 @@ function App() {
             </div>
 
 
-
             <h2>
               Войти в комнату
             </h2>
 
 
-
             <p className="modal-description">
-
               Введи код комнаты,
               который отправил тебе друг.
-
             </p>
 
 
+            <div className="video-url-block">
 
-            <label>
-              ID комнаты
-            </label>
+              <label>
+                ID комнаты
+              </label>
 
 
+              <input
 
-            <input
+                type="text"
 
-              value={roomCode}
+                value={roomCode}
 
-              onChange={(e) =>
-                setRoomCode(
-                  e.target.value
-                )
-              }
+                onChange={
+                  event =>
+                    setRoomCode(
+                      event.target.value
+                    )
+                }
 
-              placeholder="Например K7M4QX"
+                placeholder="Например K7M4QX"
 
-              maxLength={6}
+                maxLength={6}
 
-              autoFocus
+                autoFocus
 
-            />
+                autoComplete="off"
 
+                onKeyDown={
+                  event => {
+
+                    if (
+                      event.key ===
+                      "Enter"
+                    ) {
+
+                      event.preventDefault();
+
+                      joinRoom();
+
+                    }
+
+                  }
+                }
+
+              />
+
+            </div>
 
 
             <button
 
-              className="create-room-button"
+              type="button"
+
+              className="join-submit-button"
 
               onClick={joinRoom}
 
+              disabled={joining}
+
             >
 
-              Войти
+              {joining
+                ? "Подключение..."
+                : "Войти"
+              }
 
             </button>
 
@@ -345,17 +455,13 @@ function App() {
       )}
 
 
-
       {user && (
 
         <div className="profile">
-
           {user.first_name}
-
         </div>
 
       )}
-
 
 
       {rooms.length > 0 && (
@@ -367,19 +473,25 @@ function App() {
           </h2>
 
 
-          {rooms.map(room => (
+          {rooms.map(
+            room => (
 
-            <RoomCard
+              <RoomCard
 
-              key={room.id}
+                key={room.id}
 
-              title={room.title}
+                title={
+                  room.title
+                }
 
-              users={room.users}
+                users={
+                  room.users
+                }
 
-            />
+              />
 
-          ))}
+            )
+          )}
 
         </section>
 
