@@ -1,22 +1,18 @@
 import { io } from "socket.io-client";
 
 
-const SERVER_URL = "http://localhost:3001";
-
-
 export const socket = io(
-  SERVER_URL,
+  "http://localhost:3001",
   {
-    autoConnect: false,
+    autoConnect: true
   }
 );
 
 
-export function joinRoom(roomId: string) {
 
-  if (!socket.connected) {
-    socket.connect();
-  }
+export function joinRoom(
+  roomId: string
+) {
 
   socket.emit(
     "join-room",
