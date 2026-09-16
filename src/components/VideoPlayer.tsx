@@ -12,7 +12,9 @@ type Props = {
   =========================
 */
 
-function getYouTubeId(url: string) {
+function getYouTubeId(
+  url: string
+) {
 
   try {
 
@@ -40,7 +42,10 @@ function getYouTubeId(url: string) {
     ) {
 
       const id =
-        parsed.searchParams.get("v");
+        parsed.searchParams.get(
+          "v"
+        );
+
 
       if (id) {
         return id;
@@ -54,7 +59,9 @@ function getYouTubeId(url: string) {
 
 
       const embedIndex =
-        parts.indexOf("embed");
+        parts.indexOf(
+          "embed"
+        );
 
 
       if (
@@ -70,7 +77,9 @@ function getYouTubeId(url: string) {
 
 
       const shortsIndex =
-        parts.indexOf("shorts");
+        parts.indexOf(
+          "shorts"
+        );
 
 
       if (
@@ -104,7 +113,9 @@ function getYouTubeId(url: string) {
   =========================
 */
 
-function getRutubeId(url: string) {
+function getRutubeId(
+  url: string
+) {
 
   try {
 
@@ -119,7 +130,9 @@ function getRutubeId(url: string) {
 
 
     const videoIndex =
-      parts.indexOf("video");
+      parts.indexOf(
+        "video"
+      );
 
 
     if (
@@ -135,7 +148,9 @@ function getRutubeId(url: string) {
 
 
     const privateIndex =
-      parts.indexOf("private");
+      parts.indexOf(
+        "private"
+      );
 
 
     if (
@@ -151,7 +166,9 @@ function getRutubeId(url: string) {
 
 
     const embedIndex =
-      parts.indexOf("embed");
+      parts.indexOf(
+        "embed"
+      );
 
 
     if (
@@ -181,25 +198,11 @@ function getRutubeId(url: string) {
   =========================
   VK VIDEO
   =========================
-
-  Поддерживаем:
-
-  https://vkvideo.ru/video-79337779_456243692
-
-  и
-
-  https://vk.ru/video-79337779_456243692
-
-  и
-
-  https://vk.com/video-79337779_456243692
-
-  Превращаем их в:
-
-  https://vkvideo.ru/video_ext.php?oid=-79337779&id=456243692
 */
 
-function getVKVideoData(url: string) {
+function getVKVideoData(
+  url: string
+) {
 
   try {
 
@@ -208,8 +211,7 @@ function getVKVideoData(url: string) {
 
 
     /*
-      Если пользователь уже
-      вставил готовую embed-ссылку
+      Готовая VK embed-ссылка
     */
 
     if (
@@ -288,11 +290,13 @@ function getVKVideoData(url: string) {
 
 /*
   =========================
-  TYPE
+  VIDEO TYPE
   =========================
 */
 
-function getVideoType(url: string) {
+function getVideoType(
+  url: string
+) {
 
   const lower =
     url.toLowerCase();
@@ -355,7 +359,6 @@ function VideoPlayer({
   videoUrl
 }: Props) {
 
-
   const type =
     useMemo(
       () =>
@@ -417,7 +420,7 @@ function VideoPlayer({
           `https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&playsinline=1`
         }
 
-        title="YouTube video player"
+        title="YouTube"
 
         allow="
           accelerometer;
@@ -459,11 +462,10 @@ function VideoPlayer({
           `https://rutube.ru/play/embed/${rutubeId}`
         }
 
-        title="RUTUBE video player"
+        title="RUTUBE"
 
         allow="
           autoplay;
-          clipboard-write;
           encrypted-media;
           fullscreen;
           picture-in-picture
@@ -505,11 +507,6 @@ function VideoPlayer({
     );
 
 
-    /*
-      Если VK дал hash,
-      обязательно сохраняем его.
-    */
-
     if (vkData.hash) {
 
       params.set(
@@ -519,12 +516,6 @@ function VideoPlayer({
 
     }
 
-
-    /*
-      HD 3 = 1280x720.
-      Это стандартный вариант
-      для embed-плеера.
-    */
 
     params.set(
       "hd",
@@ -542,14 +533,13 @@ function VideoPlayer({
           `https://vkvideo.ru/video_ext.php?${params.toString()}`
         }
 
-        title="VK Video player"
+        title="VK Video"
 
         allow="
           autoplay;
           encrypted-media;
           fullscreen;
-          picture-in-picture;
-          screen-wake-lock
+          picture-in-picture
         "
 
         frameBorder="0"
@@ -565,7 +555,7 @@ function VideoPlayer({
 
   /*
     =========================
-    ОШИБКА
+    ERROR
     =========================
   */
 
@@ -574,20 +564,18 @@ function VideoPlayer({
     <div className="player-message">
 
       <div className="player-message-title">
-
-        Не удалось открыть видео
-
+        Видео не найдено
       </div>
 
 
       <div className="player-message-text">
 
-        Проверь ссылку.
+        Проверь ссылку на видео.
 
         <br />
 
-        Сейчас поддерживаются
-        YouTube, RUTUBE и VK Видео.
+        Поддерживаются
+        YouTube, RUTUBE и VK Video.
 
       </div>
 
