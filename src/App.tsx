@@ -4,8 +4,6 @@ import RoomCard from "./components/RoomCard";
 import WatchRoom from "./components/WatchRoom";
 import CreateRoom from "./components/CreateRoom";
 
-import { getTelegramUser } from "./telegram";
-
 
 type Room = {
   title: string;
@@ -14,23 +12,17 @@ type Room = {
 };
 
 
-
 function App() {
 
 
-  const user = getTelegramUser();
-
-
-
-  const [rooms, setRooms] =
-    useState<Room[]>([
-      {
-        title: "Вечерний фильм 🎬",
-        users: 3,
-        videoUrl:
-          "https://www.w3schools.com/html/mov_bbb.mp4"
-      }
-    ]);
+  const [rooms, setRooms] = useState<Room[]>([
+    {
+      title: "Вечерний фильм 🎬",
+      users: 3,
+      videoUrl:
+        "https://www.w3schools.com/html/mov_bbb.mp4"
+    }
+  ]);
 
 
 
@@ -45,14 +37,12 @@ function App() {
 
 
 
-
   function createRoom(
     title: string,
     videoUrl: string
   ) {
 
-
-    const room = {
+    const newRoom = {
 
       title,
 
@@ -65,11 +55,11 @@ function App() {
 
     setRooms([
       ...rooms,
-      room
+      newRoom
     ]);
 
 
-    setActiveRoom(room);
+    setActiveRoom(newRoom);
 
 
     setShowCreate(false);
@@ -79,19 +69,21 @@ function App() {
 
 
 
-
   if (activeRoom) {
 
     return (
 
       <WatchRoom
+
         name={activeRoom.title}
+
+        videoUrl={activeRoom.videoUrl}
+
       />
 
     );
 
   }
-
 
 
 
@@ -108,7 +100,7 @@ function App() {
 
 
       <h1>
-        Привет, {user?.first_name || "друг"} 👋
+        Кино вместе
       </h1>
 
 
@@ -130,12 +122,20 @@ function App() {
 
 
 
+
       {
-        showCreate &&
-        <CreateRoom
-          onCreate={createRoom}
-        />
+        showCreate && (
+
+          <CreateRoom
+
+            onCreate={createRoom}
+
+          />
+
+        )
       }
+
+
 
 
 
@@ -146,20 +146,27 @@ function App() {
 
 
 
+
       {
         rooms.map(
-          (room,index) => (
+          (room, index) => (
 
             <div
+
               key={index}
+
               onClick={() =>
                 setActiveRoom(room)
               }
+
             >
 
               <RoomCard
+
                 title={room.title}
+
                 users={room.users}
+
               />
 
             </div>
