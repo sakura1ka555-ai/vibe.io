@@ -7,6 +7,9 @@ import {
 import CreateRoom from "./components/CreateRoom";
 import RoomCard from "./components/RoomCard";
 import WatchRoom from "./components/WatchRoom";
+import ProfileModal, {
+  ProfileData
+} from "./components/ProfileModal";
 
 import {
   initTelegram,
@@ -26,13 +29,93 @@ type Room = {
 };
 
 
+const PROFILE_STORAGE_KEY =
+  "vibe-profile";
+
+
+function getSavedProfile(): ProfileData {
+
+  try {
+
+    const saved =
+      localStorage.getItem(
+        PROFILE_STORAGE_KEY
+      );
+
+
+    if (saved) {
+
+      const parsed =
+        JSON.parse(saved);
+
+
+      return {
+
+        name:
+          parsed?.name ||
+          "",
+
+        avatar:
+          parsed?.avatar ||
+          ""
+
+      };
+
+    }
+
+  } catch {
+
+    // ignore
+
+  }
+
+
+  return {
+
+    name:
+      "",
+
+    avatar:
+      ""
+
+  };
+
+}
+
+
 function App() {
 
   initTelegram();
 
 
-  const user =
+  const telegramUser =
     getTelegramUser();
+
+
+  const [profile, setProfile] =
+    useState<ProfileData>(
+      () => {
+
+        const saved =
+          getSavedProfile();
+
+
+        return {
+
+          name:
+            saved.name ||
+            telegramUser?.first_name ||
+            "Guest",
+
+          avatar:
+            saved.avatar ||
+            telegramUser?.photo_url ||
+            ""
+
+        };
+
+      }
+    );
 
 
   const [rooms, setRooms] =
@@ -44,6 +127,10 @@ function App() {
 
 
   const [joinOpen, setJoinOpen] =
+    useState(false);
+
+
+  const [profileOpen, setProfileOpen] =
     useState(false);
 
 
@@ -61,6 +148,37 @@ function App() {
 
   const autoJoinStarted =
     useRef(false);
+
+
+  /*
+    =========================
+    SAVE PROFILE
+  =========================
+  */
+
+  useEffect(() => {
+
+    try {
+
+      localStorage.setItem(
+        PROFILE_STORAGE_KEY,
+        JSON.stringify(
+          profile
+        )
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Profile save error:",
+        error
+      );
+
+    }
+
+  }, [
+    profile
+  ]);
 
 
   /*
@@ -290,12 +408,6 @@ function App() {
       );
 
 
-      /*
-        Убираем ?room=XXXX
-        из адресной строки,
-        но страницу не перезагружаем.
-      */
-
       try {
 
         const cleanUrl =
@@ -311,7 +423,7 @@ function App() {
 
       } catch {
 
-        // ничего
+        // ignore
 
       }
 
@@ -339,8 +451,8 @@ function App() {
 
   /*
     =========================
-    AUTO JOIN FROM LINK
-  =========================
+    AUTO JOIN
+    =========================
   */
 
   useEffect(() => {
@@ -397,7 +509,7 @@ function App() {
   /*
     =========================
     KEYBOARD
-  =========================
+    =========================
   */
 
   function handleRoomCodeKeyDown(
@@ -428,8 +540,30 @@ function App() {
 
   /*
     =========================
+    PROFILE SAVE
+    =========================
+  */
+
+  function saveProfile(
+    newProfile: ProfileData
+  ) {
+
+    setProfile(
+      newProfile
+    );
+
+
+    setProfileOpen(
+      false
+    );
+
+  }
+
+
+  /*
+    =========================
     ACTIVE ROOM
-  =========================
+    =========================
   */
 
   if (
@@ -452,6 +586,14 @@ function App() {
           activeRoom.id
         }
 
+        profile={
+          profile
+        }
+
+        onProfileChange={
+          setProfile
+        }
+
       />
 
     );
@@ -461,8 +603,23 @@ function App() {
 
   /*
     =========================
+    AVATAR LETTER
+    =========================
+  */
+
+  const profileLetter =
+    (
+      profile.name ||
+      "G"
+    )
+      .charAt(0)
+      .toUpperCase();
+
+
+  /*
+    =========================
     HOME
-  =========================
+    =========================
   */
 
   return (
@@ -472,26 +629,59 @@ function App() {
 
       <div className="brand">
 
-
         <div className="logo">
-
           VIBE
-
         </div>
-
 
         <div className="status">
-
           ● ONLINE
-
         </div>
-
 
       </div>
 
 
-      <section className="hero">
+      {/* =========================
+          PROFILE BUTTON
+      ========================= */}
 
+      <button
+        type="button"
+        className="profile profile-button"
+        onClick={() =>
+          setProfileOpen(true)
+        }
+      >
+
+        {profile.avatar ? (
+
+          <img
+            src={profile.avatar}
+            alt=""
+            className="profile-button-avatar"
+          />
+
+        ) : (
+
+          <span className="profile-button-letter">
+            {profileLetter}
+          </span>
+
+        )}
+
+
+        <span className="profile-button-name">
+          {profile.name}
+        </span>
+
+
+        <span className="profile-button-arrow">
+          ›
+        </span>
+
+      </button>
+
+
+      <section className="hero">
 
         <h1>
 
@@ -512,50 +702,35 @@ function App() {
 
         </p>
 
-
       </section>
 
 
       <section className="actions">
 
-
         <button
-
           type="button"
-
           className="primary"
-
           onClick={() =>
             setCreateOpen(
               true
             )
           }
-
         >
-
           + Создать комнату
-
         </button>
 
 
         <button
-
           type="button"
-
           className="secondary"
-
           onClick={() =>
             setJoinOpen(
               true
             )
           }
-
         >
-
           Войти в комнату
-
         </button>
-
 
       </section>
 
@@ -591,108 +766,76 @@ function App() {
 
         <div className="modal-backdrop">
 
-
           <div className="room-modal">
 
-
             <button
-
               type="button"
-
               className="modal-close"
-
               onClick={() =>
                 setJoinOpen(
                   false
                 )
               }
-
             >
-
               ×
-
             </button>
 
 
             <div className="modal-label">
-
               JOIN ROOM
-
             </div>
 
 
             <h2>
-
               Войти в комнату
-
             </h2>
 
 
             <p className="modal-description">
-
               Введи код комнаты,
               который отправил тебе друг.
-
             </p>
 
 
             <div className="video-url-block">
 
-
               <label>
-
                 ID комнаты
-
               </label>
 
 
               <input
-
                 type="text"
-
                 value={
                   roomCode
                 }
-
                 onChange={
                   event =>
                     setRoomCode(
                       event.target.value
                     )
                 }
-
                 onKeyDown={
                   handleRoomCodeKeyDown
                 }
-
                 placeholder="Например K7M4QX"
-
                 maxLength={6}
-
                 autoFocus
-
                 autoComplete="off"
-
               />
-
 
             </div>
 
 
             <button
-
               type="button"
-
               className="join-submit-button"
-
               onClick={() =>
                 void joinRoom()
               }
-
               disabled={
                 joining
               }
-
             >
 
               {joining
@@ -702,9 +845,7 @@ function App() {
 
             </button>
 
-
           </div>
-
 
         </div>
 
@@ -715,13 +856,25 @@ function App() {
           PROFILE
       ========================= */}
 
-      {user && (
+      {profileOpen && (
 
-        <div className="profile">
+        <ProfileModal
 
-          {user.first_name}
+          profile={
+            profile
+          }
 
-        </div>
+          onSave={
+            saveProfile
+          }
+
+          onClose={() =>
+            setProfileOpen(
+              false
+            )
+          }
+
+        />
 
       )}
 
@@ -734,11 +887,8 @@ function App() {
 
         <section className="rooms">
 
-
           <h2>
-
             Ваши комнаты
-
           </h2>
 
 
@@ -764,11 +914,9 @@ function App() {
             )
           )}
 
-
         </section>
 
       )}
-
 
     </main>
 
