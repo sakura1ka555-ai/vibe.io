@@ -1,40 +1,27 @@
 import { useState } from "react";
 
 
-type CreateRoomProps = {
-  onCreate: (
-    title: string,
-    videoUrl: string
+type Props = {
+  onCreate:
+  (
+    title:string,
+    videoUrl:string
   ) => void;
 };
 
 
+
 function CreateRoom({
   onCreate
-}: CreateRoomProps) {
+}:Props) {
 
 
-  const [title, setTitle] =
+  const [title,setTitle] =
     useState("");
 
 
-  const [videoUrl, setVideoUrl] =
+  const [videoUrl,setVideoUrl] =
     useState("");
-
-
-
-  function submit() {
-
-    if (!title || !videoUrl) return;
-
-
-    onCreate(
-      title,
-      videoUrl
-    );
-
-
-  }
 
 
 
@@ -43,22 +30,18 @@ function CreateRoom({
     <div className="room-create">
 
 
-      <h2>
-        🎬 Новая VIBE-комната
-      </h2>
-
-
       <input
 
-        placeholder="Название фильма"
+        placeholder="Название комнаты"
 
         value={title}
 
         onChange={
-          e => setTitle(e.target.value)
+          e=>setTitle(e.target.value)
         }
 
       />
+
 
 
       <input
@@ -68,16 +51,25 @@ function CreateRoom({
         value={videoUrl}
 
         onChange={
-          e => setVideoUrl(e.target.value)
+          e=>setVideoUrl(e.target.value)
         }
 
       />
 
 
 
-      <button onClick={submit}>
+      <button
 
-        Создать комнату
+        onClick={() =>
+          onCreate(
+            title,
+            videoUrl
+          )
+        }
+
+      >
+
+        Создать
 
       </button>
 
