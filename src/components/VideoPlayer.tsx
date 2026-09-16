@@ -29,7 +29,7 @@ type Props = {
 
 
 /* =================================
-   TYPES
+   YOUTUBE TYPES
 ================================= */
 
 type YouTubePlayer = {
@@ -88,6 +88,65 @@ type YouTubePlayerConstructor = new (
 ) => YouTubePlayer;
 
 
+/* =================================
+   VK TYPES
+================================= */
+
+type VKPlayerState = {
+
+  state?: string;
+
+  volume?: number;
+
+  muted?: boolean;
+
+  time?: number;
+
+  duration?: number;
+
+};
+
+
+type VKVideoPlayer = {
+
+  play: () => void;
+
+  pause: () => void;
+
+  seek: (
+    time: number
+  ) => void;
+
+  getCurrentTime: () => number;
+
+  getDuration?: () => number;
+
+  getState?: () => string;
+
+  on: (
+    event: string,
+    listener: (
+      state?: VKPlayerState
+    ) => void
+  ) => void;
+
+  off?: (
+    event: string,
+    listener: (
+      state?: VKPlayerState
+    ) => void
+  ) => void;
+
+  destroy: () => void;
+
+};
+
+
+type VKVideoPlayerConstructor = (
+  iframe: HTMLIFrameElement
+) => VKVideoPlayer;
+
+
 declare global {
 
   interface Window {
@@ -97,6 +156,14 @@ declare global {
     };
 
     onYouTubeIframeAPIReady?: () => void;
+
+
+    VK?: {
+
+      VideoPlayer:
+        VKVideoPlayerConstructor;
+
+    };
 
   }
 
@@ -126,10 +193,6 @@ function getYouTubeId(
         );
 
 
-    /*
-      youtu.be/VIDEO_ID
-    */
-
     if (
       host === "youtu.be"
     ) {
@@ -141,10 +204,6 @@ function getYouTubeId(
 
     }
 
-
-    /*
-      youtube.com/watch?v=VIDEO_ID
-    */
 
     if (
       host === "youtube.com" ||
@@ -163,10 +222,6 @@ function getYouTubeId(
 
       }
 
-
-      /*
-        youtube.com/embed/VIDEO_ID
-      */
 
       const parts =
         parsed.pathname
@@ -191,10 +246,6 @@ function getYouTubeId(
 
       }
 
-
-      /*
-        youtube.com/shorts/VIDEO_ID
-      */
 
       const shortsIndex =
         parts.indexOf(
@@ -308,6 +359,10 @@ function getVKVideoData(
       new URL(url);
 
 
+    /*
+      Already an embed URL
+    */
+
     if (
       parsed.pathname.includes(
         "video_ext.php"
@@ -345,6 +400,14 @@ function getVKVideoData(
 
     }
 
+
+    /*
+      VK Video:
+
+      https://vkvideo.ru/video-123_456
+
+      https://vk.com/video-123_456
+    */
 
     const match =
       parsed.pathname.match(
@@ -394,14 +457,32 @@ function VideoPlayer({
   remoteControl
 }: Props) {
 
-  const playerContainer =
+  /*
+    =========================
+    COMMON REFS
+    =========================
+  */
+
+  const youtubeContainer =
     useRef<HTMLDivElement | null>(
       null
     );
 
 
-  const player =
+  const youtubePlayer =
     useRef<YouTubePlayer | null>(
+      null
+    );
+
+
+  const vkIframe =
+    useRef<HTMLIFrameElement | null>(
+      null
+    );
+
+
+  const vkPlayer =
+    useRef<VKVideoPlayer | null>(
       null
     );
 
@@ -428,6 +509,12 @@ function VideoPlayer({
     useRef(onControl);
 
 
+  /*
+    =========================
+    DETECT SOURCE
+    =========================
+  */
+
   const youtubeId =
     getYouTubeId(
       videoUrl
@@ -447,8 +534,9 @@ function VideoPlayer({
 
 
   /*
-    Keep callbacks current
-    without recreating player
+    =========================
+    CALLBACKS
+    =========================
   */
 
   useEffect(() => {
@@ -473,7 +561,7 @@ function VideoPlayer({
 
   /*
     =========================
-    LOAD YOUTUBE API
+    YOUTUBE
     =========================
   */
 
@@ -490,13 +578,13 @@ function VideoPlayer({
       false;
 
 
-    function createPlayer() {
+    function createYouTubePlayer() {
 
       if (
         cancelled ||
-        !playerContainer.current ||
+        !youtubeContainer.current ||
         !window.YT?.Player ||
-        player.current
+        youtubePlayer.current
       ) {
 
         return;
@@ -504,9 +592,9 @@ function VideoPlayer({
       }
 
 
-      player.current =
+      youtubePlayer.current =
         new window.YT.Player(
-          playerContainer.current,
+          youtubeContainer.current,
           {
 
             videoId:
@@ -544,11 +632,6 @@ function VideoPlayer({
                   true;
 
 
-                /*
-                  Put new viewer at
-                  current room position.
-                */
-
                 if (
                   initialPosition > 0
                 ) {
@@ -559,15 +642,6 @@ function VideoPlayer({
                   );
 
                 }
-
-
-                /*
-                  Do NOT autoplay
-                  automatically.
-
-                  Browser autoplay
-                  restrictions can block it.
-                */
 
               },
 
@@ -585,23 +659,10 @@ function VideoPlayer({
                 }
 
 
-                if (
-                  !event.target
-                ) {
-
-                  return;
-
-                }
-
-
                 const position =
                   event.target
                     .getCurrentTime();
 
-
-                /*
-                  1 = PLAYING
-                */
 
                 if (
                   event.data === 1
@@ -614,10 +675,6 @@ function VideoPlayer({
 
                 }
 
-
-                /*
-                  2 = PAUSED
-                */
 
                 if (
                   event.data === 2
@@ -640,15 +697,11 @@ function VideoPlayer({
     }
 
 
-    /*
-      API already loaded
-    */
-
     if (
       window.YT?.Player
     ) {
 
-      createPlayer();
+      createYouTubePlayer();
 
     } else {
 
@@ -661,7 +714,7 @@ function VideoPlayer({
 
           previous?.();
 
-          createPlayer();
+          createYouTubePlayer();
 
         };
 
@@ -708,12 +761,12 @@ function VideoPlayer({
 
 
       if (
-        player.current
+        youtubePlayer.current
       ) {
 
-        player.current.destroy();
+        youtubePlayer.current.destroy();
 
-        player.current =
+        youtubePlayer.current =
           null;
 
       }
@@ -727,15 +780,14 @@ function VideoPlayer({
 
   /*
     =========================
-    INITIAL STATE
+    VK API
     =========================
   */
 
   useEffect(() => {
 
     if (
-      !ready.current ||
-      !player.current
+      !vkData
     ) {
 
       return;
@@ -743,28 +795,471 @@ function VideoPlayer({
     }
 
 
-    if (
-      initialPosition > 0
-    ) {
+    let cancelled =
+      false;
 
-      player.current.seekTo(
-        initialPosition,
-        true
-      );
+
+    function connectVK() {
+
+      if (
+        cancelled ||
+        !vkIframe.current ||
+        !window.VK?.VideoPlayer ||
+        vkPlayer.current
+      ) {
+
+        return;
+
+      }
+
+
+      try {
+
+        const player =
+          window.VK.VideoPlayer(
+            vkIframe.current
+          );
+
+
+        vkPlayer.current =
+          player;
+
+
+        ready.current =
+          true;
+
+
+        /*
+          VIDEO INITIALIZED
+        */
+
+        const handleInited = (
+          state?: VKPlayerState
+        ) => {
+
+          if (
+            cancelled ||
+            !vkPlayer.current
+          ) {
+
+            return;
+
+          }
+
+
+          ready.current =
+            true;
+
+
+          const position =
+            Number(
+              state?.time ??
+              initialPosition ??
+              0
+            );
+
+
+          if (
+            position > 0
+          ) {
+
+            try {
+
+              vkPlayer.current.seek(
+                position
+              );
+
+            } catch {
+
+              /* ignore */
+
+            }
+
+          }
+
+        };
+
+
+        /*
+          PLAY
+        */
+
+        const handleStarted = (
+          state?: VKPlayerState
+        ) => {
+
+          if (
+            applyingRemote.current
+          ) {
+
+            return;
+
+          }
+
+
+          const position =
+            Number(
+              state?.time ??
+              vkPlayer.current?.getCurrentTime() ??
+              0
+            );
+
+
+          controlCallback.current?.(
+            "play",
+            position
+          );
+
+        };
+
+
+        /*
+          RESUME
+        */
+
+        const handleResumed = (
+          state?: VKPlayerState
+        ) => {
+
+          if (
+            applyingRemote.current
+          ) {
+
+            return;
+
+          }
+
+
+          const position =
+            Number(
+              state?.time ??
+              vkPlayer.current?.getCurrentTime() ??
+              0
+            );
+
+
+          controlCallback.current?.(
+            "play",
+            position
+          );
+
+        };
+
+
+        /*
+          PAUSE
+        */
+
+        const handlePaused = (
+          state?: VKPlayerState
+        ) => {
+
+          if (
+            applyingRemote.current
+          ) {
+
+            return;
+
+          }
+
+
+          const position =
+            Number(
+              state?.time ??
+              vkPlayer.current?.getCurrentTime() ??
+              0
+            );
+
+
+          controlCallback.current?.(
+            "pause",
+            position
+          );
+
+        };
+
+
+        /*
+          TIME UPDATE
+        */
+
+        const handleTimeUpdate = (
+          state?: VKPlayerState
+        ) => {
+
+          if (
+            applyingRemote.current
+          ) {
+
+            return;
+
+          }
+
+
+          const position =
+            Number(
+              state?.time ??
+              vkPlayer.current?.getCurrentTime() ??
+              0
+            );
+
+
+          positionCallback.current?.(
+            position
+          );
+
+        };
+
+
+        player.on(
+          "inited",
+          handleInited
+        );
+
+
+        player.on(
+          "started",
+          handleStarted
+        );
+
+
+        player.on(
+          "resumed",
+          handleResumed
+        );
+
+
+        player.on(
+          "paused",
+          handlePaused
+        );
+
+
+        player.on(
+          "timeupdate",
+          handleTimeUpdate
+        );
+
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "VK Video API error:",
+          error
+        );
+
+      }
 
     }
 
 
     /*
-      We intentionally don't
-      autoplay here.
-
-      User must press play once.
+      Load VK API
     */
 
+    if (
+      window.VK?.VideoPlayer
+    ) {
+
+      connectVK();
+
+    } else {
+
+      const existingScript =
+        document.querySelector(
+          'script[src="https://vk.com/js/api/videoplayer.js"]'
+        );
+
+
+      if (
+        existingScript
+      ) {
+
+        existingScript.addEventListener(
+          "load",
+          connectVK,
+          {
+            once: true
+          }
+        );
+
+      } else {
+
+        const script =
+          document.createElement(
+            "script"
+          );
+
+
+        script.src =
+          "https://vk.com/js/api/videoplayer.js";
+
+
+        script.async =
+          true;
+
+
+        script.onload =
+          connectVK;
+
+
+        script.onerror =
+          () => {
+
+            console.error(
+              "VK Video API failed to load"
+            );
+
+          };
+
+
+        document.head.appendChild(
+          script
+        );
+
+      }
+
+    }
+
+
+    return () => {
+
+      cancelled =
+        true;
+
+
+      ready.current =
+        false;
+
+
+      if (
+        vkPlayer.current
+      ) {
+
+        try {
+
+          vkPlayer.current.destroy();
+
+        } catch {
+
+          /* ignore */
+
+        }
+
+
+        vkPlayer.current =
+          null;
+
+      }
+
+    };
+
   }, [
-    initialPosition,
-    initialAction
+    vkData?.oid,
+    vkData?.id,
+    vkData?.hash
+  ]);
+
+
+  /*
+    =========================
+    CURRENT POSITION
+    =========================
+  */
+
+  useEffect(() => {
+
+    if (
+      !youtubeId &&
+      !vkData
+    ) {
+
+      return;
+
+    }
+
+
+    const timer =
+      window.setInterval(
+        () => {
+
+          /*
+            YOUTUBE
+          */
+
+          if (
+            youtubeId &&
+            ready.current &&
+            youtubePlayer.current
+          ) {
+
+            try {
+
+              const position =
+                youtubePlayer.current
+                  .getCurrentTime();
+
+
+              positionCallback.current?.(
+                position
+              );
+
+            } catch {
+
+              /* ignore */
+
+            }
+
+          }
+
+
+          /*
+            VK
+          */
+
+          if (
+            vkData &&
+            ready.current &&
+            vkPlayer.current
+          ) {
+
+            try {
+
+              const position =
+                vkPlayer.current
+                  .getCurrentTime();
+
+
+              positionCallback.current?.(
+                position
+              );
+
+            } catch {
+
+              /* ignore */
+
+            }
+
+          }
+
+        },
+        1000
+      );
+
+
+    return () => {
+
+      window.clearInterval(
+        timer
+      );
+
+    };
+
+  }, [
+    youtubeId,
+    vkData
   ]);
 
 
@@ -777,9 +1272,7 @@ function VideoPlayer({
   useEffect(() => {
 
     if (
-      !remoteControl ||
-      !ready.current ||
-      !player.current
+      !remoteControl
     ) {
 
       return;
@@ -801,108 +1294,132 @@ function VideoPlayer({
       remoteControl.id;
 
 
-    applyingRemote.current =
-      true;
-
-
-    const target =
-      player.current;
-
-
-    target.seekTo(
-      remoteControl.position,
-      true
-    );
-
+    /*
+      YOUTUBE
+    */
 
     if (
-      remoteControl.action ===
-      "play"
+      youtubeId &&
+      ready.current &&
+      youtubePlayer.current
     ) {
 
-      target.playVideo();
-
-    } else {
-
-      target.pauseVideo();
-
-    }
+      applyingRemote.current =
+        true;
 
 
-    window.setTimeout(
-      () => {
-
-        applyingRemote.current =
-          false;
-
-      },
-      800
-    );
-
-  }, [
-    remoteControl
-  ]);
+      const target =
+        youtubePlayer.current;
 
 
-  /*
-    =========================
-    CURRENT POSITION
-    =========================
-  */
+      try {
 
-  useEffect(() => {
-
-    if (!youtubeId) {
-
-      return;
-
-    }
+        target.seekTo(
+          remoteControl.position,
+          true
+        );
 
 
-    const timer =
-      window.setInterval(
+        if (
+          remoteControl.action ===
+          "play"
+        ) {
+
+          target.playVideo();
+
+        } else {
+
+          target.pauseVideo();
+
+        }
+
+      } catch {
+
+        /* ignore */
+
+      }
+
+
+      window.setTimeout(
         () => {
 
-          if (
-            !ready.current ||
-            !player.current
-          ) {
-
-            return;
-
-          }
-
-
-          const position =
-            player.current
-              .getCurrentTime();
-
-
-          positionCallback.current?.(
-            position
-          );
+          applyingRemote.current =
+            false;
 
         },
         1000
       );
 
+    }
 
-    return () => {
 
-      window.clearInterval(
-        timer
+    /*
+      VK
+    */
+
+    if (
+      vkData &&
+      ready.current &&
+      vkPlayer.current
+    ) {
+
+      applyingRemote.current =
+        true;
+
+
+      const target =
+        vkPlayer.current;
+
+
+      try {
+
+        target.seek(
+          remoteControl.position
+        );
+
+
+        if (
+          remoteControl.action ===
+          "play"
+        ) {
+
+          target.play();
+
+        } else {
+
+          target.pause();
+
+        }
+
+      } catch {
+
+        /* ignore */
+
+      }
+
+
+      window.setTimeout(
+        () => {
+
+          applyingRemote.current =
+            false;
+
+        },
+        1000
       );
 
-    };
+    }
 
   }, [
-    youtubeId
+    remoteControl,
+    youtubeId,
+    vkData
   ]);
 
 
   /*
     =========================
-    YOUTUBE
+    YOUTUBE VIEW
     =========================
   */
 
@@ -912,7 +1429,7 @@ function VideoPlayer({
 
       <div
         ref={
-          playerContainer
+          youtubeContainer
         }
         className="youtube-player"
       />
@@ -924,7 +1441,7 @@ function VideoPlayer({
 
   /*
     =========================
-    RUTUBE
+    RUTUBE VIEW
     =========================
   */
 
@@ -933,7 +1450,6 @@ function VideoPlayer({
     return (
 
       <iframe
-
         className="embedded-player"
 
         src={
@@ -950,7 +1466,6 @@ function VideoPlayer({
         "
 
         allowFullScreen
-
       />
 
     );
@@ -960,7 +1475,7 @@ function VideoPlayer({
 
   /*
     =========================
-    VK
+    VK VIEW
     =========================
   */
 
@@ -998,9 +1513,24 @@ function VideoPlayer({
     );
 
 
+    /*
+      VERY IMPORTANT:
+      Enable VK JavaScript API.
+    */
+
+    params.set(
+      "js_api",
+      "1"
+    );
+
+
     return (
 
       <iframe
+
+        ref={
+          vkIframe
+        }
 
         className="embedded-player"
 
@@ -1014,7 +1544,8 @@ function VideoPlayer({
           autoplay;
           encrypted-media;
           fullscreen;
-          picture-in-picture
+          picture-in-picture;
+          screen-wake-lock
         "
 
         frameBorder="0"
