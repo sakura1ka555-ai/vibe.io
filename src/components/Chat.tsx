@@ -3,7 +3,6 @@ import {
   useState
 } from "react";
 
-
 import {
   socket
 } from "../socket";
@@ -27,6 +26,8 @@ type PresenceUser = {
   position: number;
 
   time: string;
+
+  avatar?: string;
 
 };
 
@@ -135,6 +136,20 @@ function Chat({
   }
 
 
+  function getAvatarLetter(
+    name: string
+  ) {
+
+    return (
+      name ||
+      "G"
+    )
+      .charAt(0)
+      .toUpperCase();
+
+  }
+
+
   return (
 
     <div className="chat">
@@ -188,14 +203,18 @@ function Chat({
             <div className="viewer">
 
               <div className="viewer-avatar">
+
                 G
+
               </div>
+
 
               <div className="viewer-info">
 
                 <div className="viewer-name">
                   Guest
                 </div>
+
 
                 <div className="viewer-time">
                   00:00
@@ -218,13 +237,24 @@ function Chat({
                 className="viewer"
               >
 
+
                 <div className="viewer-avatar">
 
-                  {
-                    person.name
-                      .charAt(0)
-                      .toUpperCase()
-                  }
+                  {person.avatar ? (
+
+                    <img
+                      src={person.avatar}
+                      alt=""
+                      className="viewer-avatar-image"
+                    />
+
+                  ) : (
+
+                    getAvatarLetter(
+                      person.name
+                    )
+
+                  )}
 
                 </div>
 
@@ -293,6 +323,7 @@ function Chat({
               <b>
                 {message.user}
               </b>
+
 
               <span>
                 {message.text}
