@@ -2,14 +2,13 @@ import { io } from "socket.io-client";
 
 
 export const socket = io(
-  "http://localhost:3001",
+  "https://vibe-server-la2z.onrender.com",
   {
     transports: [
       "websocket"
     ]
   }
 );
-
 
 
 socket.on(
@@ -25,7 +24,6 @@ socket.on(
 );
 
 
-
 socket.on(
   "disconnect",
   () => {
@@ -38,14 +36,17 @@ socket.on(
 );
 
 
-
 export function joinRoom(
-  roomId:string
+  roomId: string,
+  userName = "Guest"
 ) {
 
   socket.emit(
     "join-room",
-    roomId
+    {
+      roomId,
+      userName
+    }
   );
 
 }
