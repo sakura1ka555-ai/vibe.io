@@ -91,6 +91,8 @@ function App() {
 
         videoUrl={activeRoom.videoUrl}
 
+        roomId={activeRoom.id}
+
       />
 
     );
@@ -126,11 +128,9 @@ function App() {
 
 
       <button
-
         onClick={() =>
           setShowCreate(true)
         }
-
       >
         + Создать комнату
       </button>
@@ -149,6 +149,7 @@ function App() {
 
         )
       }
+
 
 
 
