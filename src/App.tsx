@@ -59,6 +59,70 @@ function App() {
 
   /*
     =========================
+    URL ROOM
+    =========================
+
+    Поддерживаем:
+
+    ?room=ABC123
+
+    а также:
+
+    ?roomId=ABC123
+  */
+
+  useEffect(() => {
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+
+    const urlRoom =
+      (
+        params.get("room") ||
+        params.get("roomId") ||
+        ""
+      )
+        .trim()
+        .toUpperCase();
+
+
+    if (!urlRoom) {
+
+      return;
+
+    }
+
+
+    /*
+      Сразу записываем ID
+      в поле комнаты.
+    */
+
+    setRoomCode(
+      urlRoom
+    );
+
+
+    /*
+      Автоматически открываем
+      окно входа.
+
+      Это безопаснее, чем сразу
+      входить без подтверждения:
+      пользователь понимает,
+      куда он попал.
+    */
+
+    setJoinOpen(true);
+
+  }, []);
+
+
+  /*
+    =========================
     CREATE ROOM
     =========================
   */
@@ -137,6 +201,7 @@ function App() {
 
       setActiveRoom(room);
 
+
     } catch (error) {
 
       console.error(
@@ -159,10 +224,15 @@ function App() {
     =========================
   */
 
-  async function joinRoom() {
+  async function joinRoom(
+    codeOverride?: string
+  ) {
 
     const code =
-      roomCode
+      (
+        codeOverride ??
+        roomCode
+      )
         .trim()
         .toUpperCase();
 
@@ -266,6 +336,26 @@ function App() {
       setRoomCode("");
 
 
+      /*
+        Убираем ?room=ABC123
+        из адресной строки.
+
+        Саму страницу при этом
+        НЕ перезагружаем.
+      */
+
+      const cleanUrl =
+        window.location.origin +
+        window.location.pathname;
+
+
+      window.history.replaceState(
+        {},
+        "",
+        cleanUrl
+      );
+
+
     } catch (error) {
 
       console.error(
@@ -303,6 +393,7 @@ function App() {
     ) {
 
       event.preventDefault();
+
 
       if (!joining) {
 
@@ -556,8 +647,8 @@ function App() {
 
               className="join-submit-button"
 
-              onClick={
-                joinRoom
+              onClick={() =>
+                joinRoom()
               }
 
               disabled={
