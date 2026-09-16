@@ -12,7 +12,9 @@ import {
   getTelegramUser
 } from "./telegram";
 
-import { socket } from "./socket";
+
+const SERVER_URL =
+  "https://vibe-server-la2z.onrender.com";
 
 
 type Room = {
@@ -34,17 +36,22 @@ function App() {
   const [rooms, setRooms] =
     useState<Room[]>([]);
 
+
   const [createOpen, setCreateOpen] =
     useState(false);
+
 
   const [joinOpen, setJoinOpen] =
     useState(false);
 
+
   const [roomCode, setRoomCode] =
     useState("");
 
+
   const [activeRoom, setActiveRoom] =
     useState<Room | null>(null);
+
 
   const [joining, setJoining] =
     useState(false);
@@ -56,7 +63,7 @@ function App() {
     =========================
   */
 
-  function createRoom(
+  async function createRoom(
     videoUrl: string
   ) {
 
@@ -81,27 +88,67 @@ function App() {
     };
 
 
-    socket.emit(
-      "create-room",
-      {
-        roomId: room.id,
-        title: room.title,
-        videoUrl: room.videoUrl
+    try {
+
+      const response =
+        await fetch(
+          `${SERVER_URL}/rooms`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify({
+                roomId:
+                  room.id,
+
+                title:
+                  room.title,
+
+                videoUrl:
+                  room.videoUrl
+              })
+          }
+        );
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          "Не удалось создать комнату"
+        );
+
       }
-    );
 
 
-    setRooms(
-      previous => [
-        ...previous,
-        room
-      ]
-    );
+      setRooms(
+        previous => [
+          ...previous,
+          room
+        ]
+      );
 
 
-    setCreateOpen(false);
+      setCreateOpen(false);
 
-    setActiveRoom(room);
+      setActiveRoom(room);
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      alert(
+        "Не удалось создать комнату. Проверь соединение с сервером."
+      );
+
+    }
 
   }
 
@@ -112,7 +159,7 @@ function App() {
     =========================
   */
 
-  function joinRoom() {
+  async function joinRoom() {
 
     const code =
       roomCode
@@ -134,99 +181,143 @@ function App() {
     setJoining(true);
 
 
-    socket.emit(
-      "get-room",
-      code,
-      (
-        room: Room | null
-      ) => {
+    try {
 
-        if (!room) {
-
-          setJoining(false);
-
-          alert(
-            "Комната не найдена"
-          );
-
-          return;
-
-        }
-
-
-        const foundRoom: Room = {
-
-          id:
-            room.id,
-
-          title:
-            room.title,
-
-          users:
-            room.users,
-
-          videoUrl:
-            room.videoUrl
-
-        };
-
-
-        setActiveRoom(
-          foundRoom
+      const response =
+        await fetch(
+          `${SERVER_URL}/rooms/${encodeURIComponent(code)}`
         );
 
-        setJoinOpen(false);
 
-        setRoomCode("");
+      if (
+        response.status ===
+        404
+      ) {
+
+        alert(
+          "Комната не найдена"
+        );
 
         setJoining(false);
 
+        return;
+
       }
-    );
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          "Ошибка сервера"
+        );
+
+      }
+
+
+      const data =
+        await response.json();
+
+
+      if (
+        !data?.room
+      ) {
+
+        alert(
+          "Комната не найдена"
+        );
+
+        setJoining(false);
+
+        return;
+
+      }
+
+
+      const room =
+        data.room;
+
+
+      const foundRoom: Room = {
+
+        id:
+          room.id ||
+          room.roomId,
+
+        title:
+          room.title ||
+          `Комната ${code}`,
+
+        users:
+          room.users || 0,
+
+        videoUrl:
+          room.videoUrl || ""
+
+      };
+
+
+      setActiveRoom(
+        foundRoom
+      );
+
+
+      setJoinOpen(false);
+
+      setRoomCode("");
+
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      alert(
+        "Не удалось подключиться к серверу. Попробуй ещё раз."
+      );
+
+    } finally {
+
+      setJoining(false);
+
+    }
 
   }
 
 
   /*
     =========================
-    SOCKET ERRORS
+    KEYBOARD
     =========================
   */
 
-  useEffect(() => {
+  function handleRoomCodeKeyDown(
+    event:
+      React.KeyboardEvent<HTMLInputElement>
+  ) {
 
-    function roomNotFound() {
+    if (
+      event.key ===
+      "Enter"
+    ) {
 
-      setJoining(false);
+      event.preventDefault();
 
-      alert(
-        "Комната не найдена"
-      );
+      if (!joining) {
+
+        joinRoom();
+
+      }
 
     }
 
-
-    socket.on(
-      "room-not-found",
-      roomNotFound
-    );
-
-
-    return () => {
-
-      socket.off(
-        "room-not-found",
-        roomNotFound
-      );
-
-    };
-
-  }, []);
+  }
 
 
   /*
     =========================
-    WATCH ROOM
+    ACTIVE ROOM
     =========================
   */
 
@@ -272,6 +363,7 @@ function App() {
           VIBE
         </div>
 
+
         <div className="status">
           ● ONLINE
         </div>
@@ -282,16 +374,22 @@ function App() {
       <section className="hero">
 
         <h1>
+
           Смотри вместе.
+
           <br />
+
           Чувствуй момент.
+
         </h1>
 
 
         <p>
+
           Совместный просмотр
           фильмов с друзьями
           где бы вы ни были.
+
         </p>
 
       </section>
@@ -299,29 +397,47 @@ function App() {
 
       <section className="actions">
 
+
         <button
+
           type="button"
+
           className="primary"
+
           onClick={() =>
             setCreateOpen(true)
           }
+
         >
+
           + Создать комнату
+
         </button>
 
 
         <button
+
           type="button"
+
           className="secondary"
+
           onClick={() =>
             setJoinOpen(true)
           }
+
         >
+
           Войти в комнату
+
         </button>
+
 
       </section>
 
+
+      {/* =========================
+          CREATE
+      ========================= */}
 
       {createOpen && (
 
@@ -340,9 +456,14 @@ function App() {
       )}
 
 
+      {/* =========================
+          JOIN
+      ========================= */}
+
       {joinOpen && (
 
         <div className="modal-backdrop">
+
 
           <div className="room-modal">
 
@@ -358,30 +479,41 @@ function App() {
               }
 
             >
+
               ×
+
             </button>
 
 
             <div className="modal-label">
+
               JOIN ROOM
+
             </div>
 
 
             <h2>
+
               Войти в комнату
+
             </h2>
 
 
             <p className="modal-description">
+
               Введи код комнаты,
               который отправил тебе друг.
+
             </p>
 
 
             <div className="video-url-block">
 
+
               <label>
+
                 ID комнаты
+
               </label>
 
 
@@ -389,13 +521,19 @@ function App() {
 
                 type="text"
 
-                value={roomCode}
+                value={
+                  roomCode
+                }
 
                 onChange={
                   event =>
                     setRoomCode(
                       event.target.value
                     )
+                }
+
+                onKeyDown={
+                  handleRoomCodeKeyDown
                 }
 
                 placeholder="Например K7M4QX"
@@ -406,24 +544,8 @@ function App() {
 
                 autoComplete="off"
 
-                onKeyDown={
-                  event => {
-
-                    if (
-                      event.key ===
-                      "Enter"
-                    ) {
-
-                      event.preventDefault();
-
-                      joinRoom();
-
-                    }
-
-                  }
-                }
-
               />
+
 
             </div>
 
@@ -434,9 +556,13 @@ function App() {
 
               className="join-submit-button"
 
-              onClick={joinRoom}
+              onClick={
+                joinRoom
+              }
 
-              disabled={joining}
+              disabled={
+                joining
+              }
 
             >
 
@@ -455,21 +581,33 @@ function App() {
       )}
 
 
+      {/* =========================
+          PROFILE
+      ========================= */}
+
       {user && (
 
         <div className="profile">
+
           {user.first_name}
+
         </div>
 
       )}
 
+
+      {/* =========================
+          ROOMS
+      ========================= */}
 
       {rooms.length > 0 && (
 
         <section className="rooms">
 
           <h2>
+
             Ваши комнаты
+
           </h2>
 
 
@@ -478,7 +616,9 @@ function App() {
 
               <RoomCard
 
-                key={room.id}
+                key={
+                  room.id
+                }
 
                 title={
                   room.title
@@ -492,6 +632,7 @@ function App() {
 
             )
           )}
+
 
         </section>
 
