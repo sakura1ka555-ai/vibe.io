@@ -3,302 +3,505 @@ import cors from "@fastify/cors";
 import { Server } from "socket.io";
 
 
-const app = Fastify();
+const app =
+  Fastify();
 
 
-await app.register(cors, {
-  origin: "*"
-});
-
-
-/*
-  Проверка сервера
-*/
-
-app.get("/", async () => {
-
-  return {
-    app: "VIBE SERVER",
-    status: "online"
-  };
-
-});
-
-
-/*
-  Socket.IO
-*/
-
-const io = new Server(
-  app.server,
+await app.register(
+  cors,
   {
-    cors: {
-      origin: "*"
-    }
+    origin: "*"
   }
 );
 
 
 /*
-  Комнаты
-
-  Пока храним в памяти сервера.
-  Если Render перезапустится —
-  комнаты исчезнут.
+  =========================
+  HTTP
+  =========================
 */
 
-const rooms = {};
+app.get(
+  "/",
+  async () => {
+
+    return {
+      app: "VIBE SERVER",
+      status: "online"
+    };
+
+  }
+);
 
 
 /*
-  Подключение пользователя
+  =========================
+  SOCKET.IO
+  =========================
 */
 
-io.on("connection", (socket) => {
-
-  console.log(
-    "🟢 user connected:",
-    socket.id
-  );
-
-
-  /*
-    СОЗДАНИЕ КОМНАТЫ
-  */
-
-  socket.on(
-    "create-room",
-    (data) => {
-
-      const roomId =
-        String(data.roomId)
-          .trim()
-          .toUpperCase();
-
-
-      if (!roomId) {
-        return;
+const io =
+  new Server(
+    app.server,
+    {
+      cors: {
+        origin: "*",
+        methods: [
+          "GET",
+          "POST"
+        ]
       }
-
-
-      rooms[roomId] = {
-
-        roomId,
-
-        title:
-          data.title ||
-          `Комната ${roomId}`,
-
-        videoUrl:
-          data.videoUrl || "",
-
-        users: 0
-
-      };
-
-
-      console.log(
-        "🏠 room created:",
-        roomId
-      );
-
     }
   );
 
 
-  /*
-    ПОЛУЧЕНИЕ КОМНАТЫ
-  */
+/*
+  =========================
+  ROOMS
+  =========================
+*/
 
-  socket.on(
-    "get-room",
-    (roomId, callback) => {
-
-      const id =
-        String(roomId)
-          .trim()
-          .toUpperCase();
+const rooms =
+  new Map();
 
 
-      const room =
-        rooms[id];
+/*
+  =========================
+  CONNECTION
+  =========================
+*/
+
+io.on(
+  "connection",
+  (socket) => {
+
+    console.log(
+      "🟢 user connected:",
+      socket.id
+    );
 
 
-      if (!room) {
+    /*
+      =========================
+      CREATE ROOM
+      =========================
+    */
+
+    socket.on(
+      "create-room",
+      (data) => {
+
+        const roomId =
+          String(
+            data?.roomId || ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        if (!roomId) {
+          return;
+        }
+
+
+        const room = {
+
+          roomId,
+
+          title:
+            data?.title ||
+            `Комната ${roomId}`,
+
+          videoUrl:
+            data?.videoUrl ||
+            "",
+
+          users: 0
+
+        };
+
+
+        rooms.set(
+          roomId,
+          room
+        );
+
 
         console.log(
-          "❌ room not found:",
+          "🏠 room created:",
+          roomId
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      GET ROOM
+      =========================
+    */
+
+    socket.on(
+      "get-room",
+      (
+        roomId,
+        callback
+      ) => {
+
+        const id =
+          String(
+            roomId || ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        const room =
+          rooms.get(id);
+
+
+        console.log(
+          "🔎 get-room:",
           id
         );
 
 
-        if (callback) {
-          callback(null);
+        if (!room) {
+
+          if (
+            typeof callback ===
+            "function"
+          ) {
+
+            callback(null);
+
+          }
+
+          return;
+
         }
 
-        return;
+
+        if (
+          typeof callback ===
+          "function"
+        ) {
+
+          callback({
+
+            id:
+              room.roomId,
+
+            roomId:
+              room.roomId,
+
+            title:
+              room.title,
+
+            users:
+              room.users,
+
+            videoUrl:
+              room.videoUrl
+
+          });
+
+        }
 
       }
+    );
 
 
-      console.log(
-        "🔎 room found:",
-        id
-      );
+    /*
+      =========================
+      JOIN ROOM
+      =========================
+    */
+
+    socket.on(
+      "join-room",
+      (roomId) => {
+
+        const id =
+          String(
+            roomId || ""
+          )
+            .trim()
+            .toUpperCase();
 
 
-      if (callback) {
-
-        callback({
-          ...room
-        });
-
-      }
-
-    }
-  );
+        const room =
+          rooms.get(id);
 
 
-  /*
-    ВХОД В КОМНАТУ
-  */
+        if (!room) {
 
-  socket.on(
-    "join-room",
-    (roomId) => {
+          socket.emit(
+            "room-not-found"
+          );
 
-      const id =
-        String(roomId)
-          .trim()
-          .toUpperCase();
+          return;
+
+        }
 
 
-      const room =
-        rooms[id];
+        /*
+          Не даём одному socket
+          считаться дважды
+        */
+
+        if (
+          socket.data.roomId ===
+          id
+        ) {
+
+          return;
+
+        }
 
 
-      if (!room) {
+        /*
+          Если пользователь был
+          в другой комнате —
+          сначала выходим
+        */
 
-        socket.emit(
-          "room-not-found"
+        if (
+          socket.data.roomId
+        ) {
+
+          const oldRoom =
+            rooms.get(
+              socket.data.roomId
+            );
+
+
+          if (oldRoom) {
+
+            oldRoom.users =
+              Math.max(
+                0,
+                oldRoom.users - 1
+              );
+
+
+            io.to(
+              socket.data.roomId
+            ).emit(
+              "users",
+              oldRoom.users
+            );
+
+          }
+
+
+          socket.leave(
+            socket.data.roomId
+          );
+
+        }
+
+
+        socket.join(id);
+
+        socket.data.roomId =
+          id;
+
+
+        room.users++;
+
+
+        console.log(
+          "👤 joined room:",
+          id,
+          "users:",
+          room.users
         );
 
-        return;
 
-      }
-
-
-      socket.join(id);
-
-
-      room.users++;
+        io.to(id).emit(
+          "users",
+          room.users
+        );
 
 
-      console.log(
-        "👤 joined room:",
-        id,
-        "users:",
-        room.users
-      );
-
-
-      io.to(id).emit(
-        "users",
-        room.users
-      );
-
-
-      socket.emit(
-        "room-state",
-        {
-          roomId: room.roomId,
-          title: room.title,
-          videoUrl: room.videoUrl
-        }
-      );
-
-    }
-  );
-
-
-  /*
-    СИНХРОНИЗАЦИЯ ВИДЕО
-  */
-
-  socket.on(
-    "video-control",
-    (data) => {
-
-      if (!data?.roomId) {
-        return;
-      }
-
-
-      socket
-        .to(data.roomId)
-        .emit(
-          "video-control",
+        socket.emit(
+          "room-state",
           {
-            action: data.action,
-            position: data.position
+            roomId:
+              room.roomId,
+
+            title:
+              room.title,
+
+            videoUrl:
+              room.videoUrl
           }
         );
 
-    }
-  );
-
-
-  /*
-    ЧАТ
-  */
-
-  socket.on(
-    "chat-message",
-    (data) => {
-
-      if (!data?.roomId) {
-        return;
       }
+    );
 
 
-      if (!data?.text?.trim()) {
-        return;
-      }
+    /*
+      =========================
+      VIDEO CONTROL
+      =========================
+    */
 
+    socket.on(
+      "video-control",
+      (data) => {
 
-      io.to(data.roomId).emit(
-        "chat-message",
-        {
-          user: "Guest",
-          text: data.text.trim()
+        if (
+          !data?.roomId
+        ) {
+
+          return;
+
         }
-      );
-
-    }
-  );
 
 
-  /*
-    ОТКЛЮЧЕНИЕ
-  */
+        socket
+          .to(
+            data.roomId
+          )
+          .emit(
+            "video-control",
+            {
+              action:
+                data.action,
 
-  socket.on(
-    "disconnect",
-    () => {
+              position:
+                data.position
+            }
+          );
 
-      console.log(
-        "🔴 user disconnected:",
-        socket.id
-      );
+      }
+    );
 
-    }
-  );
 
-});
+    /*
+      =========================
+      CHAT
+      =========================
+    */
+
+    socket.on(
+      "chat-message",
+      (data) => {
+
+        const roomId =
+          String(
+            data?.roomId || ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        const text =
+          String(
+            data?.text || ""
+          ).trim();
+
+
+        if (
+          !roomId ||
+          !text
+        ) {
+
+          return;
+
+        }
+
+
+        const room =
+          rooms.get(roomId);
+
+
+        if (!room) {
+          return;
+        }
+
+
+        io.to(roomId).emit(
+          "chat-message",
+          {
+            user: "Guest",
+            text
+          }
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      DISCONNECT
+      =========================
+    */
+
+    socket.on(
+      "disconnect",
+      () => {
+
+        const roomId =
+          socket.data.roomId;
+
+
+        if (roomId) {
+
+          const room =
+            rooms.get(roomId);
+
+
+          if (room) {
+
+            room.users =
+              Math.max(
+                0,
+                room.users - 1
+              );
+
+
+            io.to(
+              roomId
+            ).emit(
+              "users",
+              room.users
+            );
+
+
+            console.log(
+              "👋 user left:",
+              roomId,
+              "users:",
+              room.users
+            );
+
+          }
+
+        }
+
+
+        console.log(
+          "🔴 user disconnected:",
+          socket.id
+        );
+
+      }
+    );
+
+  }
+);
 
 
 /*
-  Запуск сервера
+  =========================
+  START
+  =========================
 */
 
 const PORT =
@@ -309,10 +512,23 @@ app.listen({
   port: PORT,
   host: "0.0.0.0"
 })
-.then(() => {
+.then(
+  () => {
 
-  console.log(
-    `🔥 VIBE server started on ${PORT}`
-  );
+    console.log(
+      `🔥 VIBE server started on ${PORT}`
+    );
 
-});
+  }
+)
+.catch(
+  error => {
+
+    console.error(
+      error
+    );
+
+    process.exit(1);
+
+  }
+);
