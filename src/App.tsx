@@ -1,6 +1,35 @@
+import { useState } from "react";
 import RoomCard from "./components/RoomCard";
 
+type Room = {
+  title: string;
+  users: number;
+};
+
 function App() {
+  const [rooms, setRooms] = useState<Room[]>([
+    {
+      title: "Вечерний фильм 🎬",
+      users: 3,
+    },
+    {
+      title: "Ужастики ночью 👻",
+      users: 5,
+    },
+  ]);
+
+  function createRoom() {
+    const newRoom: Room = {
+      title: "Новая VIBE-комната ✨",
+      users: 1,
+    };
+
+    setRooms([
+      ...rooms,
+      newRoom,
+    ]);
+  }
+
   return (
     <div className="app">
       <div className="logo">
@@ -16,7 +45,7 @@ function App() {
         с друзьями одновременно
       </p>
 
-      <button>
+      <button onClick={createRoom}>
         + Создать комнату
       </button>
 
@@ -24,15 +53,13 @@ function App() {
         Активные комнаты
       </h2>
 
-      <RoomCard
-        title="Вечерний фильм 🎬"
-        users={3}
-      />
-
-      <RoomCard
-        title="Ужастики ночью 👻"
-        users={5}
-      />
+      {rooms.map((room, index) => (
+        <RoomCard
+          key={index}
+          title={room.title}
+          users={room.users}
+        />
+      ))}
     </div>
   );
 }
