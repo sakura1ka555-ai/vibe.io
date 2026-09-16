@@ -10,6 +10,7 @@ import WatchRoom from "./components/WatchRoom";
 import ProfileModal, {
   ProfileData
 } from "./components/ProfileModal";
+import Friends from "./components/Friends";
 
 import {
   initTelegram,
@@ -131,6 +132,10 @@ function App() {
 
 
   const [profileOpen, setProfileOpen] =
+    useState(false);
+
+
+  const [friendsOpen, setFriendsOpen] =
     useState(false);
 
 
@@ -452,7 +457,7 @@ function App() {
   /*
     =========================
     AUTO JOIN
-    =========================
+  =========================
   */
 
   useEffect(() => {
@@ -541,7 +546,7 @@ function App() {
   /*
     =========================
     PROFILE SAVE
-    =========================
+  =========================
   */
 
   function saveProfile(
@@ -563,7 +568,7 @@ function App() {
   /*
     =========================
     ACTIVE ROOM
-    =========================
+  =========================
   */
 
   if (
@@ -604,7 +609,7 @@ function App() {
   /*
     =========================
     AVATAR LETTER
-    =========================
+  =========================
   */
 
   const profileLetter =
@@ -619,7 +624,7 @@ function App() {
   /*
     =========================
     HOME
-    =========================
+  =========================
   */
 
   return (
@@ -641,44 +646,68 @@ function App() {
 
 
       {/* =========================
-          PROFILE BUTTON
+          TOP NAV
       ========================= */}
 
-      <button
-        type="button"
-        className="profile profile-button"
-        onClick={() =>
-          setProfileOpen(true)
-        }
-      >
+      <div className="home-top-actions">
 
-        {profile.avatar ? (
 
-          <img
-            src={profile.avatar}
-            alt=""
-            className="profile-button-avatar"
-          />
+        <button
+          type="button"
+          className="friends-button"
+          onClick={() =>
+            setFriendsOpen(true)
+          }
+        >
 
-        ) : (
-
-          <span className="profile-button-letter">
-            {profileLetter}
+          <span className="friends-button-icon">
+            ♡
           </span>
 
-        )}
+          <span>
+            FRIENDS
+          </span>
+
+        </button>
 
 
-        <span className="profile-button-name">
-          {profile.name}
-        </span>
+        <button
+          type="button"
+          className="profile profile-button"
+          onClick={() =>
+            setProfileOpen(true)
+          }
+        >
+
+          {profile.avatar ? (
+
+            <img
+              src={profile.avatar}
+              alt=""
+              className="profile-button-avatar"
+            />
+
+          ) : (
+
+            <span className="profile-button-letter">
+              {profileLetter}
+            </span>
+
+          )}
 
 
-        <span className="profile-button-arrow">
-          ›
-        </span>
+          <span className="profile-button-name">
+            {profile.name}
+          </span>
 
-      </button>
+
+          <span className="profile-button-arrow">
+            ›
+          </span>
+
+        </button>
+
+      </div>
 
 
       <section className="hero">
@@ -875,6 +904,31 @@ function App() {
           }
 
         />
+
+      )}
+
+
+      {/* =========================
+          FRIENDS
+      ========================= */}
+
+      {friendsOpen && (
+
+        <div className="modal-backdrop friends-backdrop">
+
+          <div className="friends-modal-shell">
+
+            <Friends
+              onClose={() =>
+                setFriendsOpen(
+                  false
+                )
+              }
+            />
+
+          </div>
+
+        </div>
 
       )}
 
