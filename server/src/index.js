@@ -3,8 +3,7 @@ import cors from "@fastify/cors";
 import { Server } from "socket.io";
 
 
-const app =
-  Fastify();
+const app = Fastify();
 
 
 await app.register(
@@ -36,6 +35,142 @@ app.get(
 
 /*
   =========================
+  ROOMS
+  =========================
+*/
+
+const rooms =
+  new Map();
+
+
+/*
+  =========================
+  CREATE ROOM
+  =========================
+*/
+
+app.post(
+  "/rooms",
+  async (
+    request,
+    reply
+  ) => {
+
+    const data =
+      request.body || {};
+
+
+    const roomId =
+      String(
+        data.roomId || ""
+      )
+        .trim()
+        .toUpperCase();
+
+
+    if (!roomId) {
+
+      return reply
+        .code(400)
+        .send({
+          error:
+            "Room ID is required"
+        });
+
+    }
+
+
+    const room = {
+
+      id:
+        roomId,
+
+      title:
+        data.title ||
+        `Комната ${roomId}`,
+
+      videoUrl:
+        data.videoUrl ||
+        "",
+
+      users: 0
+
+    };
+
+
+    rooms.set(
+      roomId,
+      room
+    );
+
+
+    console.log(
+      "🏠 room created:",
+      roomId
+    );
+
+
+    return {
+      room
+    };
+
+  }
+);
+
+
+/*
+  =========================
+  GET ROOM
+  =========================
+*/
+
+app.get(
+  "/rooms/:roomId",
+  async (
+    request,
+    reply
+  ) => {
+
+    const roomId =
+      String(
+        request.params.roomId || ""
+      )
+        .trim()
+        .toUpperCase();
+
+
+    const room =
+      rooms.get(roomId);
+
+
+    console.log(
+      "🔎 room request:",
+      roomId
+    );
+
+
+    if (!room) {
+
+      return reply
+        .code(404)
+        .send({
+          error:
+            "Room not found"
+        });
+
+    }
+
+
+    return {
+      room
+    };
+
+  }
+);
+
+
+/*
+  =========================
   SOCKET.IO
   =========================
 */
@@ -57,17 +192,7 @@ const io =
 
 /*
   =========================
-  ROOMS
-  =========================
-*/
-
-const rooms =
-  new Map();
-
-
-/*
-  =========================
-  CONNECTION
+  SOCKET CONNECTION
   =========================
 */
 
@@ -82,141 +207,7 @@ io.on(
 
 
     /*
-      =========================
-      CREATE ROOM
-      =========================
-    */
-
-    socket.on(
-      "create-room",
-      (data) => {
-
-        const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
-
-
-        if (!roomId) {
-          return;
-        }
-
-
-        const room = {
-
-          roomId,
-
-          title:
-            data?.title ||
-            `Комната ${roomId}`,
-
-          videoUrl:
-            data?.videoUrl ||
-            "",
-
-          users: 0
-
-        };
-
-
-        rooms.set(
-          roomId,
-          room
-        );
-
-
-        console.log(
-          "🏠 room created:",
-          roomId
-        );
-
-      }
-    );
-
-
-    /*
-      =========================
-      GET ROOM
-      =========================
-    */
-
-    socket.on(
-      "get-room",
-      (
-        roomId,
-        callback
-      ) => {
-
-        const id =
-          String(
-            roomId || ""
-          )
-            .trim()
-            .toUpperCase();
-
-
-        const room =
-          rooms.get(id);
-
-
-        console.log(
-          "🔎 get-room:",
-          id
-        );
-
-
-        if (!room) {
-
-          if (
-            typeof callback ===
-            "function"
-          ) {
-
-            callback(null);
-
-          }
-
-          return;
-
-        }
-
-
-        if (
-          typeof callback ===
-          "function"
-        ) {
-
-          callback({
-
-            id:
-              room.roomId,
-
-            roomId:
-              room.roomId,
-
-            title:
-              room.title,
-
-            users:
-              room.users,
-
-            videoUrl:
-              room.videoUrl
-
-          });
-
-        }
-
-      }
-    );
-
-
-    /*
-      =========================
       JOIN ROOM
-      =========================
     */
 
     socket.on(
@@ -247,8 +238,8 @@ io.on(
 
 
         /*
-          Не даём одному socket
-          считаться дважды
+          Не считаем
+          одного socket дважды
         */
 
         if (
@@ -262,9 +253,8 @@ io.on(
 
 
         /*
-          Если пользователь был
-          в другой комнате —
-          сначала выходим
+          Если был
+          в другой комнате
         */
 
         if (
@@ -312,14 +302,6 @@ io.on(
         room.users++;
 
 
-        console.log(
-          "👤 joined room:",
-          id,
-          "users:",
-          room.users
-        );
-
-
         io.to(id).emit(
           "users",
           room.users
@@ -330,7 +312,7 @@ io.on(
           "room-state",
           {
             roomId:
-              room.roomId,
+              room.id,
 
             title:
               room.title,
@@ -340,14 +322,20 @@ io.on(
           }
         );
 
+
+        console.log(
+          "👤 joined:",
+          id,
+          "users:",
+          room.users
+        );
+
       }
     );
 
 
     /*
-      =========================
-      VIDEO CONTROL
-      =========================
+      VIDEO
     */
 
     socket.on(
@@ -357,16 +345,12 @@ io.on(
         if (
           !data?.roomId
         ) {
-
           return;
-
         }
 
 
         socket
-          .to(
-            data.roomId
-          )
+          .to(data.roomId)
           .emit(
             "video-control",
             {
@@ -383,9 +367,7 @@ io.on(
 
 
     /*
-      =========================
       CHAT
-      =========================
     */
 
     socket.on(
@@ -410,17 +392,13 @@ io.on(
           !roomId ||
           !text
         ) {
-
           return;
-
         }
 
 
-        const room =
-          rooms.get(roomId);
-
-
-        if (!room) {
+        if (
+          !rooms.has(roomId)
+        ) {
           return;
         }
 
@@ -438,9 +416,7 @@ io.on(
 
 
     /*
-      =========================
       DISCONNECT
-      =========================
     */
 
     socket.on(
@@ -466,18 +442,8 @@ io.on(
               );
 
 
-            io.to(
-              roomId
-            ).emit(
+            io.to(roomId).emit(
               "users",
-              room.users
-            );
-
-
-            console.log(
-              "👋 user left:",
-              roomId,
-              "users:",
               room.users
             );
 
