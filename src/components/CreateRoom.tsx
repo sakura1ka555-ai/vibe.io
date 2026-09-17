@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 type CreateRoomProps = {
-  onCreate: (videoUrl: string) => void;
+  onCreate: (videoUrl: string) => void | Promise<void>;
   onClose: () => void;
 };
 
@@ -10,8 +10,12 @@ function CreateRoom({
   onClose
 }: CreateRoomProps) {
 
-  const [videoUrl, setVideoUrl] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [videoUrl, setVideoUrl] =
+    useState("");
+
+  const [creating, setCreating] =
+    useState(false);
+
 
   const videoServices = [
     {
@@ -32,36 +36,128 @@ function CreateRoom({
     }
   ];
 
-  function handleCreate() {
-    const url = videoUrl.trim();
+
+  function openVideoService(
+    url: string
+  ) {
+
+    try {
+
+      window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Не удалось открыть сервис:",
+        error
+      );
+
+    }
+
+  }
+
+
+  async function handleCreate() {
+
+    const url =
+      videoUrl.trim();
+
 
     if (!url) {
-      alert("Введи ссылку на видео");
+
+      alert(
+        "Введи ссылку на видео"
+      );
+
+      return;
+
+    }
+
+
+    if (creating) {
       return;
     }
 
+
     setCreating(true);
 
+
     try {
-      onCreate(url);
+
+      await onCreate(url);
+
+    } catch (error) {
+
+      console.error(
+        "Create room error:",
+        error
+      );
+
     } finally {
+
       setCreating(false);
+
     }
+
   }
+
 
   function handleKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
-    if (event.key === "Enter" && !creating) {
+
+    if (
+      event.key === "Enter" &&
+      !creating
+    ) {
+
       event.preventDefault();
-      handleCreate();
+
+      void handleCreate();
+
     }
+
   }
 
-  return (
-    <div className="modal-backdrop">
 
-      <div className="room-modal">
+  return (
+
+    <div
+      className="modal-backdrop"
+      onClick={(event) => {
+
+        /*
+          Закрываем только при клике
+          по самому backdrop.
+
+          Клик внутри окна не должен
+          всплывать наружу.
+        */
+
+        if (
+          event.target ===
+          event.currentTarget
+        ) {
+
+          if (!creating) {
+            onClose();
+          }
+
+        }
+
+      }}
+    >
+
+      <div
+        className="room-modal"
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+      >
 
         <button
           type="button"
@@ -72,13 +168,16 @@ function CreateRoom({
           ×
         </button>
 
+
         <div className="modal-label">
           CREATE ROOM
         </div>
 
+
         <h2>
           Создать комнату
         </h2>
+
 
         <p className="modal-description">
           Добавь ссылку на видео,
@@ -96,27 +195,36 @@ function CreateRoom({
             Где найти фильм?
           </div>
 
+
           <div className="video-services-buttons">
 
-            {videoServices.map((service) => (
+            {videoServices.map(
+              (service) => (
 
-              <a
-                key={service.name}
-                href={service.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="video-service-button"
-              >
-                <span className="video-service-name">
-                  {service.name}
-                </span>
+                <button
+                  key={service.name}
+                  type="button"
+                  className="video-service-button"
+                  onClick={() =>
+                    openVideoService(
+                      service.url
+                    )
+                  }
+                >
 
-                <span className="video-service-arrow">
-                  ↗
-                </span>
-              </a>
+                  <span className="video-service-name">
+                    {service.name}
+                  </span>
 
-            ))}
+
+                  <span className="video-service-arrow">
+                    ↗
+                  </span>
+
+                </button>
+
+              )
+            )}
 
           </div>
 
@@ -133,13 +241,18 @@ function CreateRoom({
             ССЫЛКА НА ВИДЕО
           </label>
 
+
           <input
             type="text"
             value={videoUrl}
             onChange={(event) =>
-              setVideoUrl(event.target.value)
+              setVideoUrl(
+                event.target.value
+              )
             }
-            onKeyDown={handleKeyDown}
+            onKeyDown={
+              handleKeyDown
+            }
             placeholder="Вставь ссылку на фильм или видео"
             autoFocus
             autoComplete="off"
@@ -156,19 +269,30 @@ function CreateRoom({
         <button
           type="button"
           className="join-submit-button"
-          onClick={handleCreate}
-          disabled={creating}
+          onClick={() =>
+            void handleCreate()
+          }
+          disabled={
+            creating ||
+            !videoUrl.trim()
+          }
         >
+
           {creating
             ? "Создание..."
             : "Создать комнату"
           }
+
         </button>
+
 
       </div>
 
     </div>
+
   );
+
 }
+
 
 export default CreateRoom;
