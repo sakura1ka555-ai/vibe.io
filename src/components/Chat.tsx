@@ -48,17 +48,21 @@ function Chat({
   presence
 }: Props) {
 
-  const [messages, setMessages] =
-    useState<Message[]>([]);
+  const [
+    messages,
+    setMessages
+  ] = useState<Message[]>([]);
 
-  const [text, setText] =
-    useState("");
+  const [
+    text,
+    setText
+  ] = useState("");
 
 
   /*
-    =========================
-    CHAT
-    =========================
+  ==================================================
+  CHAT
+  ==================================================
   */
 
   useEffect(() => {
@@ -77,16 +81,15 @@ function Chat({
         String(data.roomId) !==
           String(roomId)
       ) {
-
         return;
-
       }
 
 
       const messageText =
         String(
           data.text || ""
-        ).trim();
+        )
+          .trim();
 
 
       if (!messageText) {
@@ -115,7 +118,6 @@ function Chat({
 
 
       const message: Message = {
-
         id:
           messageId,
 
@@ -129,7 +131,6 @@ function Chat({
           String(
             data.avatar || ""
           )
-
       };
 
 
@@ -143,9 +144,7 @@ function Chat({
                 message.id
             )
           ) {
-
             return previous;
-
           }
 
 
@@ -181,9 +180,9 @@ function Chat({
 
 
   /*
-    =========================
-    SEND
-    =========================
+  ==================================================
+  SEND MESSAGE
+  ==================================================
   */
 
   function sendMessage() {
@@ -214,9 +213,9 @@ function Chat({
 
 
   /*
-    =========================
-    KEYBOARD
-    =========================
+  ==================================================
+  KEYBOARD
+  ==================================================
   */
 
   function handleKeyDown(
@@ -239,9 +238,9 @@ function Chat({
 
 
   /*
-    =========================
-    AVATAR
-    =========================
+  ==================================================
+  AVATAR
+  ==================================================
   */
 
   function getAvatarLetter(
@@ -259,22 +258,19 @@ function Chat({
 
 
   /*
-    =========================
-    VIEWERS
-    =========================
+  ==================================================
+  VIEWERS
+  ==================================================
   */
 
   const viewerCount =
-    Math.max(
-      1,
-      presence.length
-    );
+    presence.length;
 
 
   /*
-    =========================
-    UI
-    =========================
+  ==================================================
+  UI
+  ==================================================
   */
 
   return (
@@ -332,88 +328,73 @@ function Chat({
 
         <div className="chat-viewers-list">
 
-          {presence.length === 0 && (
+          {presence.length === 0 ? (
 
-            <div className="viewer">
-
-              <div className="viewer-avatar">
-                G
-              </div>
-
-              <div className="viewer-info">
-
-                <div className="viewer-name">
-                  Guest
-                </div>
-
-                <div className="viewer-time">
-                  00:00
-                </div>
-
-              </div>
-
+            <div className="chat-empty">
+              Пока никто не смотрит
             </div>
 
-          )}
+          ) : (
 
+            presence.map(
+              (person, index) => (
 
-          {presence.map(
-            person => (
+                <div
+                  key={`${person.id}-${index}`}
+                  className="viewer"
+                >
 
-              <div
-                key={person.id}
-                className="viewer"
-              >
+                  <div className="viewer-avatar">
 
-                <div className="viewer-avatar">
+                    {person.avatar ? (
 
-                  {person.avatar ? (
+                      <img
+                        src={person.avatar}
+                        alt=""
+                        className="viewer-avatar-image"
+                      />
 
-                    <img
-                      src={person.avatar}
-                      alt=""
-                      className="viewer-avatar-image"
-                    />
+                    ) : (
 
-                  ) : (
+                      getAvatarLetter(
+                        person.name
+                      )
 
-                    getAvatarLetter(
-                      person.name
-                    )
-
-                  )}
-
-                </div>
-
-
-                <div className="viewer-info">
-
-                  <div className="viewer-name">
-
-                    {person.name ||
-                      "Guest"}
+                    )}
 
                   </div>
 
 
-                  <div className="viewer-time">
+                  <div className="viewer-info">
 
-                    <span className="viewer-live-dot">
+                    <div className="viewer-name">
 
-                      ●
+                      {person.name ||
+                        "Guest"}
 
-                    </span>
+                    </div>
 
-                    {person.time ||
-                      "00:00"}
+
+                    <div className="viewer-time">
+
+                      <span className="viewer-live-dot">
+
+                        ●
+
+                      </span>
+
+                      {person.time ||
+                        "00:00"}
+
+                    </div>
 
                   </div>
 
                 </div>
 
-              </div>
-
+              )
             )
+
           )}
 
         </div>
@@ -425,26 +406,36 @@ function Chat({
 
       <div className="messages">
 
-        {messages.map(
-          message => (
+        {messages.length === 0 ? (
 
-            <div
-              key={message.id}
-              className="message"
-            >
+          <div className="chat-empty">
+            Пока нет сообщений
+          </div>
 
-              <b>
-                {message.user}
-              </b>
+        ) : (
+
+          messages.map(
+            message => (
+
+              <div
+                key={message.id}
+                className="message"
+              >
+
+                <b>
+                  {message.user}
+                </b>
 
 
-              <span>
-                {message.text}
-              </span>
+                <span>
+                  {message.text}
+                </span>
 
-            </div>
+              </div>
 
+            )
           )
+
         )}
 
       </div>
@@ -491,7 +482,6 @@ function Chat({
     </div>
 
   );
-
 }
 
 
