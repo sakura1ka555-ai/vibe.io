@@ -5,15 +5,34 @@ import Database from "better-sqlite3";
 
 
 const app =
-  Fastify();
+  Fastify({
+    logger: true
+  });
 
 
 await app.register(
   cors,
   {
-    origin: "*"
+    origin: true
   }
 );
+
+
+const io =
+  new Server(
+    app.server,
+    {
+      cors: {
+        origin: "*"
+      }
+    }
+  );
+
+
+const db =
+  new Database(
+    "vibe.sqlite"
+  );
 
 
 /*
@@ -22,22 +41,11 @@ await app.register(
   =========================
 */
 
-const db =
-  new Database(
-    "vibe.sqlite"
-  );
-
-
-db.pragma(
-  "journal_mode = WAL"
-);
-
-
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL DEFAULT 'Guest',
-    avatar TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL,
+    avatar TEXT DEFAULT '',
     created_at TEXT NOT NULL
   );
 
@@ -51,38 +59,37 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS friend_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    from_id TEXT NOT NULL,
-    to_id TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
+    from_user_id TEXT NOT NULL,
+    to_user_id TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    UNIQUE(from_id, to_id)
+    status TEXT NOT NULL DEFAULT 'pending'
   );
-
-  CREATE INDEX IF NOT EXISTS idx_users_name
-  ON users(name);
-
-  CREATE INDEX IF NOT EXISTS idx_friend_requests_to
-  ON friend_requests(to_id);
-
-  CREATE INDEX IF NOT EXISTS idx_friend_requests_from
-  ON friend_requests(from_id);
 `);
 
 
 /*
   =========================
-  USER HELPERS
+  ROOMS
   =========================
 */
 
-function createVibeId() {
+const rooms =
+  new Map();
+
+
+/*
+  =========================
+  VIBE ID
+  =========================
+*/
+
+function generateVibeId() {
 
   const chars =
     "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-
-  let code = "";
-
+  let result =
+    "";
 
   for (
     let i = 0;
@@ -90,7 +97,7 @@ function createVibeId() {
     i++
   ) {
 
-    code +=
+    result +=
       chars[
         Math.floor(
           Math.random() *
@@ -100,69 +107,101 @@ function createVibeId() {
 
   }
 
-
-  return `VIBE-${code}`;
-
-}
-
-
-function createUniqueVibeId() {
-
-  let id;
-
-
-  do {
-
-    id =
-      createVibeId();
-
-  } while (
-    db.prepare(
-      "SELECT id FROM users WHERE id = ?"
-    ).get(id)
-  );
-
-
-  return id;
+  return `VIBE-${result}`;
 
 }
 
+
+/*
+  =========================
+  USER HELPERS
+  =========================
+*/
 
 function getUser(
   userId
 ) {
 
-  return db.prepare(`
-    SELECT
-      id,
-      name,
-      avatar,
-      created_at AS createdAt
-    FROM users
-    WHERE id = ?
-  `).get(userId);
+  return db
+    .prepare(
+      `
+      SELECT
+        id,
+        name,
+        avatar,
+        created_at AS createdAt
+      FROM users
+      WHERE id = ?
+      `
+    )
+    .get(
+      userId
+    );
 
 }
 
 
 function createUser(
-  name = "Guest",
-  avatar = ""
+  userId,
+  name,
+  avatar
 ) {
 
+  const existing =
+    getUser(
+      userId
+    );
+
+
+  if (
+    existing
+  ) {
+
+    db.prepare(
+      `
+      UPDATE users
+      SET
+        name = ?,
+        avatar = ?
+      WHERE id = ?
+      `
+    ).run(
+      name,
+      avatar,
+      userId
+    );
+
+
+    return getUser(
+      userId
+    );
+
+  }
+
+
   const id =
-    createUniqueVibeId();
+    userId ||
+    generateVibeId();
 
 
   const createdAt =
-    new Date().toISOString();
+    new Date()
+      .toISOString();
 
 
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO users
-    (id, name, avatar, created_at)
-    VALUES (?, ?, ?, ?)
-  `).run(
+      (
+        id,
+        name,
+        avatar,
+        created_at
+      )
+    VALUES
+      (?, ?, ?, ?)
+    `
+  ).run(
     id,
     name,
     avatar,
@@ -177,76 +216,34 @@ function createUser(
 }
 
 
-function updateUser(
-  userId,
-  name,
-  avatar
-) {
-
-  db.prepare(`
-    UPDATE users
-    SET
-      name = ?,
-      avatar = ?
-    WHERE id = ?
-  `).run(
-    name,
-    avatar,
-    userId
-  );
-
-
-  return getUser(
-    userId
-  );
-
-}
-
-
-function areFriends(
-  userA,
-  userB
-) {
-
-  const row =
-    db.prepare(`
-      SELECT id
-      FROM friendships
-      WHERE
-        user_id = ?
-        AND friend_id = ?
-      LIMIT 1
-    `).get(
-      userA,
-      userB
-    );
-
-
-  return Boolean(
-    row
-  );
-
-}
-
+/*
+  =========================
+  FRIEND HELPERS
+  =========================
+*/
 
 function getFriends(
   userId
 ) {
 
-  return db.prepare(`
-    SELECT
-      u.id,
-      u.name,
-      u.avatar,
-      u.created_at AS createdAt
-    FROM friendships f
-    JOIN users u
-      ON u.id = f.friend_id
-    WHERE f.user_id = ?
-    ORDER BY u.name COLLATE NOCASE ASC
-  `).all(
-    userId
-  );
+  return db
+    .prepare(
+      `
+      SELECT
+        u.id,
+        u.name,
+        u.avatar,
+        u.created_at AS createdAt
+      FROM friendships f
+      JOIN users u
+        ON u.id = f.friend_id
+      WHERE f.user_id = ?
+      ORDER BY u.name COLLATE NOCASE
+      `
+    )
+    .all(
+      userId
+    );
 
 }
 
@@ -255,23 +252,27 @@ function getIncomingRequests(
   userId
 ) {
 
-  return db.prepare(`
-    SELECT
-      r.id,
-      r.created_at AS createdAt,
-      u.id AS userId,
-      u.name,
-      u.avatar
-    FROM friend_requests r
-    JOIN users u
-      ON u.id = r.from_id
-    WHERE
-      r.to_id = ?
-      AND r.status = 'pending'
-    ORDER BY r.id DESC
-  `).all(
-    userId
-  );
+  return db
+    .prepare(
+      `
+      SELECT
+        r.id,
+        r.created_at AS createdAt,
+        u.id AS userId,
+        u.name,
+        u.avatar
+      FROM friend_requests r
+      JOIN users u
+        ON u.id = r.from_user_id
+      WHERE
+        r.to_user_id = ?
+        AND r.status = 'pending'
+      ORDER BY r.id DESC
+      `
+    )
+    .all(
+      userId
+    );
 
 }
 
@@ -280,134 +281,92 @@ function getOutgoingRequests(
   userId
 ) {
 
-  return db.prepare(`
-    SELECT
-      r.id,
-      r.created_at AS createdAt,
-      u.id AS userId,
-      u.name,
-      u.avatar
-    FROM friend_requests r
-    JOIN users u
-      ON u.id = r.to_id
-    WHERE
-      r.from_id = ?
-      AND r.status = 'pending'
-    ORDER BY r.id DESC
-  `).all(
-    userId
+  return db
+    .prepare(
+      `
+      SELECT
+        r.id,
+        r.created_at AS createdAt,
+        u.id AS userId,
+        u.name,
+        u.avatar
+      FROM friend_requests r
+      JOIN users u
+        ON u.id = r.to_user_id
+      WHERE
+        r.from_user_id = ?
+        AND r.status = 'pending'
+      ORDER BY r.id DESC
+      `
+    )
+    .all(
+      userId
+    );
+
+}
+
+
+function emitFriendsData(
+  userId
+) {
+
+  const socketId =
+    onlineUsers.get(
+      userId
+    );
+
+
+  if (
+    !socketId
+  ) {
+
+    return;
+
+  }
+
+
+  io.to(
+    socketId
+  ).emit(
+    "friends-data",
+    {
+      friends:
+        getFriends(
+          userId
+        ),
+
+      incoming:
+        getIncomingRequests(
+          userId
+        ),
+
+      outgoing:
+        getOutgoingRequests(
+          userId
+        )
+    }
   );
 
 }
 
 
-function emitFriendsUpdate(
-  userId
-) {
+/*
+  =========================
+  ONLINE USERS
+  =========================
+*/
 
-  const sockets =
-    io.sockets.sockets.values();
-
-
-  for (
-    const connectedSocket of sockets
-  ) {
-
-    if (
-      connectedSocket.data.userId ===
-      userId
-    ) {
-
-      connectedSocket.emit(
-        "friends-data",
-        {
-
-          friends:
-            getFriends(
-              userId
-            ),
-
-          incoming:
-            getIncomingRequests(
-              userId
-            ),
-
-          outgoing:
-            getOutgoingRequests(
-              userId
-            )
-
-        }
-      );
-
-    }
-
-  }
-
-}
+const onlineUsers =
+  new Map();
 
 
 function isUserOnline(
   userId
 ) {
 
-  for (
-    const connectedSocket of
-    io.sockets.sockets.values()
-  ) {
-
-    if (
-      connectedSocket.data.userId ===
-      userId
-    ) {
-
-      return true;
-
-    }
-
-  }
-
-
-  return false;
-
-}
-
-
-function addFriendship(
-  userA,
-  userB
-) {
-
-  const transaction =
-    db.transaction(
-      () => {
-
-        db.prepare(`
-          INSERT OR IGNORE INTO friendships
-          (user_id, friend_id, created_at)
-          VALUES (?, ?, ?)
-        `).run(
-          userA,
-          userB,
-          new Date().toISOString()
-        );
-
-
-        db.prepare(`
-          INSERT OR IGNORE INTO friendships
-          (user_id, friend_id, created_at)
-          VALUES (?, ?, ?)
-        `).run(
-          userB,
-          userA,
-          new Date().toISOString()
-        );
-
-      }
-    );
-
-
-  transaction();
+  return onlineUsers.has(
+    userId
+  );
 
 }
 
@@ -423,12 +382,17 @@ app.get(
   async () => {
 
     return {
+      ok:
+        true,
 
-      app:
-        "VIBE SERVER",
+      service:
+        "vibe-server",
 
-      status:
-        "online"
+      rooms:
+        rooms.size,
+
+      users:
+        onlineUsers.size
 
     };
 
@@ -438,112 +402,53 @@ app.get(
 
 /*
   =========================
-  USER REGISTER
+  USERS
   =========================
 */
 
-app.post(
+app.get(
   "/users",
-  async (
-    request,
-    reply
-  ) => {
+  async () => {
 
-    const data =
-      request.body || {};
+    return {
+      users:
+        db
+          .prepare(
+            `
+            SELECT
+              id,
+              name,
+              avatar,
+              created_at AS createdAt
+            FROM users
+            ORDER BY name COLLATE NOCASE
+            `
+          )
+          .all()
+    };
+
+  }
+);
 
 
-    const name =
-      String(
-        data.name ||
-        "Guest"
-      )
-        .trim()
-        .slice(
-          0,
-          40
-        );
+app.get(
+  "/users/:userId",
+  async request => {
 
-
-    const avatar =
-      String(
-        data.avatar ||
-        ""
+    const user =
+      getUser(
+        request.params.userId
       );
 
 
     if (
-      avatar.length >
-      1500000
+      !user
     ) {
 
-      return reply
-        .code(400)
-        .send({
-
-          error:
-            "Avatar is too large"
-
-        });
-
-    }
-
-
-    const user =
-      createUser(
-        name ||
-        "Guest",
-
-        avatar
-      );
-
-
-    return {
-      user
-    };
-
-  }
-);
-
-
-/*
-  =========================
-  GET USER
-  =========================
-*/
-
-app.get(
-  "/users/:userId",
-  async (
-    request,
-    reply
-  ) => {
-
-    const userId =
-      String(
-        request.params.userId ||
-        ""
-      )
-        .trim()
-        .toUpperCase();
-
-
-    const user =
-      getUser(
-        userId
-      );
-
-
-    if (!user) {
-
-      return reply
-        .code(404)
-        .send({
-
-          error:
-            "User not found"
-
-        });
+      return {
+        error:
+          "User not found"
+      };
 
     }
 
@@ -555,18 +460,10 @@ app.get(
   }
 );
 
-
-/*
-  =========================
-  SEARCH USERS
-  =========================
-*/
 
 app.get(
   "/users/search",
-  async (
-    request
-  ) => {
+  async request => {
 
     const query =
       String(
@@ -574,13 +471,12 @@ app.get(
         ""
       )
         .trim()
-        .slice(
-          0,
-          40
-        );
+        .slice(0, 80);
 
 
-    if (!query) {
+    if (
+      !query
+    ) {
 
       return {
         users: []
@@ -594,28 +490,27 @@ app.get(
 
 
     const users =
-      db.prepare(`
-        SELECT
-          id,
-          name,
-          avatar,
-          created_at AS createdAt
-        FROM users
-        WHERE
-          id LIKE ?
-          OR name LIKE ?
-        ORDER BY
-          CASE
-            WHEN id = ? THEN 0
-            ELSE 1
-          END,
-          name COLLATE NOCASE ASC
-        LIMIT 20
-      `).all(
-        like,
-        like,
-        query.toUpperCase()
-      );
+      db
+        .prepare(
+          `
+          SELECT
+            id,
+            name,
+            avatar,
+            created_at AS createdAt
+          FROM users
+          WHERE
+            id LIKE ?
+            OR name LIKE ?
+          ORDER BY
+            name COLLATE NOCASE
+          LIMIT 20
+          `
+        )
+        .all(
+          like,
+          like
+        );
 
 
     return {
@@ -632,8 +527,19 @@ app.get(
   =========================
 */
 
-const rooms =
-  new Map();
+app.get(
+  "/rooms",
+  async () => {
+
+    return {
+      rooms:
+        Array.from(
+          rooms.values()
+        )
+    };
+
+  }
+);
 
 
 /*
@@ -644,33 +550,44 @@ const rooms =
 
 app.post(
   "/rooms",
-  async (
-    request,
-    reply
-  ) => {
+  async request => {
 
     const data =
-      request.body || {};
+      request.body ||
+      {};
 
 
     const roomId =
       String(
-        data.roomId || ""
+        data.roomId ||
+        ""
       )
         .trim()
         .toUpperCase();
 
 
-    if (!roomId) {
+    if (
+      !roomId
+    ) {
 
-      return reply
-        .code(400)
-        .send({
+      return {
+        error:
+          "Room ID is required"
+      };
 
-          error:
-            "Room ID is required"
+    }
 
-        });
+
+    if (
+      rooms.has(
+        roomId
+      )
+    ) {
+
+      return {
+        error:
+          "Room already exists"
+      };
 
     }
 
@@ -681,12 +598,32 @@ app.post(
         roomId,
 
       title:
-        data.title ||
-        `Комната ${roomId}`,
+        String(
+          data.title ||
+          `Комната ${roomId}`
+        )
+          .trim()
+          .slice(0, 80),
 
       videoUrl:
-        data.videoUrl ||
-        "",
+        String(
+          data.videoUrl ||
+          ""
+        )
+          .trim(),
+
+      public:
+        Boolean(
+          data.public
+        ),
+
+      category:
+        String(
+          data.category ||
+          "other"
+        )
+          .trim()
+          .toLowerCase(),
 
       users:
         0,
@@ -710,14 +647,65 @@ app.post(
     );
 
 
-    console.log(
-      "🏠 room created:",
-      roomId
-    );
+    return {
+      ok:
+        true,
+
+      room
+    };
+
+  }
+);
+
+
+/*
+  =========================
+  PUBLIC ROOMS
+  =========================
+*/
+
+app.get(
+  "/rooms/public",
+  async () => {
+
+    const publicRooms =
+      Array.from(
+        rooms.values()
+      )
+        .filter(
+          room =>
+            room.public === true
+        )
+        .sort(
+          (a, b) =>
+            b.users -
+            a.users
+        )
+        .map(
+          room => ({
+
+            id:
+              room.id,
+
+            title:
+              room.title,
+
+            videoUrl:
+              room.videoUrl,
+
+            users:
+              room.users,
+
+            category:
+              room.category
+
+          })
+        );
 
 
     return {
-      room
+      rooms:
+        publicRooms
     };
 
   }
@@ -732,41 +720,26 @@ app.post(
 
 app.get(
   "/rooms/:roomId",
-  async (
-    request,
-    reply
-  ) => {
-
-    const roomId =
-      String(
-        request.params.roomId || ""
-      )
-        .trim()
-        .toUpperCase();
-
+  async request => {
 
     const room =
       rooms.get(
-        roomId
+        String(
+          request.params.roomId
+        )
+          .trim()
+          .toUpperCase()
       );
 
 
-    console.log(
-      "🔎 room request:",
-      roomId
-    );
+    if (
+      !room
+    ) {
 
-
-    if (!room) {
-
-      return reply
-        .code(404)
-        .send({
-
-          error:
-            "Room not found"
-
-        });
+      return {
+        error:
+          "Room not found"
+      };
 
     }
 
@@ -781,173 +754,19 @@ app.get(
 
 /*
   =========================
-  SOCKET.IO
-  =========================
-*/
-
-const io =
-  new Server(
-    app.server,
-    {
-      cors: {
-
-        origin:
-          "*",
-
-        methods: [
-          "GET",
-          "POST"
-        ]
-
-      }
-
-    }
-  );
-
-
-/*
-  =========================
-  HELPERS
-  =========================
-*/
-
-function formatPosition(
-  seconds
-) {
-
-  const total =
-    Math.max(
-      0,
-      Math.floor(
-        Number(seconds) || 0
-      )
-    );
-
-
-  const minutes =
-    Math.floor(
-      total / 60
-    );
-
-
-  const secs =
-    total % 60;
-
-
-  return (
-
-    String(minutes)
-      .padStart(
-        2,
-        "0"
-      )
-
-    +
-
-    ":"
-
-    +
-
-    String(secs)
-      .padStart(
-        2,
-        "0"
-      )
-
-  );
-
-}
-
-
-function getPresence(
-  roomId
-) {
-
-  const result = [];
-
-
-  for (
-    const connectedSocket of
-    io.sockets.sockets.values()
-  ) {
-
-    if (
-      connectedSocket.data.roomId !==
-      roomId
-    ) {
-
-      continue;
-
-    }
-
-
-    result.push({
-
-      id:
-        connectedSocket.data.userId ||
-        connectedSocket.id,
-
-      name:
-        connectedSocket.data.userName ||
-        "Guest",
-
-      avatar:
-        connectedSocket.data.avatar ||
-        "",
-
-      position:
-        Number(
-          connectedSocket.data.position ||
-          0
-        ),
-
-      time:
-        formatPosition(
-          connectedSocket.data.position
-        ),
-
-      state:
-        connectedSocket.data.videoState ||
-        "pause"
-
-    });
-
-  }
-
-
-  return result;
-
-}
-
-
-function emitPresence(
-  roomId
-) {
-
-  io.to(roomId).emit(
-    "presence",
-    getPresence(
-      roomId
-    )
-  );
-
-}
-
-
-/*
-  =========================
-  SOCKET CONNECTION
+  SOCKET
   =========================
 */
 
 io.on(
   "connection",
-  (socket) => {
+  socket => {
 
-    console.log(
-      "🟢 user connected:",
-      socket.id
-    );
+    let currentUserId =
+      null;
+
+    let currentRoomId =
+      null;
 
 
     /*
@@ -958,7 +777,7 @@ io.on(
 
     socket.on(
       "register-user",
-      (data) => {
+      data => {
 
         const requestedId =
           String(
@@ -969,48 +788,75 @@ io.on(
             .toUpperCase();
 
 
-        let user =
+        const name =
+          String(
+            data?.name ||
+            "Guest"
+          )
+            .trim()
+            .slice(0, 40) ||
+          "Guest";
+
+
+        const avatar =
+          String(
+            data?.avatar ||
+            ""
+          );
+
+
+        let userId =
+          requestedId;
+
+
+        if (
           requestedId
-            ? getUser(
-                requestedId
-              )
-            : null;
+        ) {
 
-
-        if (!user) {
-
-          user =
-            createUser(
-              String(
-                data?.name ||
-                "Guest"
-              )
-                .trim()
-                .slice(
-                  0,
-                  40
-                ) ||
-              "Guest",
-
-              String(
-                data?.avatar ||
-                ""
-              )
+          const existing =
+            getUser(
+              requestedId
             );
+
+
+          if (
+            existing
+          ) {
+
+            userId =
+              existing.id;
+
+          }
 
         }
 
 
-        socket.data.userId =
+        if (
+          !userId
+        ) {
+
+          userId =
+            generateVibeId();
+
+        }
+
+
+        const user =
+          createUser(
+            userId,
+            name,
+            avatar
+          );
+
+
+        currentUserId =
           user.id;
 
 
-        socket.data.userName =
-          user.name;
-
-
-        socket.data.avatar =
-          user.avatar;
+        onlineUsers.set(
+          user.id,
+          socket.id
+        );
 
 
         socket.emit(
@@ -1021,33 +867,14 @@ io.on(
         );
 
 
-        socket.emit(
-          "friends-data",
-          {
-
-            friends:
-              getFriends(
-                user.id
-              ),
-
-            incoming:
-              getIncomingRequests(
-                user.id
-              ),
-
-            outgoing:
-              getOutgoingRequests(
-                user.id
-              )
-
-          }
+        emitFriendsData(
+          user.id
         );
 
 
         console.log(
-          "👤 user registered:",
-          user.id,
-          user.name
+          "🆔 user:",
+          user.id
         );
 
       }
@@ -1062,7 +889,7 @@ io.on(
 
     socket.on(
       "search-users",
-      (data) => {
+      data => {
 
         const query =
           String(
@@ -1070,13 +897,12 @@ io.on(
             ""
           )
             .trim()
-            .slice(
-              0,
-              40
-            );
+            .slice(0, 80);
 
 
-        if (!query) {
+        if (
+          !query
+        ) {
 
           socket.emit(
             "user-search-results",
@@ -1095,23 +921,32 @@ io.on(
 
 
         const users =
-          db.prepare(`
-            SELECT
-              id,
-              name,
-              avatar,
-              created_at AS createdAt
-            FROM users
-            WHERE
-              id LIKE ?
-              OR name LIKE ?
-            ORDER BY
-              name COLLATE NOCASE ASC
-            LIMIT 20
-          `).all(
-            like,
-            like
-          );
+          db
+            .prepare(
+              `
+              SELECT
+                id,
+                name,
+                avatar,
+                created_at AS createdAt
+              FROM users
+              WHERE
+                (
+                  id LIKE ?
+                  OR name LIKE ?
+                )
+                AND id != ?
+              ORDER BY
+                name COLLATE NOCASE
+              LIMIT 20
+              `
+            )
+            .all(
+              like,
+              like,
+              currentUserId ||
+                ""
+            );
 
 
         socket.emit(
@@ -1127,19 +962,24 @@ io.on(
 
     /*
       =========================
-      SEND FRIEND REQUEST
+      FRIEND REQUEST
       =========================
     */
 
     socket.on(
       "friend-request",
-      (data) => {
+      data => {
 
-        const fromId =
-          socket.data.userId;
+        if (
+          !currentUserId
+        ) {
+
+          return;
+
+        }
 
 
-        const toId =
+        const targetId =
           String(
             data?.userId ||
             ""
@@ -1149,19 +989,18 @@ io.on(
 
 
         if (
-          !fromId ||
-          !toId
+          !targetId ||
+          targetId ===
+            currentUserId
         ) {
 
-          return;
-
-        }
-
-
-        if (
-          fromId ===
-          toId
-        ) {
+          socket.emit(
+            "friend-error",
+            {
+              message:
+                "Invalid user"
+            }
+          );
 
           return;
 
@@ -1170,11 +1009,13 @@ io.on(
 
         const target =
           getUser(
-            toId
+            targetId
           );
 
 
-        if (!target) {
+        if (
+          !target
+        ) {
 
           socket.emit(
             "friend-error",
@@ -1189,11 +1030,25 @@ io.on(
         }
 
 
+        const alreadyFriends =
+          db
+            .prepare(
+              `
+              SELECT id
+              FROM friendships
+              WHERE
+                user_id = ?
+                AND friend_id = ?
+              `
+            )
+            .get(
+              currentUserId,
+              targetId
+            );
+
+
         if (
-          areFriends(
-            fromId,
-            toId
-          )
+          alreadyFriends
         ) {
 
           socket.emit(
@@ -1209,44 +1064,35 @@ io.on(
         }
 
 
-        const existing =
-          db.prepare(`
-            SELECT
-              id,
-              from_id AS fromId,
-              to_id AS toId,
-              status
-            FROM friend_requests
-            WHERE
-              (
-                from_id = ?
-                AND to_id = ?
-              )
-              OR
-              (
-                from_id = ?
-                AND to_id = ?
-              )
-            LIMIT 1
-          `).get(
-            fromId,
-            toId,
-            toId,
-            fromId
-          );
+        const existingRequest =
+          db
+            .prepare(
+              `
+              SELECT id
+              FROM friend_requests
+              WHERE
+                (
+                  from_user_id = ?
+                  AND to_user_id = ?
+                )
+                AND status = 'pending'
+              `
+            )
+            .get(
+              currentUserId,
+              targetId
+            );
 
 
         if (
-          existing &&
-          existing.status ===
-          "pending"
+          existingRequest
         ) {
 
           socket.emit(
             "friend-error",
             {
               message:
-                "Friend request already exists"
+                "Request already sent"
             }
           );
 
@@ -1255,45 +1101,68 @@ io.on(
         }
 
 
-        db.prepare(`
-          DELETE FROM friend_requests
-          WHERE
-            (
-              from_id = ?
-              AND to_id = ?
+        const reverseRequest =
+          db
+            .prepare(
+              `
+              SELECT id
+              FROM friend_requests
+              WHERE
+                (
+                  from_user_id = ?
+                  AND to_user_id = ?
+                )
+                AND status = 'pending'
+              `
             )
-            OR
-            (
-              from_id = ?
-              AND to_id = ?
+            .get(
+              targetId,
+              currentUserId
+            );
+
+
+        if (
+          reverseRequest
+        ) {
+
+          socket.emit(
+            "friend-error",
+            {
+              message:
+                "This user already sent you a request"
+            }
+          );
+
+          return;
+
+        }
+
+
+        const createdAt =
+          new Date()
+            .toISOString();
+
+
+        const result =
+          db
+            .prepare(
+              `
+              INSERT INTO friend_requests
+                (
+                  from_user_id,
+                  to_user_id,
+                  created_at,
+                  status
+                )
+              VALUES
+                (?, ?, ?, 'pending')
+              `
             )
-        `).run(
-          fromId,
-          toId,
-          toId,
-          fromId
-        );
-
-
-        db.prepare(`
-          INSERT INTO friend_requests
-          (from_id, to_id, status, created_at)
-          VALUES (?, ?, 'pending', ?)
-        `).run(
-          fromId,
-          toId,
-          new Date().toISOString()
-        );
-
-
-        emitFriendsUpdate(
-          fromId
-        );
-
-
-        emitFriendsUpdate(
-          toId
-        );
+            .run(
+              currentUserId,
+              targetId,
+              createdAt
+            );
 
 
         socket.emit(
@@ -1305,11 +1174,19 @@ io.on(
         );
 
 
+        emitFriendsData(
+          currentUserId
+        );
+
+
+        emitFriendsData(
+          targetId
+        );
+
+
         console.log(
-          "👥 friend request:",
-          fromId,
-          "→",
-          toId
+          "🤝 friend request:",
+          result.lastInsertRowid
         );
 
       }
@@ -1318,16 +1195,21 @@ io.on(
 
     /*
       =========================
-      ACCEPT FRIEND REQUEST
+      ACCEPT FRIEND
       =========================
     */
 
     socket.on(
       "friend-accept",
-      (data) => {
+      data => {
 
-        const userId =
-          socket.data.userId;
+        if (
+          !currentUserId
+        ) {
+
+          return;
+
+        }
 
 
         const requestId =
@@ -1336,70 +1218,116 @@ io.on(
           );
 
 
+        const request =
+          db
+            .prepare(
+              `
+              SELECT *
+              FROM friend_requests
+              WHERE
+                id = ?
+                AND to_user_id = ?
+                AND status = 'pending'
+              `
+            )
+            .get(
+              requestId,
+              currentUserId
+            );
+
+
         if (
-          !userId ||
-          !requestId
+          !request
         ) {
+
+          socket.emit(
+            "friend-error",
+            {
+              message:
+                "Request not found"
+            }
+          );
 
           return;
 
         }
 
 
-        const request =
-          db.prepare(`
-            SELECT
-              id,
-              from_id AS fromId,
-              to_id AS toId
-            FROM friend_requests
-            WHERE
-              id = ?
-              AND to_id = ?
-              AND status = 'pending'
-          `).get(
-            requestId,
-            userId
+        const transaction =
+          db.transaction(
+            () => {
+
+              db.prepare(
+                `
+                UPDATE friend_requests
+                SET status = 'accepted'
+                WHERE id = ?
+                `
+              ).run(
+                requestId
+              );
+
+
+              db.prepare(
+                `
+                INSERT OR IGNORE INTO friendships
+                  (
+                    user_id,
+                    friend_id,
+                    created_at
+                  )
+                VALUES
+                  (?, ?, ?)
+                `
+              ).run(
+                request.from_user_id,
+                request.to_user_id,
+                new Date()
+                  .toISOString()
+              );
+
+
+              db.prepare(
+                `
+                INSERT OR IGNORE INTO friendships
+                  (
+                    user_id,
+                    friend_id,
+                    created_at
+                  )
+                VALUES
+                  (?, ?, ?)
+                `
+              ).run(
+                request.to_user_id,
+                request.from_user_id,
+                new Date()
+                  .toISOString()
+              );
+
+            }
           );
 
 
-        if (!request) {
-
-          return;
-
-        }
+        transaction();
 
 
-        addFriendship(
-          request.fromId,
-          request.toId
+        socket.emit(
+          "friend-success",
+          {
+            message:
+              "Friend request accepted"
+          }
         );
 
 
-        db.prepare(`
-          UPDATE friend_requests
-          SET status = 'accepted'
-          WHERE id = ?
-        `).run(
-          requestId
+        emitFriendsData(
+          request.from_user_id
         );
 
 
-        emitFriendsUpdate(
-          request.fromId
-        );
-
-
-        emitFriendsUpdate(
-          request.toId
-        );
-
-
-        console.log(
-          "✅ friends:",
-          request.fromId,
-          "<->",
-          request.toId
+        emitFriendsData(
+          request.to_user_id
         );
 
       }
@@ -1408,16 +1336,21 @@ io.on(
 
     /*
       =========================
-      DECLINE FRIEND REQUEST
+      DECLINE FRIEND
       =========================
     */
 
     socket.on(
       "friend-decline",
-      (data) => {
+      data => {
 
-        const userId =
-          socket.data.userId;
+        if (
+          !currentUserId
+        ) {
+
+          return;
+
+        }
 
 
         const requestId =
@@ -1426,9 +1359,27 @@ io.on(
           );
 
 
+        const result =
+          db
+            .prepare(
+              `
+              UPDATE friend_requests
+              SET status = 'declined'
+              WHERE
+                id = ?
+                AND to_user_id = ?
+                AND status = 'pending'
+              `
+            )
+            .run(
+              requestId,
+              currentUserId
+            );
+
+
         if (
-          !userId ||
-          !requestId
+          result.changes ===
+          0
         ) {
 
           return;
@@ -1436,21 +1387,8 @@ io.on(
         }
 
 
-        db.prepare(`
-          UPDATE friend_requests
-          SET status = 'declined'
-          WHERE
-            id = ?
-            AND to_id = ?
-            AND status = 'pending'
-        `).run(
-          requestId,
-          userId
-        );
-
-
-        emitFriendsUpdate(
-          userId
+        emitFriendsData(
+          currentUserId
         );
 
       }
@@ -1465,10 +1403,15 @@ io.on(
 
     socket.on(
       "friend-remove",
-      (data) => {
+      data => {
 
-        const userId =
-          socket.data.userId;
+        if (
+          !currentUserId
+        ) {
+
+          return;
+
+        }
 
 
         const friendId =
@@ -1480,17 +1423,8 @@ io.on(
             .toUpperCase();
 
 
-        if (
-          !userId ||
-          !friendId
-        ) {
-
-          return;
-
-        }
-
-
-        db.prepare(`
+        db.prepare(
+          `
           DELETE FROM friendships
           WHERE
             (
@@ -1502,20 +1436,21 @@ io.on(
               user_id = ?
               AND friend_id = ?
             )
-        `).run(
-          userId,
+          `
+        ).run(
+          currentUserId,
           friendId,
           friendId,
-          userId
+          currentUserId
         );
 
 
-        emitFriendsUpdate(
-          userId
+        emitFriendsData(
+          currentUserId
         );
 
 
-        emitFriendsUpdate(
+        emitFriendsData(
           friendId
         );
 
@@ -1531,13 +1466,12 @@ io.on(
 
     socket.on(
       "join-room",
-      (data) => {
+      data => {
 
         const roomId =
           String(
-            typeof data === "string"
-              ? data
-              : data?.roomId || ""
+            data?.roomId ||
+            ""
           )
             .trim()
             .toUpperCase();
@@ -1545,17 +1479,12 @@ io.on(
 
         const userName =
           String(
-            typeof data === "string"
-              ? "Guest"
-              : data?.userName ||
-                socket.data.userName ||
-                "Guest"
+            data?.userName ||
+            "Guest"
           )
             .trim()
-            .slice(
-              0,
-              40
-            );
+            .slice(0, 40) ||
+          "Guest";
 
 
         const room =
@@ -1564,10 +1493,16 @@ io.on(
           );
 
 
-        if (!room) {
+        if (
+          !room
+        ) {
 
           socket.emit(
-            "room-not-found"
+            "room-error",
+            {
+              message:
+                "Room not found"
+            }
           );
 
           return;
@@ -1576,54 +1511,18 @@ io.on(
 
 
         if (
-          socket.data.roomId ===
-          roomId
+          currentRoomId
         ) {
-
-          return;
-
-        }
-
-
-        if (
-          socket.data.roomId
-        ) {
-
-          const oldRoom =
-            rooms.get(
-              socket.data.roomId
-            );
-
-
-          if (oldRoom) {
-
-            oldRoom.users =
-              Math.max(
-                0,
-                oldRoom.users - 1
-              );
-
-
-            io.to(
-              socket.data.roomId
-            ).emit(
-              "users",
-              oldRoom.users
-            );
-
-
-            emitPresence(
-              socket.data.roomId
-            );
-
-          }
-
 
           socket.leave(
-            socket.data.roomId
+            currentRoomId
           );
 
         }
+
+
+        currentRoomId =
+          roomId;
 
 
         socket.join(
@@ -1631,50 +1530,18 @@ io.on(
         );
 
 
-        socket.data.roomId =
-          roomId;
-
-
-        socket.data.userName =
-          userName ||
-          "Guest";
-
-
-        socket.data.avatar =
-          socket.data.avatar ||
-          "";
-
-
-        socket.data.position =
-          room.playback.position;
-
-
-        socket.data.videoState =
-          room.playback.action;
-
-
-        room.users++;
+        room.users =
+          Math.max(
+            0,
+            room.users + 1
+          );
 
 
         socket.emit(
-          "room-state",
+          "room-joined",
           {
-
-            roomId:
-              room.id,
-
-            title:
-              room.title,
-
-            videoUrl:
-              room.videoUrl,
-
-            action:
-              room.playback.action,
-
-            position:
-              room.playback.position
-
+            room,
+            userName
           }
         );
 
@@ -1682,22 +1549,11 @@ io.on(
         io.to(
           roomId
         ).emit(
-          "users",
-          room.users
-        );
-
-
-        emitPresence(
-          roomId
-        );
-
-
-        console.log(
-          "👤 joined:",
-          roomId,
-          socket.data.userName,
-          "users:",
-          room.users
+          "room-presence",
+          {
+            users:
+              room.users
+          }
         );
 
       }
@@ -1712,39 +1568,14 @@ io.on(
 
     socket.on(
       "profile-update",
-      (data) => {
-
-        const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
-
-
-        if (!roomId) {
-          return;
-        }
-
+      data => {
 
         if (
-          socket.data.roomId !==
-          roomId
+          !currentUserId
         ) {
 
           return;
 
-        }
-
-
-        const room =
-          rooms.get(
-            roomId
-          );
-
-
-        if (!room) {
-          return;
         }
 
 
@@ -1754,10 +1585,8 @@ io.on(
             "Guest"
           )
             .trim()
-            .slice(
-              0,
-              40
-            );
+            .slice(0, 40) ||
+          "Guest";
 
 
         const avatar =
@@ -1767,60 +1596,37 @@ io.on(
           );
 
 
-        if (
-          avatar.length >
-          1500000
-        ) {
-
-          return;
-
-        }
-
-
-        socket.data.userName =
-          name ||
-          "Guest";
-
-
-        socket.data.avatar =
-          avatar;
-
-
-        if (
-          socket.data.userId
-        ) {
-
-          updateUser(
-            socket.data.userId,
-
-            socket.data.userName,
-
-            socket.data.avatar
-          );
-
-        }
-
-
-        emitPresence(
-          roomId
+        db.prepare(
+          `
+          UPDATE users
+          SET
+            name = ?,
+            avatar = ?
+          WHERE id = ?
+          `
+        ).run(
+          name,
+          avatar,
+          currentUserId
         );
 
 
-        if (
-          socket.data.userId
-        ) {
-
-          emitFriendsUpdate(
-            socket.data.userId
+        const user =
+          getUser(
+            currentUserId
           );
 
-        }
+
+        socket.emit(
+          "user-registered",
+          {
+            user
+          }
+        );
 
 
-        console.log(
-          "👤 profile updated:",
-          roomId,
-          socket.data.userName
+        emitFriendsData(
+          currentUserId
         );
 
       }
@@ -1835,19 +1641,15 @@ io.on(
 
     socket.on(
       "video-control",
-      (data) => {
+      data => {
 
         const roomId =
           String(
-            data?.roomId || ""
+            data?.roomId ||
+            ""
           )
             .trim()
             .toUpperCase();
-
-
-        if (!roomId) {
-          return;
-        }
 
 
         const room =
@@ -1856,23 +1658,25 @@ io.on(
           );
 
 
-        if (!room) {
+        if (
+          !room
+        ) {
+
           return;
+
         }
 
 
         const action =
-          data?.action === "play"
+          data?.action ===
+          "play"
             ? "play"
             : "pause";
 
 
         const position =
-          Math.max(
-            0,
-            Number(
-              data?.position || 0
-            )
+          Number(
+            data?.position
           );
 
 
@@ -1880,41 +1684,29 @@ io.on(
 
           action,
 
-          position
+          position:
+            Number.isFinite(
+              position
+            )
+              ? Math.max(
+                  0,
+                  position
+                )
+              : 0
 
         };
 
 
-        socket.data.position =
-          position;
-
-
-        socket.data.videoState =
-          action;
-
-
         socket
-          .to(
-            roomId
-          )
+          .to(roomId)
           .emit(
             "video-control",
             {
-
               action,
-
-              position,
-
-              source:
-                socket.id
-
+              position:
+                room.playback.position
             }
           );
-
-
-        emitPresence(
-          roomId
-        );
 
       }
     );
@@ -1928,32 +1720,15 @@ io.on(
 
     socket.on(
       "video-position",
-      (data) => {
+      data => {
 
         const roomId =
           String(
-            data?.roomId || ""
+            data?.roomId ||
+            ""
           )
             .trim()
             .toUpperCase();
-
-
-        if (!roomId) {
-          return;
-        }
-
-
-        const position =
-          Math.max(
-            0,
-            Number(
-              data?.position || 0
-            )
-          );
-
-
-        socket.data.position =
-          position;
 
 
         const room =
@@ -1962,17 +1737,48 @@ io.on(
           );
 
 
-        if (room) {
+        if (
+          !room
+        ) {
 
-          room.playback.position =
-            position;
+          return;
 
         }
 
 
-        emitPresence(
-          roomId
-        );
+        const position =
+          Number(
+            data?.position
+          );
+
+
+        if (
+          !Number.isFinite(
+            position
+          )
+        ) {
+
+          return;
+
+        }
+
+
+        room.playback.position =
+          Math.max(
+            0,
+            position
+          );
+
+
+        socket
+          .to(roomId)
+          .emit(
+            "video-position",
+            {
+              position:
+                room.playback.position
+            }
+          );
 
       }
     );
@@ -1986,11 +1792,12 @@ io.on(
 
     socket.on(
       "reaction",
-      (data) => {
+      data => {
 
         const roomId =
           String(
-            data?.roomId || ""
+            data?.roomId ||
+            ""
           )
             .trim()
             .toUpperCase();
@@ -1998,14 +1805,26 @@ io.on(
 
         const reaction =
           String(
-            data?.reaction || ""
-          )
-            .trim();
+            data?.reaction ||
+            ""
+          );
+
+
+        const allowed =
+          [
+            "❤️",
+            "😂",
+            "🔥",
+            "😮",
+            "😭",
+            "💀"
+          ];
 
 
         if (
-          !roomId ||
-          !reaction
+          !allowed.includes(
+            reaction
+          )
         ) {
 
           return;
@@ -2024,53 +1843,13 @@ io.on(
         }
 
 
-        const allowedReactions = [
-
-          "❤️",
-          "😂",
-          "🔥",
-          "😮",
-          "😭",
-          "💀"
-
-        ];
-
-
-        if (
-          !allowedReactions.includes(
-            reaction
-          )
-        ) {
-
-          return;
-
-        }
-
-
         io.to(
           roomId
         ).emit(
           "reaction",
           {
-
-            id:
-              `${socket.id}-${Date.now()}`,
-
-            reaction,
-
-            user:
-              socket.data.userName ||
-              "Guest"
-
+            reaction
           }
-        );
-
-
-        console.log(
-          "💜 reaction:",
-          roomId,
-          socket.data.userName,
-          reaction
         );
 
       }
@@ -2085,11 +1864,12 @@ io.on(
 
     socket.on(
       "chat-message",
-      (data) => {
+      data => {
 
         const roomId =
           String(
-            data?.roomId || ""
+            data?.roomId ||
+            ""
           )
             .trim()
             .toUpperCase();
@@ -2097,17 +1877,14 @@ io.on(
 
         const text =
           String(
-            data?.text || ""
+            data?.text ||
+            ""
           )
             .trim()
-            .slice(
-              0,
-              1000
-            );
+            .slice(0, 1000);
 
 
         if (
-          !roomId ||
           !text
         ) {
 
@@ -2132,13 +1909,14 @@ io.on(
         ).emit(
           "chat-message",
           {
+            userId:
+              currentUserId,
 
-            user:
-              socket.data.userName ||
-              "Guest",
+            text,
 
-            text
-
+            createdAt:
+              new Date()
+                .toISOString()
           }
         );
 
@@ -2156,19 +1934,19 @@ io.on(
       "disconnect",
       () => {
 
-        const roomId =
-          socket.data.roomId;
-
-
-        if (roomId) {
+        if (
+          currentRoomId
+        ) {
 
           const room =
             rooms.get(
-              roomId
+              currentRoomId
             );
 
 
-          if (room) {
+          if (
+            room
+          ) {
 
             room.users =
               Math.max(
@@ -2178,15 +1956,13 @@ io.on(
 
 
             io.to(
-              roomId
+              currentRoomId
             ).emit(
-              "users",
-              room.users
-            );
-
-
-            emitPresence(
-              roomId
+              "room-presence",
+              {
+                users:
+                  room.users
+              }
             );
 
           }
@@ -2194,8 +1970,23 @@ io.on(
         }
 
 
+        if (
+          currentUserId &&
+          onlineUsers.get(
+            currentUserId
+          ) ===
+            socket.id
+        ) {
+
+          onlineUsers.delete(
+            currentUserId
+          );
+
+        }
+
+
         console.log(
-          "🔴 user disconnected:",
+          "🔴 disconnected:",
           socket.id
         );
 
@@ -2213,39 +2004,23 @@ io.on(
 */
 
 const PORT =
-  process.env.PORT ||
-  3001;
+  Number(
+    process.env.PORT ||
+    3001
+  );
 
 
-app.listen({
+await app.listen(
+  {
+    port:
+      PORT,
 
-  port:
-    PORT,
-
-  host:
-    "0.0.0.0"
-
-})
-.then(
-  () => {
-
-    console.log(
-      `🔥 VIBE server started on ${PORT}`
-    );
-
+    host:
+      "0.0.0.0"
   }
-)
-.catch(
-  error => {
-
-    console.error(
-      error
-    );
+);
 
 
-    process.exit(
-      1
-    );
-
-  }
+console.log(
+  `🚀 VIBE server running on port ${PORT}`
 );
