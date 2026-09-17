@@ -1,7 +1,17 @@
 import { useState } from "react";
 
+function createRoomId() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
 function App() {
   const [roomName, setRoomName] = useState("");
+  const [roomId, setRoomId] = useState("");
+
+  function handleCreateRoom() {
+    const id = createRoomId();
+    setRoomId(id);
+  }
 
   return (
     <main className="app">
@@ -28,17 +38,30 @@ function App() {
             <input
               type="text"
               value={roomName}
-              onChange={(event) =>
-                setRoomName(event.target.value)
-              }
+              onChange={(event) => setRoomName(event.target.value)}
               placeholder="Room name"
               maxLength={40}
             />
 
-            <button type="button">
+            <button type="button" onClick={handleCreateRoom}>
               Create room
             </button>
           </div>
+
+          {roomId && (
+            <div
+              style={{
+                marginTop: "18px",
+                color: "rgba(255, 255, 255, 0.45)",
+                fontSize: "11px",
+              }}
+            >
+              Room created:{" "}
+              <strong style={{ color: "#9a63c8" }}>
+                {roomId}
+              </strong>
+            </div>
+          )}
         </div>
       </section>
     </main>
