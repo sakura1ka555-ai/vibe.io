@@ -71,19 +71,14 @@ function normalizePresence(
   value: unknown
 ): PresenceUser[] {
 
-  if (!value) {
-    return [];
-  }
-
-
   if (Array.isArray(value)) {
     return value as PresenceUser[];
   }
 
 
   if (
-    typeof value === "object" &&
-    value !== null
+    value &&
+    typeof value === "object"
   ) {
 
     const data =
@@ -94,13 +89,13 @@ function normalizePresence(
       };
 
 
-    if (Array.isArray(data.users)) {
-      return data.users as PresenceUser[];
+    if (Array.isArray(data.presence)) {
+      return data.presence as PresenceUser[];
     }
 
 
-    if (Array.isArray(data.presence)) {
-      return data.presence as PresenceUser[];
+    if (Array.isArray(data.users)) {
+      return data.users as PresenceUser[];
     }
 
 
@@ -120,21 +115,12 @@ function normalizePresence(
 
 
 function getInitial(
-  name: string,
-  avatar?: string
-) {
-
-  const trimmed =
-    String(name || "Guest").trim();
-
-
-  if (avatar) {
-    return "";
-  }
-
+  name: string
+): string {
 
   return (
-    trimmed
+    String(name || "Guest")
+      .trim()
       .charAt(0)
       .toUpperCase() ||
     "G"
@@ -150,21 +136,23 @@ function WatchRoom({
   onProfileChange
 }: Props) {
 
-  const [users, setUsers] =
-    useState(1);
+  const [
+    presence,
+    setPresence
+  ] = useState<PresenceUser[]>([]);
 
-  const [presence, setPresence] =
-    useState<PresenceUser[]>([]);
 
   const [
     reactionsOnScreen,
     setReactionsOnScreen
   ] = useState<Reaction[]>([]);
 
+
   const [
     initialPosition,
     setInitialPosition
   ] = useState(0);
+
 
   const [
     initialAction,
@@ -173,20 +161,24 @@ function WatchRoom({
     "play" | "pause"
   >("pause");
 
+
   const [
     remoteControl,
     setRemoteControl
   ] = useState<RemoteControl>(null);
+
 
   const [
     profileOpen,
     setProfileOpen
   ] = useState(false);
 
+
   const [
     inviteOpen,
     setInviteOpen
   ] = useState(false);
+
 
   const [
     copied,
@@ -236,14 +228,28 @@ function WatchRoom({
 
   /*
   ==================================================
-  ROOM / SOCKET
+  ROOM PRESENCE + SOCKET
   ==================================================
   */
 
   useEffect(() => {
 
-    const applyPresence =
+    let active = true;
+
+
+    /*
+    ================================================
+    PRESENCE
+    ================================================
+    */
+
+    const handlePresence =
       (value: unknown) => {
+
+        if (!active) {
+          return;
+        }
+
 
         const people =
           normalizePresence(
@@ -260,46 +266,36 @@ function WatchRoom({
         setPresence(
           people
         );
-
-
-        setUsers(
-          Math.max(
-            1,
-            people.length
-          )
-        );
       };
 
+
+    /*
+    ================================================
+    USERS
+    ================================================
+    
+    Это оставляем как дополнительный
+    listener для совместимости.
+    
+    Сам интерфейс теперь считает людей
+    непосредственно из presence.
+    */
 
     const handleUsers =
       (value: unknown) => {
 
-        const count =
-          Number(value);
-
-
-        if (
-          Number.isFinite(count)
-        ) {
-
-          setUsers(
-            Math.max(
-              1,
-              count
-            )
-          );
-        }
-      };
-
-
-    const handlePresence =
-      (value: unknown) => {
-
-        applyPresence(
+        console.log(
+          "👥 VIBE USERS:",
           value
         );
       };
 
+
+    /*
+    ================================================
+    ROOM STATE
+    ================================================
+    */
 
     const handleRoomState =
       (data: unknown) => {
@@ -351,8 +347,15 @@ function WatchRoom({
             ? "play"
             : "pause"
         );
+
       };
 
+
+    /*
+    ================================================
+    REMOTE VIDEO CONTROL
+    ================================================
+    */
 
     const handleRemoteControl =
       (data: unknown) => {
@@ -377,6 +380,7 @@ function WatchRoom({
           control.action !== "play" &&
           control.action !== "pause"
         ) {
+
           return;
         }
 
@@ -408,8 +412,15 @@ function WatchRoom({
               ? id
               : Date.now()
         });
+
       };
 
+
+    /*
+    ================================================
+    REACTION
+    ================================================
+    */
 
     const handleReaction =
       (reaction: unknown) => {
@@ -462,15 +473,21 @@ function WatchRoom({
       };
 
 
-    socket.on(
-      "users",
-      handleUsers
-    );
-
+    /*
+    ================================================
+    REGISTER LISTENERS FIRST
+    ================================================
+    */
 
     socket.on(
       "presence",
       handlePresence
+    );
+
+
+    socket.on(
+      "users",
+      handleUsers
     );
 
 
@@ -494,19 +511,7 @@ function WatchRoom({
 
     /*
     ================================================
-    JOIN
-    ================================================
-    */
-
-    joinRoom(
-      roomId,
-      name
-    );
-
-
-    /*
-    ================================================
-    PROFILE IN ROOM
+    PROFILE
     ================================================
     */
 
@@ -526,13 +531,31 @@ function WatchRoom({
               ""
           }
         );
+
       };
+
+
+    /*
+    ================================================
+    JOIN ROOM
+    ================================================
+    
+    Сначала join.
+    Потом profile-update.
+    */
+
+    joinRoom(
+      roomId,
+      profile.name ||
+        name ||
+        "Guest"
+    );
 
 
     const profileTimer =
       window.setTimeout(
         sendProfile,
-        100
+        300
       );
 
 
@@ -545,17 +568,25 @@ function WatchRoom({
     const handleConnect =
       () => {
 
+        console.log(
+          "🔄 Rejoining VIBE room:",
+          roomId
+        );
+
+
         joinRoom(
           roomId,
           profile.name ||
-            name
+            name ||
+            "Guest"
         );
 
 
         window.setTimeout(
           sendProfile,
-          100
+          300
         );
+
       };
 
 
@@ -565,7 +596,16 @@ function WatchRoom({
     );
 
 
+    /*
+    ================================================
+    CLEANUP
+    ================================================
+    */
+
     return () => {
+
+      active = false;
+
 
       window.clearTimeout(
         profileTimer
@@ -573,14 +613,14 @@ function WatchRoom({
 
 
       socket.off(
-        "users",
-        handleUsers
+        "presence",
+        handlePresence
       );
 
 
       socket.off(
-        "presence",
-        handlePresence
+        "users",
+        handleUsers
       );
 
 
@@ -619,7 +659,7 @@ function WatchRoom({
 
   /*
   ==================================================
-  VIDEO CONTROL
+  VIDEO
   ==================================================
   */
 
@@ -633,6 +673,7 @@ function WatchRoom({
       action,
       position
     );
+
   }
 
 
@@ -644,6 +685,7 @@ function WatchRoom({
       roomId,
       position
     );
+
   }
 
 
@@ -654,6 +696,7 @@ function WatchRoom({
     setInitialPosition(
       position
     );
+
   }
 
 
@@ -689,12 +732,13 @@ function WatchRoom({
     setProfileOpen(
       false
     );
+
   }
 
 
   /*
   ==================================================
-  REACTIONS
+  REACTION
   ==================================================
   */
 
@@ -706,6 +750,7 @@ function WatchRoom({
       roomId,
       emoji
     );
+
   }
 
 
@@ -733,6 +778,7 @@ function WatchRoom({
       await navigator.clipboard.writeText(
         inviteLink
       );
+
 
       setCopied(
         true
@@ -762,6 +808,7 @@ function WatchRoom({
       textarea.style.position =
         "fixed";
 
+
       textarea.style.opacity =
         "0";
 
@@ -775,13 +822,16 @@ function WatchRoom({
 
 
       try {
+
         document.execCommand(
           "copy"
         );
 
+
         setCopied(
           true
         );
+
 
         window.setTimeout(() => {
 
@@ -796,8 +846,11 @@ function WatchRoom({
         document.body.removeChild(
           textarea
         );
+
       }
+
     }
+
   }
 
 
@@ -824,7 +877,7 @@ function WatchRoom({
         });
 
       } catch {
-        // Пользователь закрыл системное окно share.
+        // Пользователь закрыл share.
       }
 
 
@@ -833,6 +886,7 @@ function WatchRoom({
 
 
     await copyInviteLink();
+
   }
 
 
@@ -851,8 +905,20 @@ function WatchRoom({
     getInitial(
       profile.name ||
         name ||
-        "Guest",
-      avatar
+        "Guest"
+    );
+
+
+  /*
+  ==================================================
+  VIEWER COUNT
+  ==================================================
+  */
+
+  const viewerCount =
+    Math.max(
+      1,
+      presence.length
     );
 
 
@@ -865,15 +931,7 @@ function WatchRoom({
   return (
     <div className="watch-room">
 
-      {/* ==================================================
-          MAIN
-      ================================================== */}
-
       <main className="watch-main">
-
-        {/* ==================================================
-            HEADER
-        ================================================== */}
 
         <header className="watch-header">
 
@@ -905,13 +963,16 @@ function WatchRoom({
                 setInviteOpen(true)
               }
             >
+
               <span className="invite-button-icon">
                 ↗
               </span>
 
+
               <span>
                 Invite
               </span>
+
             </button>
 
 
@@ -923,7 +984,7 @@ function WatchRoom({
 
 
               <strong>
-                {users}
+                {viewerCount}
               </strong>
 
 
@@ -944,14 +1005,18 @@ function WatchRoom({
             >
 
               {avatar ? (
+
                 <img
                   src={avatar}
                   alt=""
                 />
+
               ) : (
+
                 <span>
                   {avatarInitial}
                 </span>
+
               )}
 
             </button>
@@ -960,10 +1025,6 @@ function WatchRoom({
 
         </header>
 
-
-        {/* ==================================================
-            VIDEO
-        ================================================== */}
 
         <div className="video-frame">
 
@@ -989,10 +1050,6 @@ function WatchRoom({
             }
           />
 
-
-          {/* ==================================================
-              FLOATING REACTIONS
-          ================================================== */}
 
           <div className="floating-reactions">
 
@@ -1036,10 +1093,6 @@ function WatchRoom({
         </div>
 
 
-        {/* ==================================================
-            REACTION BAR
-        ================================================== */}
-
         <div className="reaction-bar">
 
           <div className="reaction-label">
@@ -1076,10 +1129,6 @@ function WatchRoom({
         </div>
 
 
-        {/* ==================================================
-            BOTTOM STATUS
-        ================================================== */}
-
         <div className="watch-bottom">
 
           <div className="watch-bottom-status">
@@ -1087,6 +1136,7 @@ function WatchRoom({
             <span className="status-dot">
               ●
             </span>
+
 
             <span>
               {initialAction === "play"
@@ -1103,6 +1153,7 @@ function WatchRoom({
               ROOM
             </span>
 
+
             <strong>
               {roomId}
             </strong>
@@ -1114,10 +1165,6 @@ function WatchRoom({
       </main>
 
 
-      {/* ==================================================
-          SIDEBAR
-      ================================================== */}
-
       <aside className="watch-sidebar">
 
         <Chat
@@ -1128,11 +1175,8 @@ function WatchRoom({
       </aside>
 
 
-      {/* ==================================================
-          PROFILE MODAL
-      ================================================== */}
-
       {profileOpen && (
+
         <ProfileModal
           profile={profile}
           onSave={
@@ -1142,14 +1186,12 @@ function WatchRoom({
             setProfileOpen(false)
           }
         />
+
       )}
 
 
-      {/* ==================================================
-          INVITE MODAL
-      ================================================== */}
-
       {inviteOpen && (
+
         <div
           className="invite-modal-backdrop"
           onClick={() =>
@@ -1235,6 +1277,7 @@ function WatchRoom({
           </div>
 
         </div>
+
       )}
 
     </div>
