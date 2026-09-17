@@ -50,157 +50,6 @@ type Props = {
 };
 
 
-const USER_ID_KEY =
-  "vibe-user-id";
-
-
-function normalizePresence(
-  data: unknown
-): PresenceUser[] {
-
-  if (Array.isArray(data)) {
-
-    return data
-      .filter(Boolean)
-      .map((item: any) => ({
-        id: String(
-          item?.id ||
-          ""
-        ),
-
-        name: String(
-          item?.name ||
-          "Guest"
-        ),
-
-        avatar: String(
-          item?.avatar ||
-          ""
-        ),
-
-        position:
-          Number.isFinite(
-            Number(
-              item?.position
-            )
-          )
-            ? Number(
-                item.position
-              )
-            : 0,
-
-        time: String(
-          item?.time ||
-          "00:00"
-        ),
-
-        state:
-          item?.state ===
-          "play"
-            ? "play"
-            : "pause"
-      }))
-      .filter(
-        item => item.id
-      );
-
-  }
-
-
-  /*
-    На случай, если сервер
-    когда-нибудь вернёт объект.
-  */
-
-  if (
-    data &&
-    typeof data ===
-      "object"
-  ) {
-
-    const objectData =
-      data as any;
-
-
-    if (
-      Array.isArray(
-        objectData.users
-      )
-    ) {
-
-      return normalizePresence(
-        objectData.users
-      );
-
-    }
-
-
-    if (
-      Array.isArray(
-        objectData.presence
-      )
-    ) {
-
-      return normalizePresence(
-        objectData.presence
-      );
-
-    }
-
-  }
-
-
-  return [];
-
-}
-
-
-function getSavedUserId() {
-
-  try {
-
-    const saved =
-      localStorage.getItem(
-        USER_ID_KEY
-      );
-
-    if (
-      saved &&
-      saved.trim()
-    ) {
-
-      return saved.trim();
-
-    }
-
-  } catch {
-    // ignore
-  }
-
-
-  const id =
-    `local-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 10)}`;
-
-
-  try {
-
-    localStorage.setItem(
-      USER_ID_KEY,
-      id
-    );
-
-  } catch {
-    // ignore
-  }
-
-
-  return id;
-
-}
-
-
 function WatchRoom({
   name,
   videoUrl,
@@ -209,23 +58,22 @@ function WatchRoom({
   onProfileChange
 }: Props) {
 
+  const [users, setUsers] =
+    useState(1);
+
   const [presence, setPresence] =
     useState<PresenceUser[]>([]);
-
 
   const [reactionsOnScreen, setReactionsOnScreen] =
     useState<Reaction[]>([]);
 
-
   const [initialPosition, setInitialPosition] =
     useState(0);
-
 
   const [initialAction, setInitialAction] =
     useState<
       "play" | "pause"
     >("pause");
-
 
   const [remoteControl, setRemoteControl] =
     useState<{
@@ -238,20 +86,114 @@ function WatchRoom({
 
 
   const userIdRef =
-    useRef(
-      getSavedUserId()
-    );
+    useRef<string>("");
 
 
   /*
     =========================
-    ROOM
+    USER ID
+    =========================
+  */
+
+  useEffect(() => {
+
+    try {
+
+      let saved =
+        localStorage.getItem(
+          "vibe-user-id"
+        );
+
+
+      if (!saved) {
+
+        saved =
+          `user-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 8)}`;
+
+
+        localStorage.setItem(
+          "vibe-user-id",
+          saved
+        );
+
+      }
+
+
+      userIdRef.current =
+        saved;
+
+    } catch {
+
+      userIdRef.current =
+        `user-${Date.now()}`;
+
+    }
+
+  }, []);
+
+
+  /*
+    =========================
+    ROOM / SOCKET
     =========================
   */
 
   useEffect(() => {
 
     let mounted = true;
+
+
+    function normalizePresence(
+      data: any
+    ): PresenceUser[] {
+
+      if (
+        Array.isArray(data)
+      ) {
+
+        return data;
+
+      }
+
+
+      if (
+        Array.isArray(
+          data?.users
+        )
+      ) {
+
+        return data.users;
+
+      }
+
+
+      if (
+        Array.isArray(
+          data?.presence
+        )
+      ) {
+
+        return data.presence;
+
+      }
+
+
+      if (
+        Array.isArray(
+          data?.participants
+        )
+      ) {
+
+        return data.participants;
+
+      }
+
+
+      return [];
+
+    }
 
 
     function applyPresence(
@@ -279,6 +221,32 @@ function WatchRoom({
         people
       );
 
+
+      setUsers(
+        people.length
+      );
+
+    }
+
+
+    function handleUsers(
+      count: number
+    ) {
+
+      if (
+        presence.length === 0 &&
+        Number.isFinite(count)
+      ) {
+
+        setUsers(
+          Math.max(
+            1,
+            count
+          )
+        );
+
+      }
+
     }
 
 
@@ -301,41 +269,18 @@ function WatchRoom({
       }
 
 
-      const position =
-        Number.isFinite(
-          Number(
-            state.position
-          )
-        )
-          ? Number(
-              state.position
-            )
-          : 0;
-
-
-      const action =
-        state.action ===
-        "play"
-          ? "play"
-          : "pause";
-
-
-      console.log(
-        "🎬 VIBE ROOM STATE:",
-        {
-          action,
-          position
-        }
-      );
-
-
       setInitialPosition(
-        position
+        Number(
+          state.position
+        ) || 0
       );
 
 
       setInitialAction(
-        action
+        state.action ===
+        "play"
+          ? "play"
+          : "pause"
       );
 
     }
@@ -361,37 +306,18 @@ function WatchRoom({
       }
 
 
-      const position =
-        Number.isFinite(
+      setRemoteControl({
+        action:
+          data.action ===
+          "play"
+            ? "play"
+            : "pause",
+
+        position:
           Number(
             data.position
-          )
-        )
-          ? Number(
-              data.position
-            )
-          : 0;
+          ) || 0,
 
-
-      const action =
-        data.action ===
-        "play"
-          ? "play"
-          : "pause";
-
-
-      console.log(
-        "🎬 VIBE REMOTE CONTROL:",
-        {
-          action,
-          position
-        }
-      );
-
-
-      setRemoteControl({
-        action,
-        position,
         id:
           Number(
             data.id
@@ -460,27 +386,29 @@ function WatchRoom({
 
     /*
       =========================
-      SOCKET LISTENERS
+      LISTENERS
       =========================
     */
+
+    socket.on(
+      "users",
+      handleUsers
+    );
 
     socket.on(
       "presence",
       applyPresence
     );
 
-
     socket.on(
       "room-state",
       handleRoomState
     );
 
-
     socket.on(
       "video-control",
       handleRemoteControl
     );
-
 
     socket.on(
       "reaction",
@@ -490,18 +418,9 @@ function WatchRoom({
 
     /*
       =========================
-      JOIN ROOM
+      JOIN
       =========================
     */
-
-    console.log(
-      "🚪 VIBE JOIN ROOM:",
-      {
-        roomId,
-        name
-      }
-    );
-
 
     joinRoom(
       roomId,
@@ -509,13 +428,8 @@ function WatchRoom({
     );
 
 
-    /*
-      После входа сообщаем серверу
-      актуальное имя и avatar.
-    */
-
     const profileUpdateTimer =
-      window.setTimeout(() => {
+      setTimeout(() => {
 
         socket.emit(
           "profile-update",
@@ -540,18 +454,10 @@ function WatchRoom({
     function handleReconnect() {
 
       console.log(
-        "🔄 VIBE SOCKET RECONNECTED:",
-        socket.id
+        "🔄 VIBE socket reconnected — joining room:",
+        roomId
       );
 
-
-      /*
-        После reconnect старый
-        socket уже не находится
-        в комнате.
-
-        Поэтому снова входим.
-      */
 
       joinRoom(
         roomId,
@@ -559,7 +465,7 @@ function WatchRoom({
       );
 
 
-      window.setTimeout(() => {
+      setTimeout(() => {
 
         socket.emit(
           "profile-update",
@@ -583,34 +489,41 @@ function WatchRoom({
     );
 
 
+    /*
+      =========================
+      CLEANUP
+      =========================
+    */
+
     return () => {
 
       mounted = false;
 
 
       socket.off(
+        "users",
+        handleUsers
+      );
+
+      socket.off(
         "presence",
         applyPresence
       );
-
 
       socket.off(
         "room-state",
         handleRoomState
       );
 
-
       socket.off(
         "video-control",
         handleRemoteControl
       );
 
-
       socket.off(
         "reaction",
         handleReaction
       );
-
 
       socket.off(
         "connect",
@@ -618,7 +531,7 @@ function WatchRoom({
       );
 
 
-      window.clearTimeout(
+      clearTimeout(
         profileUpdateTimer
       );
 
@@ -644,28 +557,10 @@ function WatchRoom({
     position: number
   ) {
 
-    const safePosition =
-      Number.isFinite(
-        Number(position)
-      )
-        ? Number(position)
-        : 0;
-
-
-    console.log(
-      "🎬 VIBE SEND CONTROL:",
-      {
-        action,
-        position:
-          safePosition
-      }
-    );
-
-
     sendVideoControl(
       roomId,
       action,
-      safePosition
+      position
     );
 
   }
@@ -681,17 +576,9 @@ function WatchRoom({
     position: number
   ) {
 
-    const safePosition =
-      Number.isFinite(
-        Number(position)
-      )
-        ? Number(position)
-        : 0;
-
-
     sendVideoPosition(
       roomId,
-      safePosition
+      position
     );
 
   }
@@ -729,16 +616,6 @@ function WatchRoom({
 
   /*
     =========================
-    VIEWER COUNT
-    =========================
-  */
-
-  const users =
-    presence.length;
-
-
-  /*
-    =========================
     UI
     =========================
   */
@@ -748,35 +625,27 @@ function WatchRoom({
     <div className="watch-room">
 
 
-      {/* =========================
-          HEADER
-      ========================= */}
+      {/* HEADER */}
 
       <div className="watch-header">
 
         <div className="watch-header-left">
 
           <div className="watch-room-title">
-
             {roomId}
-
           </div>
 
 
           <div className="watch-users">
 
             <span className="watch-users-dot">
-
               ●
-
             </span>
 
             {users}
 
             <span className="watch-users-label">
-
               watching
-
             </span>
 
           </div>
@@ -794,9 +663,7 @@ function WatchRoom({
       </div>
 
 
-      {/* =========================
-          VIDEO
-      ========================= */}
+      {/* VIDEO */}
 
       <div className="watch-video">
 
@@ -822,9 +689,7 @@ function WatchRoom({
       </div>
 
 
-      {/* =========================
-          REACTIONS
-      ========================= */}
+      {/* REACTIONS */}
 
       {reactionsOnScreen.length >
         0 && (
@@ -856,15 +721,12 @@ function WatchRoom({
       )}
 
 
-      {/* =========================
-          CHAT
-      ========================= */}
+      {/* CHAT */}
 
       <Chat
         roomId={roomId}
         presence={presence}
       />
-
 
     </div>
 
