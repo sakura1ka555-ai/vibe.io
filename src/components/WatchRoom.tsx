@@ -84,6 +84,9 @@ function WatchRoom({
       id: number;
     } | null>(null);
 
+  const [profileOpen, setProfileOpen] =
+    useState(false);
+
 
   const userIdRef =
     useRef<string>("");
@@ -223,7 +226,10 @@ function WatchRoom({
 
 
       setUsers(
-        people.length
+        Math.max(
+          1,
+          people.length
+        )
       );
 
     }
@@ -234,7 +240,6 @@ function WatchRoom({
     ) {
 
       if (
-        presence.length === 0 &&
         Number.isFinite(count)
       ) {
 
@@ -611,7 +616,27 @@ function WatchRoom({
       }
     );
 
+
+    setProfileOpen(
+      false
+    );
+
   }
+
+
+  /*
+    =========================
+    AVATAR LETTER
+    =========================
+  */
+
+  const profileLetter =
+    (
+      profile.name ||
+      "G"
+    )
+      .charAt(0)
+      .toUpperCase();
 
 
   /*
@@ -625,7 +650,9 @@ function WatchRoom({
     <div className="watch-room">
 
 
-      {/* HEADER */}
+      {/* =========================
+          HEADER
+      ========================= */}
 
       <div className="watch-header">
 
@@ -653,17 +680,52 @@ function WatchRoom({
         </div>
 
 
-        <ProfileModal
-          profile={profile}
-          onSave={
-            handleProfileSave
+        {/* =========================
+            PROFILE BUTTON
+        ========================= */}
+
+        <button
+          type="button"
+          className="profile profile-button"
+          onClick={() =>
+            setProfileOpen(true)
           }
-        />
+        >
+
+          {profile.avatar ? (
+
+            <img
+              src={profile.avatar}
+              alt=""
+              className="profile-button-avatar"
+            />
+
+          ) : (
+
+            <span className="profile-button-letter">
+              {profileLetter}
+            </span>
+
+          )}
+
+
+          <span className="profile-button-name">
+            {profile.name}
+          </span>
+
+
+          <span className="profile-button-arrow">
+            ›
+          </span>
+
+        </button>
 
       </div>
 
 
-      {/* VIDEO */}
+      {/* =========================
+          VIDEO
+      ========================= */}
 
       <div className="watch-video">
 
@@ -689,7 +751,9 @@ function WatchRoom({
       </div>
 
 
-      {/* REACTIONS */}
+      {/* =========================
+          REACTIONS
+      ========================= */}
 
       {reactionsOnScreen.length >
         0 && (
@@ -721,12 +785,41 @@ function WatchRoom({
       )}
 
 
-      {/* CHAT */}
+      {/* =========================
+          CHAT
+      ========================= */}
 
       <Chat
         roomId={roomId}
         presence={presence}
       />
+
+
+      {/* =========================
+          PROFILE MODAL
+      ========================= */}
+
+      {profileOpen && (
+
+        <ProfileModal
+
+          profile={
+            profile
+          }
+
+          onSave={
+            handleProfileSave
+          }
+
+          onClose={() =>
+            setProfileOpen(
+              false
+            )
+          }
+
+        />
+
+      )}
 
     </div>
 
