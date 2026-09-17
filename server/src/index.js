@@ -674,9 +674,9 @@ app.get(
       )
         .filter(
           room =>
-             room.public === true &&
-    room.users > 0
-)
+            room.public === true &&
+            room.users > 0
+        )
         .sort(
           (a, b) =>
             b.users -
@@ -1515,6 +1515,41 @@ io.on(
           currentRoomId
         ) {
 
+          const previousRoom =
+            rooms.get(
+              currentRoomId
+            );
+
+
+          if (
+            previousRoom
+          ) {
+
+            previousRoom.users =
+              Math.max(
+                0,
+                previousRoom.users - 1
+              );
+
+
+            io.to(
+              currentRoomId
+            ).emit(
+              "users",
+              previousRoom.users
+            );
+
+
+            io.to(
+              currentRoomId
+            ).emit(
+              "presence",
+              previousRoom.users
+            );
+
+          }
+
+
           socket.leave(
             currentRoomId
           );
@@ -1548,28 +1583,33 @@ io.on(
 
 
         socket.emit(
-  "room-state",
-  {
-    action:
-      room.playback?.action ||
-      "pause",
+          "room-state",
+          {
+            action:
+              room.playback?.action ||
+              "pause",
 
-    position:
-      Number(
-        room.playback?.position
-      ) || 0
-  }
-);
+            position:
+              Number(
+                room.playback?.position
+              ) || 0
+          }
+        );
 
 
         io.to(
           roomId
         ).emit(
-          "room-presence",
-          {
-            users:
-              room.users
-          }
+          "users",
+          room.users
+        );
+
+
+        io.to(
+          roomId
+        ).emit(
+          "presence",
+          room.users
         );
 
       }
@@ -1974,11 +2014,16 @@ io.on(
             io.to(
               currentRoomId
             ).emit(
-              "room-presence",
-              {
-                users:
-                  room.users
-              }
+              "users",
+              room.users
+            );
+
+
+            io.to(
+              currentRoomId
+            ).emit(
+              "presence",
+              room.users
             );
 
           }
