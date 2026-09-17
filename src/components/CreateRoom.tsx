@@ -1,4 +1,8 @@
-import { useState } from "react";
+```tsx
+import {
+  useState
+} from "react";
+
 
 type Props = {
   onCreate: (
@@ -7,8 +11,10 @@ type Props = {
     isPublic: boolean,
     category: string
   ) => void;
+
   onClose?: () => void;
 };
+
 
 type Source = {
   id: string;
@@ -16,117 +22,308 @@ type Source = {
   url: string;
 };
 
+
 const sources: Source[] = [
+
   {
     id: "vk",
     name: "VK ВИДЕО",
     url: "https://vk.com/video"
   },
+
   {
     id: "youtube",
     name: "YOUTUBE",
     url: "https://www.youtube.com"
   },
+
   {
     id: "rutube",
     name: "RUTUBE",
     url: "https://rutube.ru"
   },
+
   {
     id: "kinopoisk",
     name: "КИНОПОИСК",
     url: "https://www.kinopoisk.ru"
   }
+
 ];
 
+
 const categories = [
-  { id: "movies", name: "🎬 Фильмы" },
-  { id: "series", name: "📺 Сериалы" },
-  { id: "music", name: "🎵 Музыка" },
-  { id: "gaming", name: "🎮 Gaming" },
-  { id: "chill", name: "🌙 Chill" },
-  { id: "other", name: "✨ Другое" }
+
+  {
+    id: "movies",
+    name: "🎬 Фильмы"
+  },
+
+  {
+    id: "series",
+    name: "📺 Сериалы"
+  },
+
+  {
+    id: "music",
+    name: "🎵 Музыка"
+  },
+
+  {
+    id: "gaming",
+    name: "🎮 Gaming"
+  },
+
+  {
+    id: "chill",
+    name: "🌙 Chill"
+  },
+
+  {
+    id: "other",
+    name: "✨ Другое"
+  }
+
 ];
+
 
 function CreateRoom({
   onCreate,
   onClose
 }: Props) {
 
-  const [videoUrl, setVideoUrl] =
-    useState("");
+  const [
+    videoUrl,
+    setVideoUrl
+  ] = useState("");
 
-  const [title, setTitle] =
-    useState("");
 
-  const [selectedSource, setSelectedSource] =
-    useState("vk");
+  const [
+    title,
+    setTitle
+  ] = useState("");
 
-  const [isPublic, setIsPublic] =
-    useState(true);
 
-  const [category, setCategory] =
-    useState("movies");
+  const [
+    selectedSource,
+    setSelectedSource
+  ] = useState("vk");
+
+
+  const [
+    isPublic,
+    setIsPublic
+  ] = useState(true);
+
+
+  const [
+    category,
+    setCategory
+  ] = useState("movies");
+
+
+  const [
+    creating,
+    setCreating
+  ] = useState(false);
+
 
   const activeSource =
     sources.find(
       source =>
-        source.id === selectedSource
-    );
+        source.id ===
+        selectedSource
+    ) ||
+    sources[0];
+
 
   function submit() {
 
-    const url =
-      videoUrl.trim();
-
-    const roomTitle =
-      title.trim();
-
-    if (!url) {
+    if (creating) {
       return;
     }
 
-    onCreate(
-      url,
-      roomTitle,
-      isPublic,
-      category
+
+    const url =
+      videoUrl
+        .trim();
+
+
+    if (!url) {
+
+      alert(
+        "Вставь ссылку на видео"
+      );
+
+      return;
+
+    }
+
+
+    if (
+      url.length > 2000
+    ) {
+
+      alert(
+        "Ссылка на видео слишком длинная"
+      );
+
+      return;
+
+    }
+
+
+    const roomTitle =
+      title
+        .trim()
+        .slice(
+          0,
+          80
+        );
+
+
+    const safeCategory =
+      categories.some(
+        item =>
+          item.id ===
+          category
+      )
+        ? category
+        : "other";
+
+
+    setCreating(
+      true
     );
+
+
+    try {
+
+      onCreate(
+        url,
+        roomTitle,
+        isPublic,
+        safeCategory
+      );
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "Create room error:",
+        error
+      );
+
+
+      setCreating(
+        false
+      );
+
+    }
+
   }
+
+
+  function handleKeyDown(
+    event:
+      React.KeyboardEvent<HTMLInputElement>
+  ) {
+
+    if (
+      event.key !==
+      "Enter"
+    ) {
+      return;
+    }
+
+
+    event.preventDefault();
+
+
+    submit();
+
+  }
+
 
   function openSource() {
 
-    if (!activeSource) {
+    if (
+      !activeSource
+    ) {
       return;
     }
+
 
     window.open(
       activeSource.url,
       "_blank",
       "noopener,noreferrer"
     );
+
   }
 
+
+  function handleClose() {
+
+    if (
+      creating
+    ) {
+      return;
+    }
+
+
+    onClose?.();
+
+  }
+
+
   return (
-    <div className="modal-backdrop">
+
+    <div
+      className="modal-backdrop"
+      onClick={
+        event => {
+
+          if (
+            event.target ===
+            event.currentTarget
+          ) {
+
+            handleClose();
+
+          }
+
+        }
+      }
+    >
 
       <div className="room-modal create-room-modal">
 
         <button
           type="button"
           className="modal-close"
-          onClick={onClose}
+          onClick={
+            handleClose
+          }
+          disabled={
+            creating
+          }
+          aria-label="Закрыть"
         >
           ×
         </button>
+
 
         <div className="modal-label">
           NEW ROOM
         </div>
 
+
         <h2>
           Создать комнату
         </h2>
+
 
         <p className="modal-description create-room-description">
           Создай комнату и пригласи друзей
@@ -134,7 +331,9 @@ function CreateRoom({
         </p>
 
 
-        {/* PUBLIC / PRIVATE */}
+        {/* =========================
+            PUBLIC / PRIVATE
+        ========================= */}
 
         <div className="room-visibility">
 
@@ -146,16 +345,24 @@ function CreateRoom({
                 : "visibility-option"
             }
             onClick={() =>
-              setIsPublic(true)
+              setIsPublic(
+                true
+              )
+            }
+            disabled={
+              creating
             }
           >
+
             <span className="visibility-icon">
               🌎
             </span>
 
+
             <strong>
               PUBLIC
             </strong>
+
           </button>
 
 
@@ -167,31 +374,43 @@ function CreateRoom({
                 : "visibility-option"
             }
             onClick={() =>
-              setIsPublic(false)
+              setIsPublic(
+                false
+              )
+            }
+            disabled={
+              creating
             }
           >
+
             <span className="visibility-icon">
               🔒
             </span>
 
+
             <strong>
               PRIVATE
             </strong>
+
           </button>
 
         </div>
 
 
-        {/* PUBLIC OPTIONS */}
+        {/* =========================
+            PUBLIC OPTIONS
+        ========================= */}
 
         {isPublic && (
 
           <>
+
             <div className="video-url-block compact-field category-block">
 
               <label>
                 Категория
               </label>
+
 
               <div className="category-select">
 
@@ -199,10 +418,13 @@ function CreateRoom({
                   item => (
 
                     <button
-                      key={item.id}
+                      key={
+                        item.id
+                      }
                       type="button"
                       className={
-                        category === item.id
+                        category ===
+                        item.id
                           ? "category-option active"
                           : "category-option"
                       }
@@ -210,6 +432,9 @@ function CreateRoom({
                         setCategory(
                           item.id
                         )
+                      }
+                      disabled={
+                        creating
                       }
                     >
                       {item.name}
@@ -229,25 +454,38 @@ function CreateRoom({
                 Название комнаты
               </label>
 
+
               <input
-                value={title}
-                onChange={event =>
-                  setTitle(
-                    event.target.value
-                  )
+                value={
+                  title
+                }
+                onChange={
+                  event =>
+                    setTitle(
+                      event.target.value
+                    )
+                }
+                onKeyDown={
+                  handleKeyDown
                 }
                 placeholder="Например: Friday Movie Night"
                 maxLength={80}
                 autoComplete="off"
+                disabled={
+                  creating
+                }
               />
 
             </div>
+
           </>
 
         )}
 
 
-        {/* SOURCE */}
+        {/* =========================
+            SOURCE
+        ========================= */}
 
         <div className="source-tabs">
 
@@ -255,10 +493,13 @@ function CreateRoom({
             source => (
 
               <button
-                key={source.id}
+                key={
+                  source.id
+                }
                 type="button"
                 className={
-                  selectedSource === source.id
+                  selectedSource ===
+                  source.id
                     ? "source-tab active"
                     : "source-tab"
                 }
@@ -266,6 +507,9 @@ function CreateRoom({
                   setSelectedSource(
                     source.id
                   )
+                }
+                disabled={
+                  creating
                 }
               >
                 {source.name}
@@ -280,16 +524,28 @@ function CreateRoom({
         <button
           type="button"
           className="open-source"
-          onClick={openSource}
+          onClick={
+            openSource
+          }
+          disabled={
+            creating
+          }
         >
-          <span>↗</span>
 
-          Открыть {activeSource?.name}
+          <span>
+            ↗
+          </span>
+
+
+          Открыть{" "}
+          {activeSource.name}
 
         </button>
 
 
-        {/* VIDEO URL */}
+        {/* =========================
+            VIDEO URL
+        ========================= */}
 
         <div className="video-url-block compact-field">
 
@@ -297,32 +553,61 @@ function CreateRoom({
             Ссылка на видео
           </label>
 
+
           <input
-            value={videoUrl}
-            onChange={event =>
-              setVideoUrl(
-                event.target.value
-              )
+            value={
+              videoUrl
+            }
+            onChange={
+              event =>
+                setVideoUrl(
+                  event.target.value
+                )
+            }
+            onKeyDown={
+              handleKeyDown
             }
             placeholder="Вставьте ссылку на видео..."
             autoComplete="off"
+            disabled={
+              creating
+            }
           />
 
         </div>
 
 
+        {/* =========================
+            CREATE
+        ========================= */}
+
         <button
           type="button"
           className="create-room-button"
-          onClick={submit}
+          onClick={
+            submit
+          }
+          disabled={
+            creating ||
+            !videoUrl.trim()
+          }
         >
-          Создать комнату
+
+          {creating
+            ? "Создание..."
+            : "Создать комнату"
+          }
+
         </button>
 
       </div>
 
     </div>
+
   );
+
 }
 
+
 export default CreateRoom;
+```
