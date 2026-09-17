@@ -1,30 +1,25 @@
 import { io } from "socket.io-client";
 
-
 /*
-  =========================
-  SERVER
-  =========================
+==================================================
+SERVER
+==================================================
 */
 
 const SERVER_URL =
   import.meta.env.VITE_SERVER_URL ||
   "http://localhost:3001";
 
-
-export const socket =
-  io(
-    SERVER_URL,
-    {
-      autoConnect: true
-    }
-  );
+export const socket = io(SERVER_URL, {
+  autoConnect: true,
+  transports: ["websocket", "polling"]
+});
 
 
 /*
-  =========================
-  TYPES
-  =========================
+==================================================
+TYPES
+==================================================
 */
 
 export type VibeUser = {
@@ -34,9 +29,7 @@ export type VibeUser = {
   createdAt: string;
 };
 
-
 export type FriendUser = VibeUser;
-
 
 export type FriendRequest = {
   id: number;
@@ -46,124 +39,103 @@ export type FriendRequest = {
   avatar: string;
 };
 
-
 export type FriendsData = {
   friends: FriendUser[];
   incoming: FriendRequest[];
   outgoing: FriendRequest[];
 };
 
+export type VideoAction =
+  | "play"
+  | "pause";
+
+
+export type RemoteVideoControl = {
+  action: VideoAction;
+  position: number;
+  id: number;
+};
+
 
 /*
-  =========================
-  LOCAL USER ID
-  =========================
+==================================================
+LOCAL STORAGE
+==================================================
 */
 
 const USER_ID_KEY =
   "vibe-user-id";
 
-
 const USER_PROFILE_KEY =
   "vibe-profile";
 
 
-function getSavedUserId() {
-
+function getSavedUserId(): string {
   try {
-
     return (
-      localStorage.getItem(
-        USER_ID_KEY
-      ) || ""
+      localStorage.getItem(USER_ID_KEY) ||
+      ""
     );
-
   } catch {
-
     return "";
-
   }
-
 }
 
 
 function saveUserId(
   userId: string
 ) {
-
   try {
-
     localStorage.setItem(
       USER_ID_KEY,
       userId
     );
-
   } catch {
-
     // localStorage unavailable
-
   }
-
 }
 
 
 /*
-  =========================
-  PROFILE STORAGE
-  =========================
+==================================================
+PROFILE
+==================================================
 */
 
-export function getSavedProfile() {
-
+export function getSavedProfile(): {
+  name: string;
+  avatar: string;
+} {
   try {
-
     const raw =
       localStorage.getItem(
         USER_PROFILE_KEY
       );
 
-
     if (!raw) {
-
       return {
         name: "",
         avatar: ""
       };
-
     }
 
-
     const profile =
-      JSON.parse(
-        raw
-      );
-
+      JSON.parse(raw);
 
     return {
-
-      name:
-        String(
-          profile?.name ||
-          ""
-        ),
-
-      avatar:
-        String(
-          profile?.avatar ||
-          ""
-        )
-
+      name: String(
+        profile?.name || ""
+      ),
+      avatar: String(
+        profile?.avatar || ""
+      )
     };
-
   } catch {
-
     return {
       name: "",
       avatar: ""
     };
-
   }
-
 }
 
 
@@ -173,47 +145,36 @@ export function saveProfileLocally(
     avatar: string;
   }
 ) {
-
   try {
-
     localStorage.setItem(
       USER_PROFILE_KEY,
-      JSON.stringify(
-        profile
-      )
+      JSON.stringify(profile)
     );
-
   } catch {
-
     // localStorage unavailable
-
   }
-
 }
 
 
 /*
-  =========================
-  CURRENT USER
-  =========================
+==================================================
+CURRENT USER
+==================================================
 */
 
 let currentUser:
-  VibeUser | null =
-  null;
+  VibeUser | null = null;
 
 
 export function getCurrentUser() {
-
   return currentUser;
-
 }
 
 
 /*
-  =========================
-  REGISTER
-  =========================
+==================================================
+REGISTER
+==================================================
 */
 
 export function registerUser(
@@ -222,10 +183,8 @@ export function registerUser(
     avatar?: string;
   }
 ) {
-
   const savedProfile =
     getSavedProfile();
-
 
   const name =
     String(
@@ -234,12 +193,8 @@ export function registerUser(
       "Guest"
     )
       .trim()
-      .slice(
-        0,
-        40
-      ) ||
+      .slice(0, 40) ||
     "Guest";
-
 
   const avatar =
     String(
@@ -248,28 +203,24 @@ export function registerUser(
       ""
     );
 
-
   socket.emit(
     "register-user",
     {
-
       userId:
         getSavedUserId(),
 
       name,
 
       avatar
-
     }
   );
-
 }
 
 
 /*
-  =========================
-  USER REGISTERED
-  =========================
+==================================================
+USER REGISTERED
+==================================================
 */
 
 socket.on(
@@ -282,26 +233,20 @@ socket.on(
       return;
     }
 
-
     currentUser =
       data.user;
-
 
     saveUserId(
       data.user.id
     );
 
-
     saveProfileLocally({
-
       name:
         data.user.name,
 
       avatar:
         data.user.avatar
-
     });
-
 
     window.dispatchEvent(
       new CustomEvent(
@@ -313,20 +258,18 @@ socket.on(
       )
     );
 
-
     console.log(
       "🆔 VIBE ID:",
       data.user.id
     );
-
   }
 );
 
 
 /*
-  =========================
-  REGISTER WHEN CONNECTED
-  =========================
+==================================================
+SOCKET CONNECT
+==================================================
 */
 
 socket.on(
@@ -338,18 +281,10 @@ socket.on(
       socket.id
     );
 
-
     registerUser();
-
   }
 );
 
-
-/*
-  =========================
-  RECONNECT
-  =========================
-*/
 
 socket.on(
   "disconnect",
@@ -359,15 +294,14 @@ socket.on(
       "🔴 socket disconnected:",
       reason
     );
-
   }
 );
 
 
 /*
-  =========================
-  FRIENDS DATA
-  =========================
+==================================================
+FRIENDS DATA
+==================================================
 */
 
 socket.on(
@@ -378,33 +312,38 @@ socket.on(
       new CustomEvent(
         "vibe-friends-data",
         {
-          detail:
-            data
+          detail: {
+            friends:
+              data?.friends || [],
+
+            incoming:
+              data?.incoming || [],
+
+            outgoing:
+              data?.outgoing || []
+          }
         }
       )
     );
-
   }
 );
 
 
 /*
-  =========================
-  SEARCH
-  =========================
+==================================================
+SEARCH
+==================================================
 */
 
 export function searchUsers(
   query: string
 ) {
-
   socket.emit(
     "search-users",
     {
       query
     }
   );
-
 }
 
 
@@ -423,77 +362,68 @@ socket.on(
         }
       )
     );
-
   }
 );
 
 
 /*
-  =========================
-  FRIEND REQUEST
-  =========================
+==================================================
+FRIEND REQUESTS
+==================================================
 */
 
 export function sendFriendRequest(
   userId: string
 ) {
-
   socket.emit(
     "friend-request",
     {
       userId
     }
   );
-
 }
 
 
 export function acceptFriendRequest(
   requestId: number
 ) {
-
   socket.emit(
     "friend-accept",
     {
       requestId
     }
   );
-
 }
 
 
 export function declineFriendRequest(
   requestId: number
 ) {
-
   socket.emit(
     "friend-decline",
     {
       requestId
     }
   );
-
 }
 
 
 export function removeFriend(
   userId: string
 ) {
-
   socket.emit(
     "friend-remove",
     {
       userId
     }
   );
-
 }
 
 
 /*
-  =========================
-  FRIEND EVENTS
-  =========================
+==================================================
+FRIEND EVENTS
+==================================================
 */
 
 socket.on(
@@ -509,7 +439,6 @@ socket.on(
         }
       )
     );
-
   }
 );
 
@@ -527,63 +456,49 @@ socket.on(
         }
       )
     );
-
   }
 );
 
 
 /*
-  =========================
-  ROOM
-  =========================
+==================================================
+ROOM
+==================================================
 */
 
 export function joinRoom(
   roomId: string,
-  userName: string
+  userName?: string
 ) {
-
   socket.emit(
     "join-room",
     {
-
       roomId,
-
       userName
-
     }
   );
-
 }
 
 
 /*
-  =========================
-  VIDEO
-  =========================
+==================================================
+VIDEO CONTROL
+==================================================
 */
 
 export function sendVideoControl(
   roomId: string,
-  action:
-    | "play"
-    | "pause",
+  action: VideoAction,
   position: number
 ) {
-
   socket.emit(
     "video-control",
     {
-
       roomId,
-
       action,
-
       position
-
     }
   );
-
 }
 
 
@@ -591,66 +506,238 @@ export function sendVideoPosition(
   roomId: string,
   position: number
 ) {
-
   socket.emit(
     "video-position",
     {
-
       roomId,
-
       position
-
     }
   );
-
 }
 
 
 /*
-  =========================
-  REACTIONS
-  =========================
+==================================================
+VIDEO EVENTS
+==================================================
+*/
+
+socket.on(
+  "video-control",
+  (data: {
+    action: VideoAction;
+    position: number;
+    id: number;
+    source?: string;
+  }) => {
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "vibe-video-control",
+        {
+          detail: data
+        }
+      )
+    );
+  }
+);
+
+
+socket.on(
+  "video-position",
+  (data: {
+    position: number;
+    id: number;
+    source?: string;
+  }) => {
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "vibe-video-position",
+        {
+          detail: data
+        }
+      )
+    );
+  }
+);
+
+
+/*
+==================================================
+ROOM STATE
+==================================================
+*/
+
+socket.on(
+  "room-state",
+  data => {
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "vibe-room-state",
+        {
+          detail:
+            data
+        }
+      )
+    );
+  }
+);
+
+
+socket.on(
+  "room-not-found",
+  () => {
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "vibe-room-not-found"
+      )
+    );
+  }
+);
+
+
+socket.on(
+  "users",
+  (count: number) => {
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "vibe-users",
+        {
+          detail:
+            count
+        }
+      )
+    );
+  }
+);
+
+
+/*
+==================================================
+PRESENCE
+==================================================
+*/
+
+socket.on(
+  "presence",
+  data => {
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "vibe-presence",
+        {
+          detail:
+            data
+        }
+      )
+    );
+  }
+);
+
+
+/*
+==================================================
+REACTIONS
+==================================================
 */
 
 export function sendReaction(
   roomId: string,
   reaction: string
 ) {
-
   socket.emit(
     "reaction",
     {
-
       roomId,
-
       reaction
-
     }
   );
-
 }
 
 
+socket.on(
+  "reaction",
+  data => {
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "vibe-reaction",
+        {
+          detail:
+            data
+        }
+      )
+    );
+  }
+);
+
+
 /*
-  =========================
-  CHAT
-  =========================
+==================================================
+CHAT
+==================================================
 */
 
 export function sendChatMessage(
   roomId: string,
   text: string
 ) {
-
   socket.emit(
     "chat-message",
     {
-
       roomId,
-
       text
-
     }
   );
+}
 
+
+socket.on(
+  "chat-message",
+  data => {
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "vibe-chat-message",
+        {
+          detail:
+            data
+        }
+      )
+    );
+  }
+);
+
+
+/*
+==================================================
+PROFILE UPDATE
+==================================================
+*/
+
+export function updateProfile(
+  roomId: string,
+  profile: {
+    name: string;
+    avatar: string;
+  }
+) {
+  saveProfileLocally(
+    profile
+  );
+
+  socket.emit(
+    "profile-update",
+    {
+      roomId,
+      name:
+        profile.name,
+      avatar:
+        profile.avatar
+    }
+  );
 }
