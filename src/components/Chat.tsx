@@ -57,7 +57,7 @@ function Chat({
 
   /*
     =========================
-    CHAT MESSAGES
+    CHAT
     =========================
   */
 
@@ -72,18 +72,14 @@ function Chat({
       }
 
 
-      /*
-        Если сервер прислал roomId,
-        принимаем сообщение только
-        для текущей комнаты.
-      */
-
       if (
         data.roomId &&
         String(data.roomId) !==
           String(roomId)
       ) {
+
         return;
+
       }
 
 
@@ -119,39 +115,47 @@ function Chat({
 
 
       const message: Message = {
-        id: messageId,
-        user,
-        text: messageText,
-        avatar: String(
-          data.avatar || ""
-        )
+
+        id:
+          messageId,
+
+        user:
+          user,
+
+        text:
+          messageText,
+
+        avatar:
+          String(
+            data.avatar || ""
+          )
+
       };
 
 
-      setMessages(previous => {
+      setMessages(
+        previous => {
 
-        /*
-          Защита от повторной доставки
-          одного и того же сообщения.
-        */
+          if (
+            previous.some(
+              item =>
+                item.id ===
+                message.id
+            )
+          ) {
 
-        if (
-          previous.some(
-            item =>
-              item.id ===
-              message.id
-          )
-        ) {
-          return previous;
+            return previous;
+
+          }
+
+
+          return [
+            ...previous,
+            message
+          ];
+
         }
-
-
-        return [
-          ...previous,
-          message
-        ];
-
-      });
+      );
 
     }
 
@@ -171,12 +175,14 @@ function Chat({
 
     };
 
-  }, [roomId]);
+  }, [
+    roomId
+  ]);
 
 
   /*
     =========================
-    SEND MESSAGE
+    SEND
     =========================
   */
 
@@ -214,7 +220,8 @@ function Chat({
   */
 
   function handleKeyDown(
-    event: React.KeyboardEvent<HTMLInputElement>
+    event:
+      React.KeyboardEvent<HTMLInputElement>
   ) {
 
     if (
@@ -253,12 +260,15 @@ function Chat({
 
   /*
     =========================
-    VIEWER COUNT
+    VIEWERS
     =========================
   */
 
   const viewerCount =
-    presence.length;
+    Math.max(
+      1,
+      presence.length
+    );
 
 
   /*
@@ -272,9 +282,7 @@ function Chat({
     <div className="chat">
 
 
-      {/* =========================
-          HEADER
-      ========================= */}
+      {/* HEADER */}
 
       <div className="chat-header">
 
@@ -311,9 +319,7 @@ function Chat({
       </div>
 
 
-      {/* =========================
-          VIEWERS
-      ========================= */}
+      {/* VIEWERS */}
 
       <div className="chat-viewers">
 
@@ -328,9 +334,23 @@ function Chat({
 
           {presence.length === 0 && (
 
-            <div className="chat-empty">
+            <div className="viewer">
 
-              Пока никто не смотрит
+              <div className="viewer-avatar">
+                G
+              </div>
+
+              <div className="viewer-info">
+
+                <div className="viewer-name">
+                  Guest
+                </div>
+
+                <div className="viewer-time">
+                  00:00
+                </div>
+
+              </div>
 
             </div>
 
@@ -401,22 +421,9 @@ function Chat({
       </div>
 
 
-      {/* =========================
-          MESSAGES
-      ========================= */}
+      {/* MESSAGES */}
 
       <div className="messages">
-
-        {messages.length === 0 && (
-
-          <div className="chat-empty">
-
-            Здесь появятся сообщения
-
-          </div>
-
-        )}
-
 
         {messages.map(
           message => (
@@ -443,9 +450,7 @@ function Chat({
       </div>
 
 
-      {/* =========================
-          INPUT
-      ========================= */}
+      {/* INPUT */}
 
       <div className="chat-input">
 
@@ -470,7 +475,9 @@ function Chat({
         <button
           type="button"
           onClick={sendMessage}
-          disabled={!text.trim()}
+          disabled={
+            !text.trim()
+          }
           aria-label="Отправить сообщение"
         >
 
