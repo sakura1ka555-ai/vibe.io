@@ -5,7 +5,6 @@ import {
 } from "react";
 
 import CreateRoom from "./components/CreateRoom";
-import RoomCard from "./components/RoomCard";
 import WatchRoom from "./components/WatchRoom";
 import ProfileModal, {
   ProfileData
@@ -117,10 +116,6 @@ function App() {
 
       }
     );
-
-
-  const [rooms, setRooms] =
-    useState<Room[]>([]);
 
 
   const [createOpen, setCreateOpen] =
@@ -255,14 +250,6 @@ function App() {
         );
 
       }
-
-
-      setRooms(
-        previous => [
-          ...previous,
-          room
-        ]
-      );
 
 
       setCreateOpen(
@@ -929,46 +916,6 @@ function App() {
           </div>
 
         </div>
-
-      )}
-
-
-      {/* =========================
-          ROOMS
-      ========================= */}
-
-      {rooms.length > 0 && (
-
-        <section className="rooms">
-
-          <h2>
-            Ваши комнаты
-          </h2>
-
-
-          {rooms.map(
-            room => (
-
-              <RoomCard
-
-                key={
-                  room.id
-                }
-
-                title={
-                  room.title
-                }
-
-                users={
-                  room.users
-                }
-
-              />
-
-            )
-          )}
-
-        </section>
 
       )}
 
