@@ -5817,3 +5817,182 @@ button {
   font-size: 12px;
   line-height: 1;
 }
+
+/* =================================
+   CREATE ROOM — VIDEO SOURCES
+================================= */
+
+.video-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 22px;
+  margin-bottom: 18px;
+}
+
+.video-sources-title {
+  color: rgba(255,255,255,.78);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -.1px;
+}
+
+.video-sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.video-source-link {
+  height: 29px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 10px;
+
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 8px;
+
+  background: rgba(255,255,255,.025);
+
+  color: rgba(255,255,255,.52);
+
+  font-size: 9px;
+  font-weight: 600;
+
+  text-decoration: none;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    transform .18s ease,
+    box-shadow .18s ease;
+}
+
+.video-source-link:hover {
+  transform: translateY(-1px);
+
+  border-color:
+    rgba(166,105,232,.30);
+
+  background:
+    rgba(153,88,243,.10);
+
+  color: #ffffff;
+
+  box-shadow:
+    0 7px 18px
+    rgba(92,46,145,.12);
+}
+
+.video-source-link:active {
+  transform: scale(.97);
+}
+
+
+/* =================================
+   SOURCE ARROW
+================================= */
+
+.video-source-arrow {
+  margin-left: 4px;
+
+  color:
+    rgba(255,255,255,.30);
+
+  font-size: 10px;
+
+  transition:
+    color .18s ease,
+    transform .18s ease;
+}
+
+.video-source-link:hover
+.video-source-arrow {
+  color:
+    rgba(205,170,240,.85);
+
+  transform:
+    translate(1px,-1px);
+}
+
+
+/* =================================
+   SOURCE COLORS — VERY SUBTLE
+================================= */
+
+.video-source-youtube:hover {
+  border-color:
+    rgba(255,80,80,.28);
+
+  background:
+    rgba(255,60,60,.055);
+}
+
+.video-source-rutube:hover {
+  border-color:
+    rgba(80,150,255,.28);
+
+  background:
+    rgba(60,130,255,.055);
+}
+
+.video-source-vk:hover {
+  border-color:
+    rgba(80,150,255,.28);
+
+  background:
+    rgba(70,120,255,.055);
+}
+
+.video-source-kinopoisk:hover {
+  border-color:
+    rgba(255,170,40,.28);
+
+  background:
+    rgba(255,170,40,.055);
+}
+
+
+/* =================================
+   CREATE ROOM — SOURCE AREA
+================================= */
+
+.room-modal .video-sources + .video-url-block {
+  margin-top: 2px;
+}
+
+
+/* =================================
+   MOBILE
+================================= */
+
+@media (max-width: 520px) {
+
+  .video-sources {
+    margin-top: 19px;
+    margin-bottom: 16px;
+  }
+
+  .video-sources-list {
+    gap: 6px;
+  }
+
+  .video-source-link {
+    height: 28px;
+
+    padding:
+      0 8px;
+
+    font-size: 8px;
+  }
+
+}
