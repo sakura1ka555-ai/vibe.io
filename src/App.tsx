@@ -18,8 +18,13 @@ import {
   getTelegramUser
 } from "./telegram";
 
+import {
+  registerUser
+} from "./socket";
+
 
 const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL ||
   "https://vibe-server-la2z.onrender.com";
 
 
@@ -46,20 +51,26 @@ function getSavedProfile(): ProfileData {
         PROFILE_STORAGE_KEY
       );
 
+
     if (saved) {
 
       const parsed =
         JSON.parse(saved);
 
+
       return {
 
         name:
-          parsed?.name ||
-          "",
+          String(
+            parsed?.name ||
+            ""
+          ),
 
         avatar:
-          parsed?.avatar ||
-          ""
+          String(
+            parsed?.avatar ||
+            ""
+          )
 
       };
 
@@ -70,6 +81,7 @@ function getSavedProfile(): ProfileData {
     // ignore
 
   }
+
 
   return {
 
@@ -99,6 +111,7 @@ function App() {
 
         const saved =
           getSavedProfile();
+
 
         return {
 
@@ -160,8 +173,8 @@ function App() {
 
   /*
     =========================
-    SAVE PROFILE
-  =========================
+    SAVE + SYNC PROFILE
+    =========================
   */
 
   useEffect(() => {
@@ -183,6 +196,22 @@ function App() {
       );
 
     }
+
+
+    /*
+      Синхронизируем профиль
+      с новым socket-кодом.
+    */
+
+    registerUser({
+
+      name:
+        profile.name,
+
+      avatar:
+        profile.avatar
+
+    });
 
   }, [
     profile
@@ -239,8 +268,11 @@ function App() {
         setPublicRooms(
           loadedRooms.map(
             (room: Room) => ({
+
               id:
-                room.id,
+                String(
+                  room.id
+                ),
 
               title:
                 room.title ||
@@ -284,7 +316,9 @@ function App() {
     const interval =
       window.setInterval(
         () => {
+
           void loadPublicRooms();
+
         },
         10000
       );
@@ -306,8 +340,8 @@ function App() {
   /*
     =========================
     CREATE ROOM
-  =========================
-    */
+    =========================
+  */
 
   async function createRoom(
     videoUrl: string,
@@ -339,7 +373,8 @@ function App() {
       users:
         0,
 
-      videoUrl,
+      videoUrl:
+        videoUrl.trim(),
 
       public:
         isPublic,
@@ -356,6 +391,7 @@ function App() {
         await fetch(
           `${SERVER_URL}/rooms`,
           {
+
             method:
               "POST",
 
@@ -366,6 +402,7 @@ function App() {
 
             body:
               JSON.stringify({
+
                 roomId:
                   room.id,
 
@@ -380,7 +417,9 @@ function App() {
 
                 category:
                   room.category
+
               })
+
           }
         );
 
@@ -413,8 +452,10 @@ function App() {
           room.title,
 
         users:
-          createdRoom?.users ||
-          0,
+          Number(
+            createdRoom?.users ??
+            room.users
+          ),
 
         videoUrl:
           createdRoom?.videoUrl ||
@@ -432,17 +473,31 @@ function App() {
 
 
       setRooms(
-        previous => [
-          ...previous,
-          finalRoom
-        ]
+        previous => {
+
+          const exists =
+            previous.some(
+              item =>
+                item.id ===
+                finalRoom.id
+            );
+
+
+          if (exists) {
+
+            return previous;
+
+          }
+
+
+          return [
+            ...previous,
+            finalRoom
+          ];
+
+        }
       );
 
-
-      /*
-        Если комната публичная,
-        сразу добавляем её в LIVE NOW.
-      */
 
       if (
         finalRoom.public
@@ -489,6 +544,7 @@ function App() {
     } catch (error) {
 
       console.error(
+        "Create room error:",
         error
       );
 
@@ -505,7 +561,7 @@ function App() {
   /*
     =========================
     JOIN ROOM
-  =========================
+    =========================
   */
 
   async function joinRoom(
@@ -592,16 +648,20 @@ function App() {
       const foundRoom: Room = {
 
         id:
-          room.id ||
-          room.roomId,
+          String(
+            room.id ||
+            room.roomId ||
+            code
+          ),
 
         title:
           room.title ||
           `Комната ${code}`,
 
         users:
-          room.users ||
-          0,
+          Number(
+            room.users || 0
+          ),
 
         videoUrl:
           room.videoUrl ||
@@ -655,6 +715,7 @@ function App() {
     } catch (error) {
 
       console.error(
+        "Join room error:",
         error
       );
 
@@ -929,31 +990,35 @@ function App() {
 
       </div>
 
-{/* =========================
-    HERO
-========================= */}
 
-<section className="hero hero-vibe">
+      {/* =========================
+          HERO
+      ========================= */}
 
-  <div className="hero-eyebrow">
-    WATCH TOGETHER · FEEL THE VIBE
-  </div>
+      <section className="hero hero-vibe">
 
-  <h1>
-    ВМЕСТЕ —
-    <br />
-    <span>ЭТО БЛИЖЕ.</span>
-  </h1>
+        <div className="hero-eyebrow">
+          WATCH TOGETHER · FEEL THE VIBE
+        </div>
 
-  <p>
-    Фильмы, музыка и моменты —
-    <br />
-    вместе с теми, кто рядом.
-  </p>
 
-  <div className="hero-glow" />
+        <h1>
+          ВМЕСТЕ —
+          <br />
+          <span>ЭТО БЛИЖЕ.</span>
+        </h1>
 
-</section>
+
+        <p>
+          Фильмы, музыка и моменты —
+          <br />
+          вместе с теми, кто рядом.
+        </p>
+
+
+        <div className="hero-glow" />
+
+      </section>
 
 
       {/* =========================
@@ -966,9 +1031,7 @@ function App() {
           type="button"
           className="primary"
           onClick={() =>
-            setCreateOpen(
-              true
-            )
+            setCreateOpen(true)
           }
         >
           + Создать комнату
@@ -979,9 +1042,7 @@ function App() {
           type="button"
           className="secondary"
           onClick={() =>
-            setJoinOpen(
-              true
-            )
+            setJoinOpen(true)
           }
         >
           Войти в комнату
@@ -991,7 +1052,7 @@ function App() {
 
 
       {/* =========================
-          CREATE
+          CREATE ROOM
       ========================= */}
 
       {createOpen && (
@@ -1003,9 +1064,7 @@ function App() {
           }
 
           onClose={() =>
-            setCreateOpen(
-              false
-            )
+            setCreateOpen(false)
           }
 
         />
@@ -1014,7 +1073,7 @@ function App() {
 
 
       {/* =========================
-          JOIN
+          JOIN ROOM
       ========================= */}
 
       {joinOpen && (
@@ -1027,9 +1086,7 @@ function App() {
               type="button"
               className="modal-close"
               onClick={() =>
-                setJoinOpen(
-                  false
-                )
+                setJoinOpen(false)
               }
             >
               ×
@@ -1061,9 +1118,7 @@ function App() {
 
               <input
                 type="text"
-                value={
-                  roomCode
-                }
+                value={roomCode}
                 onChange={
                   event =>
                     setRoomCode(
@@ -1088,9 +1143,7 @@ function App() {
               onClick={() =>
                 void joinRoom()
               }
-              disabled={
-                joining
-              }
+              disabled={joining}
             >
 
               {joining
@@ -1124,9 +1177,7 @@ function App() {
           }
 
           onClose={() =>
-            setProfileOpen(
-              false
-            )
+            setProfileOpen(false)
           }
 
         />
@@ -1145,11 +1196,11 @@ function App() {
           <div className="friends-modal-shell">
 
             <Friends
+
               onClose={() =>
-                setFriendsOpen(
-                  false
-                )
+                setFriendsOpen(false)
               }
+
             />
 
           </div>
@@ -1164,15 +1215,18 @@ function App() {
       ========================= */}
 
       <PublicRooms
+
         rooms={
           publicRooms
         }
+
         onJoin={
           roomId =>
             void joinRoom(
               roomId
             )
         }
+
       />
 
 
