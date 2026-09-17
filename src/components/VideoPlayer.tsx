@@ -15,6 +15,10 @@ type Props = {
     position: number
   ) => void;
 
+  onSeek?: (
+    position: number
+  ) => void;
+
   onPosition?: (
     position: number
   ) => void;
@@ -312,6 +316,15 @@ type RutubeMessage = {
 
 
 /* =================================
+   REMOTE SEEK EVENT
+================================= */
+
+type RemoteSeekEvent = CustomEvent<{
+  position: number;
+}>;
+
+
+/* =================================
    PLAYER
 ================================= */
 
@@ -320,6 +333,7 @@ function VideoPlayer({
   initialPosition = 0,
   initialAction = "pause",
   onControl,
+  onSeek,
   onPosition,
   remoteControl
 }: Props) {
@@ -365,10 +379,6 @@ function VideoPlayer({
   /*
     Last position that was sent
     as a local seek.
-
-    Used to prevent the remote
-    seek from being detected again
-    as a local seek.
   */
 
   const lastLocalSeek =
@@ -378,9 +388,6 @@ function VideoPlayer({
   /*
     Position at the moment when
     the player was last observed.
-
-    A large jump means that the user
-    probably dragged the timeline.
   */
 
   const previousRutubeTime =
@@ -424,6 +431,9 @@ function VideoPlayer({
   const controlCallback =
     useRef(onControl);
 
+  const seekCallback =
+    useRef(onSeek);
+
 
   const youtubeId =
     getYouTubeId(videoUrl);
@@ -453,6 +463,207 @@ function VideoPlayer({
       onControl;
 
   }, [onControl]);
+
+
+  useEffect(() => {
+
+    seekCallback.current =
+      onSeek;
+
+  }, [onSeek]);
+
+
+  /* =================================
+     REMOTE SEEK
+  ================================= */
+
+  useEffect(() => {
+
+    function handleRemoteSeek(
+      event: Event
+    ) {
+
+      const customEvent =
+        event as RemoteSeekEvent;
+
+
+      const rawPosition =
+        Number(
+          customEvent.detail?.position
+        );
+
+
+      if (
+        !Number.isFinite(rawPosition)
+      ) {
+
+        return;
+
+      }
+
+
+      const position =
+        Math.max(
+          0,
+          rawPosition
+        );
+
+
+      /*
+        =============================
+        YOUTUBE
+        =============================
+      */
+
+      if (
+        youtubeId &&
+        ready.current &&
+        player.current
+      ) {
+
+        applyingRemote.current =
+          true;
+
+
+        player.current.seekTo(
+          position,
+          true
+        );
+
+
+        window.setTimeout(() => {
+
+          applyingRemote.current =
+            false;
+
+        }, 500);
+
+
+        return;
+
+      }
+
+
+      /*
+        =============================
+        RUTUBE
+        =============================
+      */
+
+      if (
+        rutubeId &&
+        rutubeReady.current &&
+        rutubeIframe.current
+      ) {
+
+        const iframe =
+          rutubeIframe.current;
+
+
+        applyingRemote.current =
+          true;
+
+
+        rutubeLastTime.current =
+          position;
+
+
+        previousRutubeTime.current =
+          position;
+
+
+        lastLocalSeek.current =
+          position;
+
+
+        /*
+          IMPORTANT:
+
+          Remote seek changes ONLY
+          the position.
+
+          It does NOT send play/pause.
+        */
+
+        iframe.contentWindow?.postMessage(
+          JSON.stringify({
+            type:
+              "player:setCurrentTime",
+
+            data: {
+              time:
+                position
+            }
+          }),
+          "https://rutube.ru"
+        );
+
+
+        /*
+          RUTUBE sometimes ignores the
+          first seek command.
+        */
+
+        window.setTimeout(() => {
+
+          if (
+            rutubeReady.current &&
+            rutubeIframe.current
+          ) {
+
+            rutubeIframe.current.contentWindow?.postMessage(
+              JSON.stringify({
+                type:
+                  "player:setCurrentTime",
+
+                data: {
+                  time:
+                    position
+                }
+              }),
+              "https://rutube.ru"
+            );
+
+          }
+
+        }, 300);
+
+
+        window.setTimeout(() => {
+
+          applyingRemote.current =
+            false;
+
+          lastLocalSeek.current =
+            null;
+
+        }, 700);
+
+
+      }
+
+    }
+
+
+    window.addEventListener(
+      "vibe-video-seek",
+      handleRemoteSeek
+    );
+
+
+    return () => {
+
+      window.removeEventListener(
+        "vibe-video-seek",
+        handleRemoteSeek
+      );
+
+    };
+
+  }, [
+    youtubeId,
+    rutubeId
+  ]);
 
 
   /* =================================
@@ -762,13 +973,6 @@ function VideoPlayer({
         safePosition;
 
 
-      /*
-        Remember the position so that
-        player:currentTime generated
-        immediately after the seek does
-        not become another local seek.
-      */
-
       lastLocalSeek.current =
         safePosition;
 
@@ -781,6 +985,7 @@ function VideoPlayer({
         JSON.stringify({
           type:
             "player:setCurrentTime",
+
           data: {
             time:
               safePosition
@@ -791,8 +996,7 @@ function VideoPlayer({
 
 
       /*
-        2. Wait a little for RUTUBE
-        to process the seek.
+        2. Play/pause.
       */
 
       window.setTimeout(() => {
@@ -814,10 +1018,6 @@ function VideoPlayer({
 
       /*
         3. Second seek + state command.
-
-        RUTUBE can ignore the first
-        command while its player is
-        still changing state.
       */
 
       window.setTimeout(() => {
@@ -854,11 +1054,6 @@ function VideoPlayer({
 
       }, 550);
 
-
-      /*
-        Keep the remote lock long enough
-        for RUTUBE state messages to arrive.
-      */
 
       window.setTimeout(() => {
 
@@ -932,15 +1127,6 @@ function VideoPlayer({
           true;
 
 
-        /*
-          The initial room state
-          comes through remoteControl.
-
-          We still position the player
-          immediately so the timeline
-          starts at the correct place.
-        */
-
         if (
           initialPosition > 0
         ) {
@@ -967,15 +1153,6 @@ function VideoPlayer({
 
         }
 
-
-        /*
-          If the room was already playing,
-          apply the initial action after
-          the player becomes ready.
-
-          This also helps a newly joined
-          player catch up.
-        */
 
         if (
           initialAction === "play"
@@ -1051,8 +1228,8 @@ function VideoPlayer({
           Remote command is currently
           being applied.
 
-          Do NOT interpret the seek
-          as a local user seek.
+          Do NOT interpret it as
+          a local seek.
         */
 
         if (
@@ -1066,11 +1243,6 @@ function VideoPlayer({
         }
 
 
-        /*
-          First position event after
-          player initialization.
-        */
-
         if (
           previous === null
         ) {
@@ -1082,12 +1254,6 @@ function VideoPlayer({
         }
 
 
-        /*
-          If the player suddenly jumps
-          more than 2 seconds, treat it
-          as a manual timeline seek.
-        */
-
         const delta =
           Math.abs(
             time -
@@ -1098,12 +1264,6 @@ function VideoPlayer({
         if (
           delta >= 2
         ) {
-
-          /*
-            Ignore a jump that we already
-            know was caused by our own
-            remote command.
-          */
 
           if (
             lastLocalSeek.current !==
@@ -1126,19 +1286,15 @@ function VideoPlayer({
 
 
           /*
-            User manually moved the
-            RUTUBE timeline.
+            IMPORTANT:
 
-            Send the CURRENT state
-            together with the NEW position.
+            Manual seek is now a
+            SEPARATE event.
+
+            It NEVER sends play/pause.
           */
 
-          const action =
-            rutubeState.current;
-
-
-          controlCallback.current?.(
-            action,
+          seekCallback.current?.(
             time
           );
 
@@ -1182,11 +1338,6 @@ function VideoPlayer({
             "play";
 
 
-          /*
-            Only send when the state
-            actually changed.
-          */
-
           if (
             lastSentAction.current !==
             "play"
@@ -1215,11 +1366,6 @@ function VideoPlayer({
           rutubeState.current =
             "pause";
 
-
-          /*
-            Pause is always a real
-            synchronization command.
-          */
 
           if (
             lastSentAction.current !==
