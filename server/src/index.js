@@ -373,6 +373,232 @@ function isUserOnline(
 
 /*
   =========================
+  ROOM PRESENCE
+  =========================
+*/
+
+/*
+  Каждая комната получает:
+  participants: Map(socketId -> participant)
+
+  В participant храним:
+  - VIBE user id
+  - имя
+  - аватар
+  - позицию видео
+  - состояние play/pause
+  - время входа
+*/
+
+function createRoomPresence(
+  room
+) {
+
+  if (
+    !room.participants
+  ) {
+
+    room.participants =
+      new Map();
+
+  }
+
+  return room.participants;
+
+}
+
+
+function formatTime(
+  seconds
+) {
+
+  const safe =
+    Math.max(
+      0,
+      Math.floor(
+        Number(seconds) || 0
+      )
+    );
+
+
+  const minutes =
+    Math.floor(
+      safe / 60
+    );
+
+
+  const remaining =
+    safe % 60;
+
+
+  return (
+    `${String(minutes).padStart(2, "0")}:` +
+    `${String(remaining).padStart(2, "0")}`
+  );
+
+}
+
+
+function getPresence(
+  room
+) {
+
+  const participants =
+    createRoomPresence(
+      room
+    );
+
+
+  return Array.from(
+    participants.values()
+  ).map(
+    participant => ({
+
+      id:
+        participant.id,
+
+      name:
+        participant.name,
+
+      avatar:
+        participant.avatar,
+
+      position:
+        Number(
+          participant.position
+        ) || 0,
+
+      time:
+        formatTime(
+          participant.position
+        ),
+
+      state:
+        participant.state === "play"
+          ? "play"
+          : "pause"
+
+    })
+  );
+
+}
+
+
+function emitRoomPresence(
+  roomId
+) {
+
+  const room =
+    rooms.get(
+      roomId
+    );
+
+
+  if (
+    !room
+  ) {
+
+    return;
+
+  }
+
+
+  const participants =
+    createRoomPresence(
+      room
+    );
+
+
+  room.users =
+    participants.size;
+
+
+  io.to(
+    roomId
+  ).emit(
+    "users",
+    room.users
+  );
+
+
+  io.to(
+    roomId
+  ).emit(
+    "presence",
+    getPresence(
+      room
+    )
+  );
+
+}
+
+
+function removeSocketFromRoom(
+  socket,
+  roomId
+) {
+
+  if (
+    !roomId
+  ) {
+
+    return;
+
+  }
+
+
+  const room =
+    rooms.get(
+      roomId
+    );
+
+
+  if (
+    !room
+  ) {
+
+    return;
+
+  }
+
+
+  const participants =
+    createRoomPresence(
+      room
+    );
+
+
+  participants.delete(
+    socket.id
+  );
+
+
+  room.users =
+    participants.size;
+
+
+  io.to(
+    roomId
+  ).emit(
+    "users",
+    room.users
+  );
+
+
+  io.to(
+    roomId
+  ).emit(
+    "presence",
+    getPresence(
+      room
+    )
+  );
+
+}
+
+
+/*
+  =========================
   HTTP
   =========================
 */
@@ -535,6 +761,13 @@ app.get(
       rooms:
         Array.from(
           rooms.values()
+        ).map(
+          room => ({
+            ...room,
+
+            participants:
+              undefined
+          })
         )
     };
 
@@ -636,7 +869,13 @@ app.post(
         position:
           0
 
-      }
+      },
+
+      participants:
+        new Map(),
+
+      playbackVersion:
+        0
 
     };
 
@@ -746,7 +985,11 @@ app.get(
 
 
     return {
-      room
+      room: {
+        ...room,
+        participants:
+          undefined
+      }
     };
 
   }
@@ -1511,48 +1754,101 @@ io.on(
         }
 
 
+        /*
+          Если socket уже был в другой комнате,
+          полностью удаляем его оттуда.
+        */
+
         if (
-          currentRoomId
+          currentRoomId &&
+          currentRoomId !== roomId
         ) {
 
-          const previousRoom =
-            rooms.get(
-              currentRoomId
-            );
-
-
-          if (
-            previousRoom
-          ) {
-
-            previousRoom.users =
-              Math.max(
-                0,
-                previousRoom.users - 1
-              );
-
-
-            io.to(
-              currentRoomId
-            ).emit(
-              "users",
-              previousRoom.users
-            );
-
-
-            io.to(
-              currentRoomId
-            ).emit(
-              "presence",
-              previousRoom.users
-            );
-
-          }
+          removeSocketFromRoom(
+            socket,
+            currentRoomId
+          );
 
 
           socket.leave(
             currentRoomId
           );
+
+        }
+
+
+        /*
+          Защита от повторного join
+          в ту же комнату.
+        */
+
+        if (
+          currentRoomId === roomId
+        ) {
+
+          socket.join(
+            roomId
+          );
+
+
+          createRoomPresence(
+            room
+          );
+
+
+          const existingParticipant =
+            room.participants.get(
+              socket.id
+            );
+
+
+          if (
+            existingParticipant
+          ) {
+
+            existingParticipant.name =
+              userName;
+
+            if (
+              currentUserId
+            ) {
+
+              existingParticipant.id =
+                currentUserId;
+
+            }
+
+          }
+
+
+          room.users =
+            room.participants.size;
+
+
+          socket.emit(
+            "room-state",
+            {
+              action:
+                room.playback?.action ||
+                "pause",
+
+              position:
+                Number(
+                  room.playback?.position
+                ) || 0,
+
+              id:
+                room.playbackVersion || 0
+            }
+          );
+
+
+          emitRoomPresence(
+            roomId
+          );
+
+
+          return;
 
         }
 
@@ -1566,25 +1862,70 @@ io.on(
         );
 
 
-        room.users =
-          Math.max(
-            0,
-            room.users + 1
+        const participants =
+          createRoomPresence(
+            room
           );
+
+
+        participants.set(
+          socket.id,
+          {
+
+            id:
+              currentUserId ||
+              socket.id,
+
+            name:
+              userName,
+
+            avatar:
+              "",
+
+            position:
+              Number(
+                room.playback?.position
+              ) || 0,
+
+            state:
+              room.playback?.action === "play"
+                ? "play"
+                : "pause",
+
+            joinedAt:
+              Date.now()
+
+          }
+        );
+
+
+        room.users =
+          participants.size;
 
 
         socket.emit(
           "room-joined",
           {
-            room,
+            room: {
+              ...room,
+              participants:
+                undefined
+            },
+
             userName
           }
         );
 
 
+        /*
+          Новый пользователь получает
+          текущее состояние комнаты.
+        */
+
         socket.emit(
           "room-state",
           {
+
             action:
               room.playback?.action ||
               "pause",
@@ -1592,24 +1933,22 @@ io.on(
             position:
               Number(
                 room.playback?.position
-              ) || 0
+              ) || 0,
+
+            id:
+              room.playbackVersion || 0
+
           }
         );
 
 
-        io.to(
-          roomId
-        ).emit(
-          "users",
-          room.users
-        );
+        /*
+          Всем участникам отправляем
+          актуальное количество и presence.
+        */
 
-
-        io.to(
+        emitRoomPresence(
           roomId
-        ).emit(
-          "presence",
-          room.users
         );
 
       }
@@ -1681,6 +2020,56 @@ io.on(
         );
 
 
+        /*
+          Обновляем пользователя
+          внутри текущей комнаты.
+        */
+
+        if (
+          currentRoomId
+        ) {
+
+          const room =
+            rooms.get(
+              currentRoomId
+            );
+
+
+          if (
+            room
+          ) {
+
+            const participant =
+              room.participants?.get(
+                socket.id
+              );
+
+
+            if (
+              participant
+            ) {
+
+              participant.id =
+                currentUserId;
+
+              participant.name =
+                name;
+
+              participant.avatar =
+                avatar;
+
+            }
+
+
+            emitRoomPresence(
+              currentRoomId
+            );
+
+          }
+
+        }
+
+
         emitFriendsData(
           currentUserId
         );
@@ -1723,6 +2112,10 @@ io.on(
         }
 
 
+        /*
+          Принимаем только play/pause.
+        */
+
         const action =
           data?.action ===
           "play"
@@ -1730,39 +2123,104 @@ io.on(
             : "pause";
 
 
-        const position =
+        const rawPosition =
           Number(
             data?.position
           );
+
+
+        const position =
+          Number.isFinite(
+            rawPosition
+          )
+            ? Math.max(
+                0,
+                rawPosition
+              )
+            : 0;
+
+
+        /*
+          Это настоящая команда синхронизации.
+          Каждое изменение получает новый id.
+        */
+
+        room.playbackVersion =
+          (
+            Number(
+              room.playbackVersion
+            ) || 0
+          ) + 1;
 
 
         room.playback = {
 
           action,
 
-          position:
-            Number.isFinite(
-              position
-            )
-              ? Math.max(
-                  0,
-                  position
-                )
-              : 0
+          position
 
         };
 
+
+        /*
+          Обновляем presence отправителя.
+        */
+
+        const participant =
+          room.participants?.get(
+            socket.id
+          );
+
+
+        if (
+          participant
+        ) {
+
+          participant.position =
+            position;
+
+          participant.state =
+            action;
+
+        }
+
+
+        /*
+          Отправляем команду только ДРУГИМ
+          участникам комнаты.
+
+          Отправитель уже изменил своё видео.
+        */
 
         socket
           .to(roomId)
           .emit(
             "video-control",
             {
+
               action,
-              position:
-                room.playback.position
+
+              position,
+
+              id:
+                room.playbackVersion
+
             }
           );
+
+
+        /*
+          Presence получают все.
+        */
+
+        io.to(
+          roomId
+        ).emit(
+          "presence",
+          getPresence(
+            room
+          )
+        );
 
       }
     );
@@ -1819,22 +2277,64 @@ io.on(
         }
 
 
-        room.playback.position =
+        const safePosition =
           Math.max(
             0,
             position
           );
 
 
-        socket
-          .to(roomId)
-          .emit(
-            "video-position",
-            {
-              position:
-                room.playback.position
-            }
+        /*
+          ВАЖНО:
+
+          video-position больше НЕ отправляется
+          другим клиентам как команда.
+
+          Иначе RUTUBE постоянно отправляет
+          currentTime -> сервер -> второй клиент
+          -> currentTime -> сервер...
+
+          Здесь позиция используется только
+          для состояния комнаты и presence.
+        */
+
+        room.playback.position =
+          safePosition;
+
+
+        const participant =
+          room.participants?.get(
+            socket.id
           );
+
+
+        if (
+          participant
+        ) {
+
+          participant.position =
+            safePosition;
+
+          participant.state =
+            room.playback?.action === "play"
+              ? "play"
+              : "pause";
+
+        }
+
+
+        /*
+          Presence обновляем всем участникам.
+        */
+
+        io.to(
+          roomId
+        ).emit(
+          "presence",
+          getPresence(
+            room
+          )
+        );
 
       }
     );
@@ -1899,12 +2399,29 @@ io.on(
         }
 
 
+        const user =
+          currentUserId
+            ? getUser(
+                currentUserId
+              )
+            : null;
+
+
         io.to(
           roomId
         ).emit(
           "reaction",
           {
-            reaction
+
+            id:
+              `${Date.now()}-${Math.random()}`,
+
+            reaction,
+
+            user:
+              user?.name ||
+              "Guest"
+
           }
         );
 
@@ -1965,6 +2482,7 @@ io.on(
         ).emit(
           "chat-message",
           {
+
             userId:
               currentUserId,
 
@@ -1973,6 +2491,7 @@ io.on(
             createdAt:
               new Date()
                 .toISOString()
+
           }
         );
 
@@ -1994,39 +2513,10 @@ io.on(
           currentRoomId
         ) {
 
-          const room =
-            rooms.get(
-              currentRoomId
-            );
-
-
-          if (
-            room
-          ) {
-
-            room.users =
-              Math.max(
-                0,
-                room.users - 1
-              );
-
-
-            io.to(
-              currentRoomId
-            ).emit(
-              "users",
-              room.users
-            );
-
-
-            io.to(
-              currentRoomId
-            ).emit(
-              "presence",
-              room.users
-            );
-
-          }
+          removeSocketFromRoom(
+            socket,
+            currentRoomId
+          );
 
         }
 
