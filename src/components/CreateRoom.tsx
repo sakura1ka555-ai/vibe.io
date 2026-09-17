@@ -132,9 +132,9 @@ function CreateRoom({
       <div className="room-modal">
 
         <button
+          type="button"
           className="modal-close"
           onClick={onClose}
-          type="button"
         >
           ×
         </button>
@@ -151,6 +151,9 @@ function CreateRoom({
           Создай комнату и пригласи друзей
           смотреть видео вместе.
         </p>
+
+
+        {/* VISIBILITY */}
 
         <div className="room-visibility">
 
@@ -214,6 +217,8 @@ function CreateRoom({
         </div>
 
 
+        {/* CATEGORY */}
+
         {isPublic && (
 
           <div className="video-url-block">
@@ -224,26 +229,28 @@ function CreateRoom({
 
             <div className="category-select">
 
-              {categories.map(item => (
+              {categories.map(
+                item => (
 
-                <button
-                  key={item.id}
-                  type="button"
-                  className={
-                    category === item.id
-                      ? "category-option active"
-                      : "category-option"
-                  }
-                  onClick={() =>
-                    setCategory(
-                      item.id
-                    )
-                  }
-                >
-                  {item.name}
-                </button>
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={
+                      category === item.id
+                        ? "category-option active"
+                        : "category-option"
+                    }
+                    onClick={() =>
+                      setCategory(
+                        item.id
+                      )
+                    }
+                  >
+                    {item.name}
+                  </button>
 
-              ))}
+                )
+              )}
 
             </div>
 
@@ -251,6 +258,8 @@ function CreateRoom({
 
         )}
 
+
+        {/* TITLE */}
 
         <div className="video-url-block">
 
@@ -260,9 +269,9 @@ function CreateRoom({
 
           <input
             value={title}
-            onChange={e =>
+            onChange={event =>
               setTitle(
-                e.target.value
+                event.target.value
               )
             }
             placeholder="Например: Friday Movie Night"
@@ -273,28 +282,32 @@ function CreateRoom({
         </div>
 
 
+        {/* SOURCE */}
+
         <div className="source-tabs">
 
-          {sources.map(source => (
+          {sources.map(
+            source => (
 
-            <button
-              key={source.id}
-              type="button"
-              className={
-                selectedSource === source.id
-                  ? "source-tab active"
-                  : "source-tab"
-              }
-              onClick={() =>
-                setSelectedSource(
-                  source.id
-                )
-              }
-            >
-              {source.name}
-            </button>
+              <button
+                key={source.id}
+                type="button"
+                className={
+                  selectedSource === source.id
+                    ? "source-tab active"
+                    : "source-tab"
+                }
+                onClick={() =>
+                  setSelectedSource(
+                    source.id
+                  )
+                }
+              >
+                {source.name}
+              </button>
 
-          ))}
+            )
+          )}
 
         </div>
 
@@ -314,6 +327,8 @@ function CreateRoom({
         </button>
 
 
+        {/* VIDEO URL */}
+
         <div className="video-url-block">
 
           <label>
@@ -322,9 +337,9 @@ function CreateRoom({
 
           <input
             value={videoUrl}
-            onChange={e =>
+            onChange={event =>
               setVideoUrl(
-                e.target.value
+                event.target.value
               )
             }
             placeholder="Вставьте ссылку на видео..."
