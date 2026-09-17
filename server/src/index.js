@@ -10,25 +10,21 @@ FASTIFY
 ==================================================
 */
 
-const app =
-  Fastify({
-    logger: true
-  });
+const app = Fastify({
+  logger: true
+});
 
 
-await app.register(
-  cors,
-  {
-    origin: true,
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "DELETE",
-      "OPTIONS"
-    ]
-  }
-);
+await app.register(cors, {
+  origin: true,
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "DELETE",
+    "OPTIONS"
+  ]
+});
 
 
 /*
@@ -37,16 +33,9 @@ DATABASE
 ==================================================
 */
 
-const db =
-  new Database(
-    "vibe.sqlite"
-  );
+const db = new Database("vibe.sqlite");
 
-
-db.pragma(
-  "journal_mode = WAL"
-);
-
+db.pragma("journal_mode = WAL");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -93,58 +82,36 @@ NORMALIZATION
 ==================================================
 */
 
-function normalizeUserId(
-  value: unknown
-): string {
-
-  return String(
-    value || ""
-  )
+function normalizeUserId(value) {
+  return String(value || "")
     .trim()
     .toUpperCase();
 }
 
 
-function normalizeName(
-  value: unknown
-): string {
-
-  return String(
-    value || "Guest"
-  )
-    .trim()
-    .slice(0, 40) ||
-    "Guest";
-}
-
-
-function normalizeAvatar(
-  value: unknown
-): string {
-
-  return String(
-    value || ""
+function normalizeName(value) {
+  return (
+    String(value || "Guest")
+      .trim()
+      .slice(0, 40) ||
+    "Guest"
   );
 }
 
 
-function normalizePosition(
-  value: unknown
-): number {
+function normalizeAvatar(value) {
+  return String(value || "");
+}
 
-  const number =
-    Number(value);
 
-  if (
-    !Number.isFinite(number)
-  ) {
+function normalizePosition(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
     return 0;
   }
 
-  return Math.max(
-    0,
-    number
-  );
+  return Math.max(0, number);
 }
 
 
@@ -154,41 +121,29 @@ VIBE ID
 ==================================================
 */
 
-function createVibeId(): string {
-
+function createVibeId() {
   const chars =
     "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
   let code = "";
 
-  for (
-    let i = 0;
-    i < 6;
-    i++
-  ) {
-
-    code +=
-      chars[
-        Math.floor(
-          Math.random() *
-          chars.length
-        )
-      ];
+  for (let i = 0; i < 6; i++) {
+    code += chars[
+      Math.floor(
+        Math.random() * chars.length
+      )
+    ];
   }
 
   return `VIBE-${code}`;
 }
 
 
-function createUniqueVibeId(): string {
-
+function createUniqueVibeId() {
   let id = "";
 
   do {
-
-    id =
-      createVibeId();
-
+    id = createVibeId();
   } while (
     db
       .prepare(
@@ -207,14 +162,8 @@ USERS
 ==================================================
 */
 
-function getUser(
-  userId: unknown
-) {
-
-  const id =
-    normalizeUserId(
-      userId
-    );
+function getUser(userId) {
+  const id = normalizeUserId(userId);
 
   if (!id) {
     return null;
@@ -238,9 +187,7 @@ function createUser(
   name = "Guest",
   avatar = ""
 ) {
-
-  const id =
-    createUniqueVibeId();
+  const id = createUniqueVibeId();
 
   const createdAt =
     new Date().toISOString();
@@ -267,15 +214,11 @@ function createUser(
 
 
 function updateUser(
-  userId: unknown,
-  name: unknown,
-  avatar: unknown
+  userId,
+  name,
+  avatar
 ) {
-
-  const id =
-    normalizeUserId(
-      userId
-    );
+  const id = normalizeUserId(userId);
 
   if (!id) {
     return null;
@@ -304,19 +247,11 @@ FRIENDS
 */
 
 function areFriends(
-  userA: unknown,
-  userB: unknown
-): boolean {
-
-  const a =
-    normalizeUserId(
-      userA
-    );
-
-  const b =
-    normalizeUserId(
-      userB
-    );
+  userA,
+  userB
+) {
+  const a = normalizeUserId(userA);
+  const b = normalizeUserId(userB);
 
   if (
     !a ||
@@ -343,14 +278,8 @@ function areFriends(
 }
 
 
-function getFriends(
-  userId: unknown
-) {
-
-  const id =
-    normalizeUserId(
-      userId
-    );
+function getFriends(userId) {
+  const id = normalizeUserId(userId);
 
   if (!id) {
     return [];
@@ -372,14 +301,8 @@ function getFriends(
 }
 
 
-function getIncomingRequests(
-  userId: unknown
-) {
-
-  const id =
-    normalizeUserId(
-      userId
-    );
+function getIncomingRequests(userId) {
+  const id = normalizeUserId(userId);
 
   if (!id) {
     return [];
@@ -403,14 +326,8 @@ function getIncomingRequests(
 }
 
 
-function getOutgoingRequests(
-  userId: unknown
-) {
-
-  const id =
-    normalizeUserId(
-      userId
-    );
+function getOutgoingRequests(userId) {
+  const id = normalizeUserId(userId);
 
   if (!id) {
     return [];
@@ -435,19 +352,11 @@ function getOutgoingRequests(
 
 
 function addFriendship(
-  userA: unknown,
-  userB: unknown
+  userA,
+  userB
 ) {
-
-  const a =
-    normalizeUserId(
-      userA
-    );
-
-  const b =
-    normalizeUserId(
-      userB
-    );
+  const a = normalizeUserId(userA);
+  const b = normalizeUserId(userB);
 
   if (
     !a ||
@@ -459,7 +368,6 @@ function addFriendship(
 
   const transaction =
     db.transaction(() => {
-
       const now =
         new Date().toISOString();
 
@@ -504,32 +412,17 @@ ROOMS
 ==================================================
 */
 
-type Room = {
-  id: string;
-  title: string;
-  videoUrl: string;
-  users: number;
-
-  playback: {
-    action: "play" | "pause";
-    position: number;
-  };
-};
-
-
 const rooms =
-  new Map<string, Room>();
+  new Map();
 
 
 function createRoomObject(
-  roomId: string,
-  title: string,
-  videoUrl: string
-): Room {
-
+  roomId,
+  title,
+  videoUrl
+) {
   return {
-    id:
-      roomId,
+    id: roomId,
 
     title:
       title ||
@@ -538,15 +431,11 @@ function createRoomObject(
     videoUrl:
       videoUrl || "",
 
-    users:
-      0,
+    users: 0,
 
     playback: {
-      action:
-        "pause",
-
-      position:
-        0
+      action: "pause",
+      position: 0
     }
   };
 }
@@ -561,13 +450,9 @@ HTTP
 app.get(
   "/",
   async () => {
-
     return {
-      app:
-        "VIBE SERVER",
-
-      status:
-        "online"
+      app: "VIBE SERVER",
+      status: "online"
     };
   }
 );
@@ -576,16 +461,12 @@ app.get(
 app.get(
   "/health",
   async () => {
-
     return {
-      status:
-        "ok",
+      status: "ok",
 
-      app:
-        "VIBE SERVER",
+      app: "VIBE SERVER",
 
-      rooms:
-        rooms.size,
+      rooms: rooms.size,
 
       time:
         new Date().toISOString()
@@ -606,12 +487,8 @@ app.post(
     request,
     reply
   ) => {
-
     const data =
-      request.body as {
-        name?: unknown;
-        avatar?: unknown;
-      } || {};
+      request.body || {};
 
     const name =
       normalizeName(
@@ -627,7 +504,6 @@ app.post(
       avatar.length >
       1500000
     ) {
-
       return reply
         .code(400)
         .send({
@@ -661,19 +537,13 @@ app.get(
     request,
     reply
   ) => {
-
-    const params =
-      request.params as {
-        userId?: string;
-      };
+    const userId =
+      request.params?.userId;
 
     const user =
-      getUser(
-        params?.userId
-      );
+      getUser(userId);
 
     if (!user) {
-
       return reply
         .code(404)
         .send({
@@ -700,14 +570,9 @@ app.get(
   async (
     request
   ) => {
-
     const query =
       String(
-        (
-          request.query as {
-            q?: unknown;
-          }
-        )?.q || ""
+        request.query?.q || ""
       )
         .trim()
         .slice(0, 40);
@@ -764,13 +629,8 @@ app.post(
     request,
     reply
   ) => {
-
     const data =
-      request.body as {
-        roomId?: unknown;
-        title?: unknown;
-        videoUrl?: unknown;
-      } || {};
+      request.body || {};
 
     const roomId =
       String(
@@ -794,7 +654,6 @@ app.post(
         .trim();
 
     if (!roomId) {
-
       return reply
         .code(400)
         .send({
@@ -807,7 +666,6 @@ app.post(
       roomId.length >
       50
     ) {
-
       return reply
         .code(400)
         .send({
@@ -820,7 +678,6 @@ app.post(
       videoUrl.length >
       5000
     ) {
-
       return reply
         .code(400)
         .send({
@@ -832,7 +689,6 @@ app.post(
     if (
       rooms.has(roomId)
     ) {
-
       return reply
         .code(409)
         .send({
@@ -877,15 +733,9 @@ app.get(
     request,
     reply
   ) => {
-
-    const params =
-      request.params as {
-        roomId?: string;
-      };
-
     const roomId =
       String(
-        params?.roomId || ""
+        request.params?.roomId || ""
       )
         .trim()
         .toUpperCase();
@@ -894,7 +744,6 @@ app.get(
       rooms.get(roomId);
 
     if (!room) {
-
       return reply
         .code(404)
         .send({
@@ -938,9 +787,8 @@ POSITION FORMAT
 */
 
 function formatPosition(
-  seconds: number
-): string {
-
+  seconds
+) {
   const total =
     Math.floor(
       normalizePosition(
@@ -973,23 +821,14 @@ PRESENCE
 */
 
 function getPresence(
-  roomId: string
+  roomId
 ) {
-
-  const result: Array<{
-    id: string;
-    name: string;
-    avatar: string;
-    position: number;
-    time: string;
-    state: "play" | "pause";
-  }> = [];
+  const result = [];
 
   for (
     const connectedSocket
     of io.sockets.sockets.values()
   ) {
-
     if (
       connectedSocket.data.roomId !==
       roomId
@@ -1035,9 +874,8 @@ function getPresence(
 
 
 function emitPresence(
-  roomId: string
+  roomId
 ) {
-
   io.to(roomId).emit(
     "presence",
     getPresence(roomId)
@@ -1052,9 +890,8 @@ FRIENDS UPDATE
 */
 
 function emitFriendsUpdate(
-  userId: string
+  userId
 ) {
-
   if (!userId) {
     return;
   }
@@ -1063,7 +900,6 @@ function emitFriendsUpdate(
     const connectedSocket
     of io.sockets.sockets.values()
   ) {
-
     if (
       connectedSocket.data.userId !==
       userId
@@ -1101,7 +937,6 @@ SOCKET CONNECTION
 io.on(
   "connection",
   socket => {
-
     console.log(
       "🟢 user connected:",
       socket.id
@@ -1117,7 +952,6 @@ io.on(
     socket.on(
       "register-user",
       data => {
-
         const requestedId =
           normalizeUserId(
             data?.userId
@@ -1129,7 +963,6 @@ io.on(
             : null;
 
         if (!user) {
-
           user =
             createUser(
               normalizeName(
@@ -1185,7 +1018,6 @@ io.on(
     socket.on(
       "search-users",
       data => {
-
         const query =
           String(
             data?.query || ""
@@ -1194,7 +1026,6 @@ io.on(
             .slice(0, 40);
 
         if (!query) {
-
           socket.emit(
             "user-search-results",
             {
@@ -1246,7 +1077,6 @@ io.on(
     socket.on(
       "friend-request",
       data => {
-
         const fromId =
           socket.data.userId;
 
@@ -1265,7 +1095,6 @@ io.on(
         if (
           fromId === toId
         ) {
-
           socket.emit(
             "friend-error",
             {
@@ -1281,7 +1110,6 @@ io.on(
           getUser(toId);
 
         if (!target) {
-
           socket.emit(
             "friend-error",
             {
@@ -1299,7 +1127,6 @@ io.on(
             toId
           )
         ) {
-
           socket.emit(
             "friend-error",
             {
@@ -1341,7 +1168,6 @@ io.on(
           existing?.status ===
           "pending"
         ) {
-
           socket.emit(
             "friend-error",
             {
@@ -1416,7 +1242,6 @@ io.on(
     socket.on(
       "friend-accept",
       data => {
-
         const userId =
           socket.data.userId;
 
@@ -1487,7 +1312,6 @@ io.on(
     socket.on(
       "friend-decline",
       data => {
-
         const userId =
           socket.data.userId;
 
@@ -1533,7 +1357,6 @@ io.on(
     socket.on(
       "friend-remove",
       data => {
-
         const userId =
           socket.data.userId;
 
@@ -1588,7 +1411,6 @@ io.on(
     socket.on(
       "join-room",
       data => {
-
         const roomId =
           String(
             data?.roomId || ""
@@ -1600,7 +1422,6 @@ io.on(
           rooms.get(roomId);
 
         if (!room) {
-
           socket.emit(
             "room-not-found"
           );
@@ -1620,14 +1441,12 @@ io.on(
           oldRoomId &&
           oldRoomId !== roomId
         ) {
-
           const oldRoom =
             rooms.get(
               oldRoomId
             );
 
           if (oldRoom) {
-
             oldRoom.users =
               Math.max(
                 0,
@@ -1672,7 +1491,6 @@ io.on(
           socket.data.roomId !==
           roomId
         ) {
-
           socket.join(
             roomId
           );
@@ -1758,7 +1576,6 @@ io.on(
     socket.on(
       "profile-update",
       data => {
-
         const roomId =
           String(
             data?.roomId || ""
@@ -1800,7 +1617,6 @@ io.on(
         if (
           socket.data.userId
         ) {
-
           updateUser(
             socket.data.userId,
             name,
@@ -1815,7 +1631,6 @@ io.on(
         if (
           socket.data.userId
         ) {
-
           emitFriendsUpdate(
             socket.data.userId
           );
@@ -1833,7 +1648,6 @@ io.on(
     socket.on(
       "video-control",
       data => {
-
         const roomId =
           String(
             data?.roomId || ""
@@ -1941,7 +1755,6 @@ io.on(
     socket.on(
       "video-position",
       data => {
-
         const roomId =
           String(
             data?.roomId || ""
@@ -1977,8 +1790,7 @@ io.on(
 
 
         /*
-        Important:
-        position events are sent
+        Position events are sent
         to other users too.
         */
 
@@ -2014,7 +1826,6 @@ io.on(
     socket.on(
       "reaction",
       data => {
-
         const roomId =
           String(
             data?.roomId || ""
@@ -2088,7 +1899,6 @@ io.on(
     socket.on(
       "chat-message",
       data => {
-
         const roomId =
           String(
             data?.roomId || ""
@@ -2143,17 +1953,14 @@ io.on(
     socket.on(
       "disconnect",
       () => {
-
         const roomId =
           socket.data.roomId;
 
         if (roomId) {
-
           const room =
             rooms.get(roomId);
 
           if (room) {
-
             room.users =
               Math.max(
                 0,
@@ -2197,13 +2004,9 @@ const PORT =
 
 
 try {
-
   await app.listen({
-    port:
-      PORT,
-
-    host:
-      "0.0.0.0"
+    port: PORT,
+    host: "0.0.0.0"
   });
 
   console.log(
@@ -2211,7 +2014,6 @@ try {
   );
 
 } catch (error) {
-
   console.error(
     "❌ VIBE SERVER START ERROR:",
     error
