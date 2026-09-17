@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Room from "./Room";
 
 function createRoomId() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -6,6 +7,12 @@ function createRoomId() {
 
 function App() {
   const [roomName, setRoomName] = useState("");
+
+  const roomMatch = window.location.pathname.match(/^\/room\/([A-Z0-9]+)$/i);
+
+  if (roomMatch) {
+    return <Room />;
+  }
 
   function handleCreateRoom() {
     const id = createRoomId();
