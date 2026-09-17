@@ -12,7 +12,8 @@ import {
   socket,
   joinRoom,
   sendVideoControl,
-  sendVideoPosition
+  sendVideoPosition,
+  sendReaction
 } from "../socket";
 
 
@@ -50,6 +51,97 @@ type Props = {
 };
 
 
+type RemoteControl = {
+  action: "play" | "pause";
+  position: number;
+  id: number;
+} | null;
+
+
+const REACTIONS = [
+  "❤️",
+  "😂",
+  "🔥",
+  "👍",
+  "👏"
+];
+
+
+function normalizePresence(
+  value: unknown
+): PresenceUser[] {
+
+  if (!value) {
+    return [];
+  }
+
+
+  if (Array.isArray(value)) {
+    return value as PresenceUser[];
+  }
+
+
+  if (
+    typeof value === "object" &&
+    value !== null
+  ) {
+
+    const data =
+      value as {
+        users?: unknown;
+        presence?: unknown;
+        participants?: unknown;
+      };
+
+
+    if (Array.isArray(data.users)) {
+      return data.users as PresenceUser[];
+    }
+
+
+    if (Array.isArray(data.presence)) {
+      return data.presence as PresenceUser[];
+    }
+
+
+    if (
+      Array.isArray(
+        data.participants
+      )
+    ) {
+
+      return data.participants as PresenceUser[];
+    }
+  }
+
+
+  return [];
+}
+
+
+function getInitial(
+  name: string,
+  avatar?: string
+) {
+
+  const trimmed =
+    String(name || "Guest").trim();
+
+
+  if (avatar) {
+    return "";
+  }
+
+
+  return (
+    trimmed
+      .charAt(0)
+      .toUpperCase() ||
+    "G"
+  );
+}
+
+
 function WatchRoom({
   name,
   videoUrl,
@@ -64,356 +156,335 @@ function WatchRoom({
   const [presence, setPresence] =
     useState<PresenceUser[]>([]);
 
-  const [reactionsOnScreen, setReactionsOnScreen] =
-    useState<Reaction[]>([]);
+  const [
+    reactionsOnScreen,
+    setReactionsOnScreen
+  ] = useState<Reaction[]>([]);
 
-  const [initialPosition, setInitialPosition] =
-    useState(0);
+  const [
+    initialPosition,
+    setInitialPosition
+  ] = useState(0);
 
-  const [initialAction, setInitialAction] =
-    useState<
-      "play" | "pause"
-    >("pause");
+  const [
+    initialAction,
+    setInitialAction
+  ] = useState<
+    "play" | "pause"
+  >("pause");
 
-  const [remoteControl, setRemoteControl] =
-    useState<{
-      action:
-        | "play"
-        | "pause";
-      position: number;
-      id: number;
-    } | null>(null);
+  const [
+    remoteControl,
+    setRemoteControl
+  ] = useState<RemoteControl>(null);
 
-  const [profileOpen, setProfileOpen] =
-    useState(false);
+  const [
+    profileOpen,
+    setProfileOpen
+  ] = useState(false);
+
+  const [
+    inviteOpen,
+    setInviteOpen
+  ] = useState(false);
+
+  const [
+    copied,
+    setCopied
+  ] = useState(false);
 
 
   const userIdRef =
     useRef<string>("");
 
 
+  const reactionCounter =
+    useRef(0);
+
+
   /*
-    =========================
-    USER ID
-    =========================
+  ==================================================
+  USER ID
+  ==================================================
   */
 
   useEffect(() => {
 
-    try {
-
-      let saved =
-        localStorage.getItem(
-          "vibe-user-id"
-        );
+    let userId =
+      localStorage.getItem(
+        "vibe-user-id"
+      );
 
 
-      if (!saved) {
+    if (!userId) {
 
-        saved =
-          `user-${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2, 8)}`;
+      userId =
+        crypto.randomUUID();
 
-
-        localStorage.setItem(
-          "vibe-user-id",
-          saved
-        );
-
-      }
-
-
-      userIdRef.current =
-        saved;
-
-    } catch {
-
-      userIdRef.current =
-        `user-${Date.now()}`;
-
+      localStorage.setItem(
+        "vibe-user-id",
+        userId
+      );
     }
+
+
+    userIdRef.current =
+      userId;
 
   }, []);
 
 
   /*
-    =========================
-    ROOM / SOCKET
-    =========================
+  ==================================================
+  ROOM / SOCKET
+  ==================================================
   */
 
   useEffect(() => {
 
-    let mounted = true;
+    const applyPresence =
+      (value: unknown) => {
+
+        const people =
+          normalizePresence(
+            value
+          );
 
 
-    function normalizePresence(
-      data: any
-    ): PresenceUser[] {
-
-      if (
-        Array.isArray(data)
-      ) {
-
-        return data;
-
-      }
-
-
-      if (
-        Array.isArray(
-          data?.users
-        )
-      ) {
-
-        return data.users;
-
-      }
-
-
-      if (
-        Array.isArray(
-          data?.presence
-        )
-      ) {
-
-        return data.presence;
-
-      }
-
-
-      if (
-        Array.isArray(
-          data?.participants
-        )
-      ) {
-
-        return data.participants;
-
-      }
-
-
-      return [];
-
-    }
-
-
-    function applyPresence(
-      data: unknown
-    ) {
-
-      if (!mounted) {
-        return;
-      }
-
-
-      const people =
-        normalizePresence(
-          data
+        console.log(
+          "👥 VIBE PRESENCE:",
+          people
         );
 
 
-      console.log(
-        "👥 VIBE PRESENCE:",
-        people
-      );
+        setPresence(
+          people
+        );
 
-
-      setPresence(
-        people
-      );
-
-
-      setUsers(
-        Math.max(
-          1,
-          people.length
-        )
-      );
-
-    }
-
-
-    function handleUsers(
-      count: number
-    ) {
-
-      if (
-        Number.isFinite(count)
-      ) {
 
         setUsers(
           Math.max(
             1,
-            count
+            people.length
           )
         );
-
-      }
-
-    }
-
-
-    function handleRoomState(
-      state: {
-        action:
-          | "play"
-          | "pause";
-        position: number;
-      }
-    ) {
-
-      if (!mounted) {
-        return;
-      }
-
-
-      if (!state) {
-        return;
-      }
-
-
-      setInitialPosition(
-        Number(
-          state.position
-        ) || 0
-      );
-
-
-      setInitialAction(
-        state.action ===
-        "play"
-          ? "play"
-          : "pause"
-      );
-
-    }
-
-
-    function handleRemoteControl(
-      data: {
-        action:
-          | "play"
-          | "pause";
-        position: number;
-        id?: number;
-      }
-    ) {
-
-      if (!mounted) {
-        return;
-      }
-
-
-      if (!data) {
-        return;
-      }
-
-
-      setRemoteControl({
-        action:
-          data.action ===
-          "play"
-            ? "play"
-            : "pause",
-
-        position:
-          Number(
-            data.position
-          ) || 0,
-
-        id:
-          Number(
-            data.id
-          ) ||
-          Date.now()
-      });
-
-    }
-
-
-    function handleReaction(
-      reaction: Reaction
-    ) {
-
-      if (!mounted) {
-        return;
-      }
-
-
-      if (!reaction) {
-        return;
-      }
-
-
-      const id =
-        reaction.id ??
-        `${Date.now()}-${Math.random()
-          .toString(36)
-          .slice(2, 8)}`;
-
-
-      const item = {
-        ...reaction,
-        id
       };
 
 
-      setReactionsOnScreen(
-        previous => [
-          ...previous,
-          item
-        ]
-      );
+    const handleUsers =
+      (value: unknown) => {
+
+        const count =
+          Number(value);
 
 
-      setTimeout(() => {
+        if (
+          Number.isFinite(count)
+        ) {
 
-        if (!mounted) {
+          setUsers(
+            Math.max(
+              1,
+              count
+            )
+          );
+        }
+      };
+
+
+    const handlePresence =
+      (value: unknown) => {
+
+        applyPresence(
+          value
+        );
+      };
+
+
+    const handleRoomState =
+      (data: unknown) => {
+
+        if (
+          !data ||
+          typeof data !== "object"
+        ) {
           return;
         }
 
 
-        setReactionsOnScreen(
-          previous =>
-            previous.filter(
-              current =>
-                current.id !==
-                id
-            )
+        const room =
+          data as {
+            playback?: {
+              action?: string;
+              position?: number;
+            };
+          };
+
+
+        const playback =
+          room.playback;
+
+
+        if (!playback) {
+          return;
+        }
+
+
+        const position =
+          Number(
+            playback.position
+          );
+
+
+        setInitialPosition(
+          Number.isFinite(position)
+            ? Math.max(
+                0,
+                position
+              )
+            : 0
         );
 
-      }, 2500);
 
-    }
+        setInitialAction(
+          playback.action === "play"
+            ? "play"
+            : "pause"
+        );
+      };
 
 
-    /*
-      =========================
-      LISTENERS
-      =========================
-    */
+    const handleRemoteControl =
+      (data: unknown) => {
+
+        if (
+          !data ||
+          typeof data !== "object"
+        ) {
+          return;
+        }
+
+
+        const control =
+          data as {
+            action?: string;
+            position?: number;
+            id?: number;
+          };
+
+
+        if (
+          control.action !== "play" &&
+          control.action !== "pause"
+        ) {
+          return;
+        }
+
+
+        const position =
+          Number(
+            control.position
+          );
+
+
+        const id =
+          Number(
+            control.id
+          );
+
+
+        setRemoteControl({
+          action:
+            control.action,
+          position:
+            Number.isFinite(position)
+              ? Math.max(
+                  0,
+                  position
+                )
+              : 0,
+          id:
+            Number.isFinite(id)
+              ? id
+              : Date.now()
+        });
+      };
+
+
+    const handleReaction =
+      (reaction: unknown) => {
+
+        if (
+          !reaction ||
+          typeof reaction !== "object"
+        ) {
+          return;
+        }
+
+
+        const data =
+          reaction as Reaction;
+
+
+        if (!data.emoji) {
+          return;
+        }
+
+
+        const item: Reaction = {
+          ...data,
+          id:
+            data.id ??
+            `${Date.now()}-${++reactionCounter.current}`
+        };
+
+
+        setReactionsOnScreen(
+          previous => [
+            ...previous,
+            item
+          ]
+        );
+
+
+        window.setTimeout(() => {
+
+          setReactionsOnScreen(
+            previous =>
+              previous.filter(
+                current =>
+                  current.id !==
+                  item.id
+              )
+          );
+
+        }, 2500);
+      };
+
 
     socket.on(
       "users",
       handleUsers
     );
 
+
     socket.on(
       "presence",
-      applyPresence
+      handlePresence
     );
+
 
     socket.on(
       "room-state",
       handleRoomState
     );
 
+
     socket.on(
       "video-control",
       handleRemoteControl
     );
+
 
     socket.on(
       "reaction",
@@ -422,9 +493,9 @@ function WatchRoom({
 
 
     /*
-      =========================
-      JOIN
-      =========================
+    ================================================
+    JOIN
+    ================================================
     */
 
     joinRoom(
@@ -433,76 +504,72 @@ function WatchRoom({
     );
 
 
-    const profileUpdateTimer =
-      setTimeout(() => {
+    /*
+    ================================================
+    PROFILE IN ROOM
+    ================================================
+    */
+
+    const sendProfile =
+      () => {
 
         socket.emit(
           "profile-update",
           {
             roomId,
-            name,
+            name:
+              profile.name ||
+              name ||
+              "Guest",
             avatar:
               profile.avatar ||
               ""
           }
         );
+      };
 
-      }, 100);
+
+    const profileTimer =
+      window.setTimeout(
+        sendProfile,
+        100
+      );
 
 
     /*
-      =========================
-      RECONNECT
-      =========================
+    ================================================
+    RECONNECT
+    ================================================
     */
 
-    function handleReconnect() {
+    const handleConnect =
+      () => {
 
-      console.log(
-        "🔄 VIBE socket reconnected — joining room:",
-        roomId
-      );
-
-
-      joinRoom(
-        roomId,
-        name
-      );
-
-
-      setTimeout(() => {
-
-        socket.emit(
-          "profile-update",
-          {
-            roomId,
-            name,
-            avatar:
-              profile.avatar ||
-              ""
-          }
+        joinRoom(
+          roomId,
+          profile.name ||
+            name
         );
 
-      }, 100);
 
-    }
+        window.setTimeout(
+          sendProfile,
+          100
+        );
+      };
 
 
     socket.on(
       "connect",
-      handleReconnect
+      handleConnect
     );
 
 
-    /*
-      =========================
-      CLEANUP
-      =========================
-    */
-
     return () => {
 
-      mounted = false;
+      window.clearTimeout(
+        profileTimer
+      );
 
 
       socket.off(
@@ -510,34 +577,34 @@ function WatchRoom({
         handleUsers
       );
 
+
       socket.off(
         "presence",
-        applyPresence
+        handlePresence
       );
+
 
       socket.off(
         "room-state",
         handleRoomState
       );
 
+
       socket.off(
         "video-control",
         handleRemoteControl
       );
+
 
       socket.off(
         "reaction",
         handleReaction
       );
 
+
       socket.off(
         "connect",
-        handleReconnect
-      );
-
-
-      clearTimeout(
-        profileUpdateTimer
+        handleConnect
       );
 
     };
@@ -545,20 +612,19 @@ function WatchRoom({
   }, [
     roomId,
     name,
+    profile.name,
     profile.avatar
   ]);
 
 
   /*
-    =========================
-    VIDEO CONTROL
-    =========================
+  ==================================================
+  VIDEO CONTROL
+  ==================================================
   */
 
   function handleVideoControl(
-    action:
-      | "play"
-      | "pause",
+    action: "play" | "pause",
     position: number
   ) {
 
@@ -567,17 +633,10 @@ function WatchRoom({
       action,
       position
     );
-
   }
 
 
-  /*
-    =========================
-    VIDEO POSITION
-    =========================
-  */
-
-  function handleVideoPosition(
+  function handleVideoSeek(
     position: number
   ) {
 
@@ -585,14 +644,23 @@ function WatchRoom({
       roomId,
       position
     );
+  }
 
+
+  function handleVideoPosition(
+    position: number
+  ) {
+
+    setInitialPosition(
+      position
+    );
   }
 
 
   /*
-    =========================
-    PROFILE
-    =========================
+  ==================================================
+  PROFILE
+  ==================================================
   */
 
   function handleProfileSave(
@@ -609,7 +677,8 @@ function WatchRoom({
       {
         roomId,
         name:
-          nextProfile.name,
+          nextProfile.name ||
+          "Guest",
         avatar:
           nextProfile.avatar ||
           ""
@@ -620,211 +689,556 @@ function WatchRoom({
     setProfileOpen(
       false
     );
-
   }
 
 
   /*
-    =========================
-    AVATAR LETTER
-    =========================
+  ==================================================
+  REACTIONS
+  ==================================================
   */
 
-  const profileLetter =
-    (
-      profile.name ||
-      "G"
-    )
-      .charAt(0)
-      .toUpperCase();
+  function handleReaction(
+    emoji: string
+  ) {
+
+    sendReaction(
+      roomId,
+      emoji
+    );
+  }
 
 
   /*
-    =========================
-    UI
-    =========================
+  ==================================================
+  INVITE
+  ==================================================
+  */
+
+  const inviteLink =
+    typeof window !== "undefined"
+      ? `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(roomId)}`
+      : "";
+
+
+  async function copyInviteLink() {
+
+    if (!inviteLink) {
+      return;
+    }
+
+
+    try {
+
+      await navigator.clipboard.writeText(
+        inviteLink
+      );
+
+      setCopied(
+        true
+      );
+
+
+      window.setTimeout(() => {
+
+        setCopied(
+          false
+        );
+
+      }, 1800);
+
+    } catch {
+
+      const textarea =
+        document.createElement(
+          "textarea"
+        );
+
+
+      textarea.value =
+        inviteLink;
+
+
+      textarea.style.position =
+        "fixed";
+
+      textarea.style.opacity =
+        "0";
+
+
+      document.body.appendChild(
+        textarea
+      );
+
+
+      textarea.select();
+
+
+      try {
+        document.execCommand(
+          "copy"
+        );
+
+        setCopied(
+          true
+        );
+
+        window.setTimeout(() => {
+
+          setCopied(
+            false
+          );
+
+        }, 1800);
+
+      } finally {
+
+        document.body.removeChild(
+          textarea
+        );
+      }
+    }
+  }
+
+
+  async function shareInviteLink() {
+
+    if (!inviteLink) {
+      return;
+    }
+
+
+    if (
+      navigator.share
+    ) {
+
+      try {
+
+        await navigator.share({
+          title:
+            `VIBE — ${name}`,
+          text:
+            `Присоединяйся к комнате ${roomId}`,
+          url:
+            inviteLink
+        });
+
+      } catch {
+        // Пользователь закрыл системное окно share.
+      }
+
+
+      return;
+    }
+
+
+    await copyInviteLink();
+  }
+
+
+  /*
+  ==================================================
+  AVATAR
+  ==================================================
+  */
+
+  const avatar =
+    profile.avatar ||
+    "";
+
+
+  const avatarInitial =
+    getInitial(
+      profile.name ||
+        name ||
+        "Guest",
+      avatar
+    );
+
+
+  /*
+  ==================================================
+  RENDER
+  ==================================================
   */
 
   return (
-
     <div className="watch-room">
 
+      {/* ==================================================
+          MAIN
+      ================================================== */}
 
-      {/* =========================
-          HEADER
-      ========================= */}
+      <main className="watch-main">
 
-      <div className="watch-header">
+        {/* ==================================================
+            HEADER
+        ================================================== */}
 
-        <div className="watch-header-left">
+        <header className="watch-header">
 
-          <div className="watch-room-title">
-            {roomId}
+          <div className="watch-title-group">
+
+            <div className="watch-label">
+              VIBE
+            </div>
+
+
+            <h1>
+              {name}
+            </h1>
+
+
+            <div className="watch-room-code">
+              ROOM CODE: {roomId}
+            </div>
+
           </div>
 
 
-          <div className="watch-users">
+          <div className="watch-header-actions">
 
-            <span className="watch-users-dot">
+            <button
+              type="button"
+              className="invite-button"
+              onClick={() =>
+                setInviteOpen(true)
+              }
+            >
+              <span className="invite-button-icon">
+                ↗
+              </span>
+
+              <span>
+                Invite
+              </span>
+            </button>
+
+
+            <div className="watch-users">
+
+              <span className="watch-users-dot">
+                ●
+              </span>
+
+
+              <strong>
+                {users}
+              </strong>
+
+
+              <span className="watch-users-label">
+                watching
+              </span>
+
+            </div>
+
+
+            <button
+              type="button"
+              className="watch-profile-button"
+              onClick={() =>
+                setProfileOpen(true)
+              }
+              aria-label="Open profile"
+            >
+
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt=""
+                />
+              ) : (
+                <span>
+                  {avatarInitial}
+                </span>
+              )}
+
+            </button>
+
+          </div>
+
+        </header>
+
+
+        {/* ==================================================
+            VIDEO
+        ================================================== */}
+
+        <div className="video-frame">
+
+          <VideoPlayer
+            videoUrl={videoUrl}
+            initialPosition={
+              initialPosition
+            }
+            initialAction={
+              initialAction
+            }
+            onControl={
+              handleVideoControl
+            }
+            onSeek={
+              handleVideoSeek
+            }
+            onPosition={
+              handleVideoPosition
+            }
+            remoteControl={
+              remoteControl
+            }
+          />
+
+
+          {/* ==================================================
+              FLOATING REACTIONS
+          ================================================== */}
+
+          <div className="floating-reactions">
+
+            {reactionsOnScreen.map(
+              (reaction, index) => (
+
+                <div
+                  key={
+                    String(
+                      reaction.id ??
+                      index
+                    )
+                  }
+                  className="floating-reaction"
+                  style={{
+                    left:
+                      `${18 + ((index * 17) % 68)}%`,
+                    animationDelay:
+                      `${(index % 3) * 0.08}s`
+                  }}
+                >
+
+                  <span>
+                    {reaction.emoji}
+                  </span>
+
+
+                  {reaction.user && (
+                    <small>
+                      {reaction.user}
+                    </small>
+                  )}
+
+                </div>
+
+              )
+            )}
+
+          </div>
+
+        </div>
+
+
+        {/* ==================================================
+            REACTION BAR
+        ================================================== */}
+
+        <div className="reaction-bar">
+
+          <div className="reaction-label">
+            REACT
+          </div>
+
+
+          <div className="reaction-buttons">
+
+            {REACTIONS.map(
+              emoji => (
+
+                <button
+                  key={emoji}
+                  type="button"
+                  className="reaction-button"
+                  onClick={() =>
+                    handleReaction(
+                      emoji
+                    )
+                  }
+                  aria-label={
+                    `Send ${emoji}`
+                  }
+                >
+                  {emoji}
+                </button>
+
+              )
+            )}
+
+          </div>
+
+        </div>
+
+
+        {/* ==================================================
+            BOTTOM STATUS
+        ================================================== */}
+
+        <div className="watch-bottom">
+
+          <div className="watch-bottom-status">
+
+            <span className="status-dot">
               ●
             </span>
 
-            {users}
-
-            <span className="watch-users-label">
-              watching
+            <span>
+              {initialAction === "play"
+                ? "PLAYING"
+                : "PAUSED"}
             </span>
+
+          </div>
+
+
+          <div className="watch-bottom-code">
+
+            <span>
+              ROOM
+            </span>
+
+            <strong>
+              {roomId}
+            </strong>
 
           </div>
 
         </div>
 
-
-        {/* =========================
-            PROFILE BUTTON
-        ========================= */}
-
-        <button
-          type="button"
-          className="profile profile-button"
-          onClick={() =>
-            setProfileOpen(true)
-          }
-        >
-
-          {profile.avatar ? (
-
-            <img
-              src={profile.avatar}
-              alt=""
-              className="profile-button-avatar"
-            />
-
-          ) : (
-
-            <span className="profile-button-letter">
-              {profileLetter}
-            </span>
-
-          )}
+      </main>
 
 
-          <span className="profile-button-name">
-            {profile.name}
-          </span>
+      {/* ==================================================
+          SIDEBAR
+      ================================================== */}
 
+      <aside className="watch-sidebar">
 
-          <span className="profile-button-arrow">
-            ›
-          </span>
-
-        </button>
-
-      </div>
-
-
-      {/* =========================
-          VIDEO
-      ========================= */}
-
-      <div className="watch-video">
-
-        <VideoPlayer
-          videoUrl={videoUrl}
-          initialPosition={
-            initialPosition
-          }
-          initialAction={
-            initialAction
-          }
-          remoteControl={
-            remoteControl
-          }
-          onControl={
-            handleVideoControl
-          }
-          onPosition={
-            handleVideoPosition
-          }
+        <Chat
+          roomId={roomId}
+          presence={presence}
         />
 
-      </div>
+      </aside>
 
 
-      {/* =========================
-          REACTIONS
-      ========================= */}
-
-      {reactionsOnScreen.length >
-        0 && (
-
-        <div className="watch-reactions">
-
-          {reactionsOnScreen.map(
-            reaction => (
-
-              <div
-                key={
-                  String(
-                    reaction.id
-                  )
-                }
-                className="watch-reaction"
-              >
-
-                {reaction.emoji ||
-                  "❤️"}
-
-              </div>
-
-            )
-          )}
-
-        </div>
-
-      )}
-
-
-      {/* =========================
-          CHAT
-      ========================= */}
-
-      <Chat
-        roomId={roomId}
-        presence={presence}
-      />
-
-
-      {/* =========================
+      {/* ==================================================
           PROFILE MODAL
-      ========================= */}
+      ================================================== */}
 
       {profileOpen && (
-
         <ProfileModal
-
-          profile={
-            profile
-          }
-
+          profile={profile}
           onSave={
             handleProfileSave
           }
-
           onClose={() =>
-            setProfileOpen(
-              false
-            )
+            setProfileOpen(false)
           }
-
         />
+      )}
 
+
+      {/* ==================================================
+          INVITE MODAL
+      ================================================== */}
+
+      {inviteOpen && (
+        <div
+          className="invite-modal-backdrop"
+          onClick={() =>
+            setInviteOpen(false)
+          }
+        >
+
+          <div
+            className="invite-modal"
+            onClick={event =>
+              event.stopPropagation()
+            }
+          >
+
+            <button
+              type="button"
+              className="invite-modal-close"
+              onClick={() =>
+                setInviteOpen(false)
+              }
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+
+            <div className="invite-modal-label">
+              VIBE ROOM
+            </div>
+
+
+            <h2>
+              Invite to room
+            </h2>
+
+
+            <div className="invite-modal-description">
+              Send this link to your friends
+              so they can join the room.
+            </div>
+
+
+            <div className="invite-link-box">
+
+              <div className="invite-link">
+                {inviteLink}
+              </div>
+
+
+              <button
+                type="button"
+                className="invite-copy-button"
+                onClick={
+                  copyInviteLink
+                }
+              >
+                {copied
+                  ? "Copied"
+                  : "Copy"}
+              </button>
+
+            </div>
+
+
+            <button
+              type="button"
+              className="invite-share-button"
+              onClick={
+                shareInviteLink
+              }
+            >
+              Share invite
+            </button>
+
+
+            <div className="invite-room-id">
+              ROOM CODE:{" "}
+              <strong>
+                {roomId}
+              </strong>
+            </div>
+
+          </div>
+
+        </div>
       )}
 
     </div>
-
   );
-
 }
 
 
