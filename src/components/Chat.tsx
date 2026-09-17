@@ -51,7 +51,6 @@ function Chat({
   const [messages, setMessages] =
     useState<Message[]>([]);
 
-
   const [text, setText] =
     useState("");
 
@@ -84,16 +83,13 @@ function Chat({
         String(data.roomId) !==
           String(roomId)
       ) {
-
         return;
-
       }
 
 
       const messageText =
         String(
-          data.text ||
-          ""
+          data.text || ""
         ).trim();
 
 
@@ -109,10 +105,7 @@ function Chat({
           "Guest"
         )
           .trim()
-          .slice(
-            0,
-            40
-          ) ||
+          .slice(0, 40) ||
         "Guest";
 
 
@@ -126,52 +119,39 @@ function Chat({
 
 
       const message: Message = {
-
-        id:
-          messageId,
-
+        id: messageId,
         user,
-
-        text:
-          messageText,
-
-        avatar:
-          String(
-            data.avatar ||
-            ""
-          )
-
+        text: messageText,
+        avatar: String(
+          data.avatar || ""
+        )
       };
 
 
-      setMessages(
-        previous => {
+      setMessages(previous => {
 
-          /*
-            Защита от повторной доставки
-            одного и того же сообщения.
-          */
+        /*
+          Защита от повторной доставки
+          одного и того же сообщения.
+        */
 
-          if (
-            previous.some(
-              item =>
-                item.id ===
-                message.id
-            )
-          ) {
-
-            return previous;
-
-          }
-
-
-          return [
-            ...previous,
-            message
-          ];
-
+        if (
+          previous.some(
+            item =>
+              item.id ===
+              message.id
+          )
+        ) {
+          return previous;
         }
-      );
+
+
+        return [
+          ...previous,
+          message
+        ];
+
+      });
 
     }
 
@@ -191,9 +171,7 @@ function Chat({
 
     };
 
-  }, [
-    roomId
-  ]);
+  }, [roomId]);
 
 
   /*
@@ -213,19 +191,10 @@ function Chat({
     }
 
 
-    if (
-      !roomId
-    ) {
-
+    if (!roomId) {
       return;
-
     }
 
-
-    /*
-      Используем общий метод
-      из socket.ts.
-    */
 
     sendChatMessage(
       roomId,
@@ -245,8 +214,7 @@ function Chat({
   */
 
   function handleKeyDown(
-    event:
-      React.KeyboardEvent<HTMLInputElement>
+    event: React.KeyboardEvent<HTMLInputElement>
   ) {
 
     if (
@@ -255,7 +223,6 @@ function Chat({
     ) {
 
       event.preventDefault();
-
 
       sendMessage();
 
@@ -291,10 +258,7 @@ function Chat({
   */
 
   const viewerCount =
-    Math.max(
-      1,
-      presence.length
-    );
+    presence.length;
 
 
   /*
@@ -362,34 +326,11 @@ function Chat({
 
         <div className="chat-viewers-list">
 
-
           {presence.length === 0 && (
 
-            <div className="viewer">
+            <div className="chat-empty">
 
-              <div className="viewer-avatar">
-
-                G
-
-              </div>
-
-
-              <div className="viewer-info">
-
-                <div className="viewer-name">
-
-                  Guest
-
-                </div>
-
-
-                <div className="viewer-time">
-
-                  00:00
-
-                </div>
-
-              </div>
+              Пока никто не смотрит
 
             </div>
 
@@ -400,9 +341,7 @@ function Chat({
             person => (
 
               <div
-                key={
-                  person.id
-                }
+                key={person.id}
                 className="viewer"
               >
 
@@ -411,9 +350,7 @@ function Chat({
                   {person.avatar ? (
 
                     <img
-                      src={
-                        person.avatar
-                      }
+                      src={person.avatar}
                       alt=""
                       className="viewer-avatar-image"
                     />
@@ -485,9 +422,7 @@ function Chat({
           message => (
 
             <div
-              key={
-                message.id
-              }
+              key={message.id}
               className="message"
             >
 
@@ -515,47 +450,28 @@ function Chat({
       <div className="chat-input">
 
         <input
-
           type="text"
-
-          value={
-            text
-          }
-
+          value={text}
           onChange={
             event =>
               setText(
                 event.target.value
               )
           }
-
           onKeyDown={
             handleKeyDown
           }
-
           placeholder="Сообщение..."
-
           autoComplete="off"
-
           maxLength={500}
-
         />
 
 
         <button
-
           type="button"
-
-          onClick={
-            sendMessage
-          }
-
-          disabled={
-            !text.trim()
-          }
-
+          onClick={sendMessage}
+          disabled={!text.trim()}
           aria-label="Отправить сообщение"
-
         >
 
           →
