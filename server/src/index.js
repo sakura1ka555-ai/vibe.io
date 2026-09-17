@@ -674,8 +674,9 @@ app.get(
       )
         .filter(
           room =>
-            room.public === true
-        )
+             room.public === true &&
+    room.users > 0
+)
         .sort(
           (a, b) =>
             b.users -
