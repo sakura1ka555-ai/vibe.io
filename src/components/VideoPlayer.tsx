@@ -363,6 +363,31 @@ function VideoPlayer({
 
 
   /*
+    Last position that was sent
+    as a local seek.
+
+    Used to prevent the remote
+    seek from being detected again
+    as a local seek.
+  */
+
+  const lastLocalSeek =
+    useRef<number | null>(null);
+
+
+  /*
+    Position at the moment when
+    the player was last observed.
+
+    A large jump means that the user
+    probably dragged the timeline.
+  */
+
+  const previousRutubeTime =
+    useRef<number | null>(null);
+
+
+  /*
     Current local player state.
   */
 
@@ -373,7 +398,7 @@ function VideoPlayer({
 
 
   /*
-    Prevent sending duplicate
+    Prevent duplicate
     play/pause commands.
   */
 
@@ -381,6 +406,16 @@ function VideoPlayer({
     useRef<
       "play" | "pause" | null
     >(null);
+
+
+  /*
+    Initial room state must be
+    applied once after RUTUBE
+    becomes ready.
+  */
+
+  const initialApplied =
+    useRef(false);
 
 
   const positionCallback =
@@ -478,10 +513,22 @@ function VideoPlayer({
                   initialPosition > 0
                 ) {
 
+                  applyingRemote.current =
+                    true;
+
+
                   event.target.seekTo(
                     initialPosition,
                     true
                   );
+
+
+                  window.setTimeout(() => {
+
+                    applyingRemote.current =
+                      false;
+
+                  }, 400);
 
                 }
 
@@ -511,6 +558,10 @@ function VideoPlayer({
                   event.data === 1
                 ) {
 
+                  lastSentAction.current =
+                    "play";
+
+
                   controlCallback.current?.(
                     "play",
                     position
@@ -522,6 +573,10 @@ function VideoPlayer({
                 if (
                   event.data === 2
                 ) {
+
+                  lastSentAction.current =
+                    "pause";
+
 
                   controlCallback.current?.(
                     "pause",
@@ -625,10 +680,20 @@ function VideoPlayer({
     rutubeLastTime.current =
       initialPosition;
 
+    previousRutubeTime.current =
+      initialPosition;
+
+    lastLocalSeek.current =
+      null;
+
     rutubeState.current =
       initialAction;
 
-    lastSentAction.current = null;
+    lastSentAction.current =
+      null;
+
+    initialApplied.current =
+      false;
 
 
     function sendRutube(
@@ -656,6 +721,154 @@ function VideoPlayer({
         }),
         "https://rutube.ru"
       );
+
+    }
+
+
+    function applyRutubeControl(
+      action: "play" | "pause",
+      position: number
+    ) {
+
+      const iframe =
+        rutubeIframe.current;
+
+
+      if (
+        !iframe ||
+        !rutubeReady.current
+      ) {
+
+        return;
+      }
+
+
+      const safePosition =
+        Math.max(
+          0,
+          Number(position) || 0
+        );
+
+
+      applyingRemote.current =
+        true;
+
+
+      rutubeLastTime.current =
+        safePosition;
+
+
+      previousRutubeTime.current =
+        safePosition;
+
+
+      /*
+        Remember the position so that
+        player:currentTime generated
+        immediately after the seek does
+        not become another local seek.
+      */
+
+      lastLocalSeek.current =
+        safePosition;
+
+
+      /*
+        1. Seek.
+      */
+
+      iframe.contentWindow?.postMessage(
+        JSON.stringify({
+          type:
+            "player:setCurrentTime",
+          data: {
+            time:
+              safePosition
+          }
+        }),
+        "https://rutube.ru"
+      );
+
+
+      /*
+        2. Wait a little for RUTUBE
+        to process the seek.
+      */
+
+      window.setTimeout(() => {
+
+        iframe.contentWindow?.postMessage(
+          JSON.stringify({
+            type:
+              action === "play"
+                ? "player:play"
+                : "player:pause",
+
+            data: {}
+          }),
+          "https://rutube.ru"
+        );
+
+      }, 250);
+
+
+      /*
+        3. Second seek + state command.
+
+        RUTUBE can ignore the first
+        command while its player is
+        still changing state.
+      */
+
+      window.setTimeout(() => {
+
+        iframe.contentWindow?.postMessage(
+          JSON.stringify({
+            type:
+              "player:setCurrentTime",
+
+            data: {
+              time:
+                safePosition
+            }
+          }),
+          "https://rutube.ru"
+        );
+
+
+        window.setTimeout(() => {
+
+          iframe.contentWindow?.postMessage(
+            JSON.stringify({
+              type:
+                action === "play"
+                  ? "player:play"
+                  : "player:pause",
+
+              data: {}
+            }),
+            "https://rutube.ru"
+          );
+
+        }, 120);
+
+      }, 550);
+
+
+      /*
+        Keep the remote lock long enough
+        for RUTUBE state messages to arrive.
+      */
+
+      window.setTimeout(() => {
+
+        applyingRemote.current =
+          false;
+
+        lastLocalSeek.current =
+          null;
+
+      }, 1300);
 
     }
 
@@ -715,39 +928,80 @@ function VideoPlayer({
         "player:ready"
       ) {
 
-        rutubeReady.current = true;
+        rutubeReady.current =
+          true;
 
 
         /*
-          Important:
-          first seek, then play/pause.
+          The initial room state
+          comes through remoteControl.
+
+          We still position the player
+          immediately so the timeline
+          starts at the correct place.
         */
 
         if (
           initialPosition > 0
         ) {
 
+          applyingRemote.current =
+            true;
+
+
           sendRutube(
             "player:setCurrentTime",
             {
-              time: initialPosition
+              time:
+                initialPosition
             }
           );
+
+
+          window.setTimeout(() => {
+
+            applyingRemote.current =
+              false;
+
+          }, 500);
 
         }
 
 
         /*
-          Do NOT automatically force
-          play here.
+          If the room was already playing,
+          apply the initial action after
+          the player becomes ready.
 
-          Browser autoplay restrictions
-          can reject it.
-
-          The room state will be applied
-          through remoteControl after
-          the player is ready.
+          This also helps a newly joined
+          player catch up.
         */
+
+        if (
+          initialAction === "play"
+        ) {
+
+          window.setTimeout(() => {
+
+            if (
+              rutubeReady.current
+            ) {
+
+              applyRutubeControl(
+                "play",
+                initialPosition
+              );
+
+            }
+
+          }, 700);
+
+        }
+
+
+        initialApplied.current =
+          true;
+
 
         return;
       }
@@ -776,20 +1030,123 @@ function VideoPlayer({
         }
 
 
+        const previous =
+          previousRutubeTime.current;
+
+
         rutubeLastTime.current =
           time;
 
 
         /*
-          Position is useful for the
-          presence indicator, but we
-          do NOT turn every position
-          update into a sync command.
+          Always update presence.
         */
 
         positionCallback.current?.(
           time
         );
+
+
+        /*
+          Remote command is currently
+          being applied.
+
+          Do NOT interpret the seek
+          as a local user seek.
+        */
+
+        if (
+          applyingRemote.current
+        ) {
+
+          previousRutubeTime.current =
+            time;
+
+          return;
+        }
+
+
+        /*
+          First position event after
+          player initialization.
+        */
+
+        if (
+          previous === null
+        ) {
+
+          previousRutubeTime.current =
+            time;
+
+          return;
+        }
+
+
+        /*
+          If the player suddenly jumps
+          more than 2 seconds, treat it
+          as a manual timeline seek.
+        */
+
+        const delta =
+          Math.abs(
+            time -
+            previous
+          );
+
+
+        if (
+          delta >= 2
+        ) {
+
+          /*
+            Ignore a jump that we already
+            know was caused by our own
+            remote command.
+          */
+
+          if (
+            lastLocalSeek.current !==
+              null &&
+            Math.abs(
+              time -
+              lastLocalSeek.current
+            ) < 1.5
+          ) {
+
+            lastLocalSeek.current =
+              null;
+
+            previousRutubeTime.current =
+              time;
+
+            return;
+
+          }
+
+
+          /*
+            User manually moved the
+            RUTUBE timeline.
+
+            Send the CURRENT state
+            together with the NEW position.
+          */
+
+          const action =
+            rutubeState.current;
+
+
+          controlCallback.current?.(
+            action,
+            time
+          );
+
+        }
+
+
+        previousRutubeTime.current =
+          time;
 
 
         return;
@@ -825,6 +1182,11 @@ function VideoPlayer({
             "play";
 
 
+          /*
+            Only send when the state
+            actually changed.
+          */
+
           if (
             lastSentAction.current !==
             "play"
@@ -854,14 +1216,27 @@ function VideoPlayer({
             "pause";
 
 
-          lastSentAction.current =
-            "pause";
+          /*
+            Pause is always a real
+            synchronization command.
+          */
+
+          if (
+            lastSentAction.current !==
+            "pause"
+          ) {
+
+            lastSentAction.current =
+              "pause";
 
 
-          controlCallback.current?.(
-            "pause",
-            rutubeLastTime.current
-          );
+            controlCallback.current?.(
+              "pause",
+              rutubeLastTime.current
+            );
+
+          }
+
 
           return;
         }
@@ -884,9 +1259,11 @@ function VideoPlayer({
         handleMessage
       );
 
-      rutubeReady.current = false;
+      rutubeReady.current =
+        false;
 
-      applyingRemote.current = false;
+      applyingRemote.current =
+        false;
 
     };
 
@@ -915,7 +1292,8 @@ function VideoPlayer({
       initialPosition > 0
     ) {
 
-      applyingRemote.current = true;
+      applyingRemote.current =
+        true;
 
 
       player.current.seekTo(
@@ -926,9 +1304,10 @@ function VideoPlayer({
 
       window.setTimeout(() => {
 
-        applyingRemote.current = false;
+        applyingRemote.current =
+          false;
 
-      }, 300);
+      }, 400);
 
     }
 
@@ -985,7 +1364,8 @@ function VideoPlayer({
         player.current;
 
 
-      applyingRemote.current = true;
+      applyingRemote.current =
+        true;
 
 
       target.seekTo(
@@ -1010,9 +1390,10 @@ function VideoPlayer({
 
       window.setTimeout(() => {
 
-        applyingRemote.current = false;
+        applyingRemote.current =
+          false;
 
-      }, 700);
+      }, 900);
 
 
       return;
@@ -1025,86 +1406,13 @@ function VideoPlayer({
 
     if (
       rutubeId &&
-      rutubeReady.current &&
-      rutubeIframe.current
+      rutubeReady.current
     ) {
 
-      const iframe =
-        rutubeIframe.current;
-
-
-      applyingRemote.current = true;
-
-
-      rutubeLastTime.current =
-        position;
-
-
-      /*
-        1. Exact position.
-      */
-
-      iframe.contentWindow?.postMessage(
-        JSON.stringify({
-          type: "player:setCurrentTime",
-          data: {
-            time: position
-          }
-        }),
-        "https://rutube.ru"
+      applyRutubeRemote(
+        remoteControl.action,
+        position
       );
-
-
-      /*
-        2. Play/pause after seek.
-      */
-
-      window.setTimeout(() => {
-
-        iframe.contentWindow?.postMessage(
-          JSON.stringify({
-            type:
-              remoteControl.action ===
-              "play"
-                ? "player:play"
-                : "player:pause",
-            data: {}
-          }),
-          "https://rutube.ru"
-        );
-
-      }, 150);
-
-
-      /*
-        3. One retry.
-
-        No 3-4 repeated commands.
-      */
-
-      window.setTimeout(() => {
-
-        iframe.contentWindow?.postMessage(
-          JSON.stringify({
-            type:
-              remoteControl.action ===
-              "play"
-                ? "player:play"
-                : "player:pause",
-            data: {}
-          }),
-          "https://rutube.ru"
-        );
-
-      }, 500);
-
-
-      window.setTimeout(() => {
-
-        applyingRemote.current = false;
-
-      }, 900);
-
 
       return;
     }
@@ -1114,6 +1422,142 @@ function VideoPlayer({
     youtubeId,
     rutubeId
   ]);
+
+
+  /* =================================
+     RUTUBE REMOTE HELPER
+  ================================= */
+
+  function applyRutubeRemote(
+    action: "play" | "pause",
+    position: number
+  ) {
+
+    const iframe =
+      rutubeIframe.current;
+
+
+    if (
+      !iframe ||
+      !rutubeReady.current
+    ) {
+
+      return;
+    }
+
+
+    const safePosition =
+      Math.max(
+        0,
+        Number(position) || 0
+      );
+
+
+    applyingRemote.current =
+      true;
+
+
+    rutubeLastTime.current =
+      safePosition;
+
+
+    previousRutubeTime.current =
+      safePosition;
+
+
+    lastLocalSeek.current =
+      safePosition;
+
+
+    /*
+      Seek first.
+    */
+
+    iframe.contentWindow?.postMessage(
+      JSON.stringify({
+        type:
+          "player:setCurrentTime",
+
+        data: {
+          time:
+            safePosition
+        }
+      }),
+      "https://rutube.ru"
+    );
+
+
+    /*
+      Then pause/play.
+    */
+
+    window.setTimeout(() => {
+
+      iframe.contentWindow?.postMessage(
+        JSON.stringify({
+          type:
+            action === "play"
+              ? "player:play"
+              : "player:pause",
+
+          data: {}
+        }),
+        "https://rutube.ru"
+      );
+
+    }, 250);
+
+
+    /*
+      Retry.
+    */
+
+    window.setTimeout(() => {
+
+      iframe.contentWindow?.postMessage(
+        JSON.stringify({
+          type:
+            "player:setCurrentTime",
+
+          data: {
+            time:
+              safePosition
+          }
+        }),
+        "https://rutube.ru"
+      );
+
+
+      window.setTimeout(() => {
+
+        iframe.contentWindow?.postMessage(
+          JSON.stringify({
+            type:
+              action === "play"
+                ? "player:play"
+                : "player:pause",
+
+            data: {}
+          }),
+          "https://rutube.ru"
+        );
+
+      }, 120);
+
+    }, 550);
+
+
+    window.setTimeout(() => {
+
+      applyingRemote.current =
+        false;
+
+      lastLocalSeek.current =
+        null;
+
+    }, 1300);
+
+  }
 
 
   /* =================================
