@@ -6314,3 +6314,152 @@ button {
   }
 
 }
+
+/* =========================
+   HOME — CLEAN FINAL LAYOUT
+   ========================= */
+
+.home {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 22px 20px 50px;
+}
+
+
+/* =========================
+   TOP
+   ========================= */
+
+.brand {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+}
+
+.home-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* =========================
+   HERO
+   ========================= */
+
+.home .hero {
+  width: 100%;
+  max-width: 760px;
+  margin: 58px auto 0;
+  text-align: center;
+}
+
+.home .hero h1 {
+  margin: 0;
+  line-height: 1.04;
+}
+
+.home .hero p {
+  margin: 16px auto 0;
+  max-width: 440px;
+  line-height: 1.5;
+}
+
+
+/* =========================
+   ACTIONS
+   ========================= */
+
+.home .actions {
+  width: 100%;
+  max-width: 420px;
+  margin: 32px auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.home .actions button {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  box-sizing: border-box;
+  border-radius: 11px;
+  white-space: nowrap;
+}
+
+
+/* =========================
+   LIVE NOW
+   ========================= */
+
+.home .public-rooms {
+  width: 100%;
+  max-width: 1100px;
+  margin: 58px auto 0;
+  padding: 0;
+}
+
+.home .public-rooms-header {
+  margin-bottom: 15px;
+}
+
+.home .public-rooms-grid {
+  margin-top: 12px;
+}
+
+
+/* =========================
+   YOUR ROOMS
+   ========================= */
+
+.home .rooms {
+  width: 100%;
+  max-width: 1100px;
+  margin: 42px auto 0;
+}
+
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media (max-width: 620px) {
+
+  .home {
+    padding: 16px 14px 40px;
+  }
+
+  .home .hero {
+    margin-top: 46px;
+  }
+
+  .home .hero p {
+    margin-top: 13px;
+  }
+
+  .home .actions {
+    max-width: 100%;
+    margin-top: 26px;
+    gap: 8px;
+  }
+
+  .home .actions button {
+    height: 44px;
+    font-size: 11px;
+  }
+
+  .home .public-rooms {
+    margin-top: 44px;
+  }
+
+  .home .public-rooms-grid {
+    margin-top: 10px;
+  }
+
+  .home .rooms {
+    margin-top: 34px;
+  }
+
+}
