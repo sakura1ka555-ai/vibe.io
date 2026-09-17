@@ -3,7 +3,6 @@ import cors from "@fastify/cors";
 import { Server } from "socket.io";
 import Database from "better-sqlite3";
 
-
 /*
 ==================================================
 FASTIFY
@@ -13,7 +12,6 @@ FASTIFY
 const app = Fastify({
   logger: true
 });
-
 
 await app.register(cors, {
   origin: true,
@@ -25,7 +23,6 @@ await app.register(cors, {
     "OPTIONS"
   ]
 });
-
 
 /*
 ==================================================
@@ -87,7 +84,6 @@ db.exec(`
   ON rooms(title);
 `);
 
-
 /*
 ==================================================
 NORMALIZATION
@@ -100,18 +96,15 @@ function normalizeUserId(value) {
     .toUpperCase();
 }
 
-
 function normalizeName(value) {
   return String(value || "Guest")
     .trim()
     .slice(0, 40) || "Guest";
 }
 
-
 function normalizeAvatar(value) {
   return String(value || "");
 }
-
 
 function normalizePosition(value) {
   const number = Number(value);
@@ -123,13 +116,11 @@ function normalizePosition(value) {
   return Math.max(0, number);
 }
 
-
 function normalizeRoomId(value) {
   return String(value || "")
     .trim()
     .toUpperCase();
 }
-
 
 function normalizeRoomTitle(value, roomId) {
   return String(
@@ -139,13 +130,11 @@ function normalizeRoomTitle(value, roomId) {
     .slice(0, 100) || `Комната ${roomId}`;
 }
 
-
 function normalizeVideoUrl(value) {
   return String(value || "")
     .trim()
     .slice(0, 5000);
 }
-
 
 /*
 ==================================================
@@ -170,7 +159,6 @@ function createVibeId() {
   return `VIBE-${code}`;
 }
 
-
 function createUniqueVibeId() {
   let id = "";
 
@@ -186,7 +174,6 @@ function createUniqueVibeId() {
 
   return id;
 }
-
 
 /*
 ==================================================
@@ -213,7 +200,6 @@ function getUser(userId) {
     `)
     .get(id) || null;
 }
-
 
 function createUser(
   name = "Guest",
@@ -244,7 +230,6 @@ function createUser(
   return getUser(id);
 }
 
-
 function updateUser(
   userId,
   name,
@@ -270,7 +255,6 @@ function updateUser(
 
   return getUser(id);
 }
-
 
 /*
 ==================================================
@@ -299,7 +283,6 @@ function areFriends(userA, userB) {
   return Boolean(row);
 }
 
-
 function getFriends(userId) {
   const id = normalizeUserId(userId);
 
@@ -321,7 +304,6 @@ function getFriends(userId) {
       u.name COLLATE NOCASE ASC
   `).all(id);
 }
-
 
 function getIncomingRequests(userId) {
   const id = normalizeUserId(userId);
@@ -347,7 +329,6 @@ function getIncomingRequests(userId) {
   `).all(id);
 }
 
-
 function getOutgoingRequests(userId) {
   const id = normalizeUserId(userId);
 
@@ -371,7 +352,6 @@ function getOutgoingRequests(userId) {
     ORDER BY r.id DESC
   `).all(id);
 }
-
 
 function addFriendship(userA, userB) {
   const a = normalizeUserId(userA);
@@ -420,26 +400,11 @@ function addFriendship(userA, userB) {
   transaction();
 }
 
-
 /*
 ==================================================
 ROOMS
 ==================================================
 */
-
-/*
-  ВАЖНО:
-
-  Раньше было:
-
-    const rooms = new Map();
-
-  Теперь комнаты находятся в SQLite.
-
-  Это позволяет второму аккаунту
-  получить ту же комнату.
-*/
-
 
 function getRoom(roomId) {
   const id = normalizeRoomId(roomId);
@@ -484,7 +449,6 @@ function getRoom(roomId) {
   };
 }
 
-
 function createRoom(
   roomId,
   title,
@@ -521,7 +485,6 @@ function createRoom(
   return getRoom(id);
 }
 
-
 function updateRoomPlayback(
   roomId,
   action,
@@ -556,7 +519,6 @@ function updateRoomPlayback(
   return getRoom(id);
 }
 
-
 function updateRoomPosition(
   roomId,
   position
@@ -583,7 +545,6 @@ function updateRoomPosition(
   return getRoom(id);
 }
 
-
 function getRoomCount() {
   const row =
     db.prepare(`
@@ -593,7 +554,6 @@ function getRoomCount() {
 
   return Number(row?.count || 0);
 }
-
 
 /*
 ==================================================
@@ -611,7 +571,6 @@ app.get(
   }
 );
 
-
 app.get(
   "/health",
   async () => {
@@ -623,7 +582,6 @@ app.get(
     };
   }
 );
-
 
 /*
 ==================================================
@@ -666,7 +624,6 @@ app.post(
   }
 );
 
-
 /*
 ==================================================
 GET USER
@@ -695,7 +652,6 @@ app.get(
     };
   }
 );
-
 
 /*
 ==================================================
@@ -751,7 +707,6 @@ app.get(
     };
   }
 );
-
 
 /*
 ==================================================
@@ -838,7 +793,6 @@ app.post(
   }
 );
 
-
 /*
 ==================================================
 GET ROOM
@@ -870,7 +824,6 @@ app.get(
   }
 );
 
-
 /*
 ==================================================
 SOCKET.IO
@@ -890,7 +843,6 @@ const io =
       }
     }
   );
-
 
 /*
 ==================================================
@@ -919,27 +871,66 @@ function formatPosition(seconds) {
   );
 }
 
-
 /*
 ==================================================
 PRESENCE
 ==================================================
 */
 
-function getPresence(roomId) {
+/*
+  ВАЖНО:
+
+  Здесь мы больше НЕ считаем пользователей
+  через все socket.io sockets.
+
+  Сначала получаем реальную Socket.IO room,
+  а затем берём только сокеты, которые
+  действительно находятся внутри неё.
+*/
+
+function getRoomSockets(roomId) {
+  const id =
+    normalizeRoomId(roomId);
+
+  if (!id) {
+    return [];
+  }
+
+  const room =
+    io.sockets.adapter.rooms.get(id);
+
+  if (!room) {
+    return [];
+  }
+
   const result = [];
 
-  for (
-    const connectedSocket
-    of io.sockets.sockets.values()
-  ) {
-    if (
-      connectedSocket.data.roomId !==
-      roomId
-    ) {
+  for (const socketId of room) {
+    const connectedSocket =
+      io.sockets.sockets.get(socketId);
+
+    if (!connectedSocket) {
       continue;
     }
 
+    result.push(
+      connectedSocket
+    );
+  }
+
+  return result;
+}
+
+function getPresence(roomId) {
+  const result = [];
+
+  const roomSockets =
+    getRoomSockets(roomId);
+
+  for (
+    const connectedSocket
+    of roomSockets
+  ) {
     const position =
       normalizePosition(
         connectedSocket.data.position
@@ -974,41 +965,55 @@ function getPresence(roomId) {
   return result;
 }
 
-
 function emitPresence(roomId) {
-  io.to(roomId).emit(
-    "presence",
-    getPresence(roomId)
-  );
-}
+  const id =
+    normalizeRoomId(roomId);
 
-
-function getRoomUsers(roomId) {
-  let count = 0;
-
-  for (
-    const connectedSocket
-    of io.sockets.sockets.values()
-  ) {
-    if (
-      connectedSocket.data.roomId ===
-      roomId
-    ) {
-      count++;
-    }
+  if (!id) {
+    return;
   }
 
-  return count;
-}
+  const presence =
+    getPresence(id);
 
+  console.log(
+    "👥 presence:",
+    id,
+    presence
+  );
 
-function emitRoomUsers(roomId) {
-  io.to(roomId).emit(
-    "users",
-    getRoomUsers(roomId)
+  io.to(id).emit(
+    "presence",
+    presence
   );
 }
 
+function getRoomUsers(roomId) {
+  return getRoomSockets(roomId).length;
+}
+
+function emitRoomUsers(roomId) {
+  const id =
+    normalizeRoomId(roomId);
+
+  if (!id) {
+    return;
+  }
+
+  const count =
+    getRoomUsers(id);
+
+  console.log(
+    "👤 users:",
+    id,
+    count
+  );
+
+  io.to(id).emit(
+    "users",
+    count
+  );
+}
 
 /*
 ==================================================
@@ -1052,7 +1057,6 @@ function emitFriendsUpdate(userId) {
   }
 }
 
-
 /*
 ==================================================
 SOCKET CONNECTION
@@ -1066,7 +1070,6 @@ io.on(
       "🟢 user connected:",
       socket.id
     );
-
 
     /*
     ==============================================
@@ -1128,11 +1131,12 @@ io.on(
         console.log(
           "👤 registered:",
           user.id,
-          user.name
+          user.name,
+          "socket:",
+          socket.id
         );
       }
     );
-
 
     /*
     ==============================================
@@ -1191,7 +1195,6 @@ io.on(
         );
       }
     );
-
 
     /*
     ==============================================
@@ -1352,7 +1355,6 @@ io.on(
       }
     );
 
-
     /*
     ==============================================
     ACCEPT FRIEND
@@ -1422,7 +1424,6 @@ io.on(
       }
     );
 
-
     /*
     ==============================================
     DECLINE FRIEND
@@ -1466,7 +1467,6 @@ io.on(
         );
       }
     );
-
 
     /*
     ==============================================
@@ -1521,7 +1521,6 @@ io.on(
       }
     );
 
-
     /*
     ==============================================
     JOIN ROOM
@@ -1538,18 +1537,30 @@ io.on(
 
         console.log(
           "🚪 join-room request:",
-          socket.id,
-          roomId
+          {
+            socketId:
+              socket.id,
+
+            roomId,
+
+            requestedName:
+              data?.userName,
+
+            registeredUser:
+              socket.data.userId
+          }
         );
 
+        if (!roomId) {
+          console.log(
+            "❌ empty room id"
+          );
 
-        /*
-          ИЩЕМ КОМНАТУ В SQLITE
-        */
+          return;
+        }
 
         const room =
           getRoom(roomId);
-
 
         if (!room) {
           console.log(
@@ -1564,12 +1575,70 @@ io.on(
           return;
         }
 
+        /*
+        ==========================================
+        ENSURE USER DATA
+        ==========================================
+        */
 
-        console.log(
-          "✅ room found:",
-          roomId
-        );
+        let userName =
+          normalizeName(
+            data?.userName ||
+            socket.data.userName ||
+            "Guest"
+          );
 
+        let userAvatar =
+          normalizeAvatar(
+            socket.data.avatar ||
+            ""
+          );
+
+        /*
+          Если register-user ещё не успел
+          обработаться, всё равно создаём
+          нормальное состояние сокета.
+        */
+
+        if (!socket.data.userId) {
+          const user =
+            createUser(
+              userName,
+              userAvatar
+            );
+
+          socket.data.userId =
+            user.id;
+
+          socket.data.userName =
+            user.name;
+
+          socket.data.avatar =
+            user.avatar;
+
+          userName =
+            user.name;
+
+          userAvatar =
+            user.avatar;
+
+          socket.emit(
+            "user-registered",
+            {
+              user
+            }
+          );
+
+          emitFriendsUpdate(
+            user.id
+          );
+        } else {
+          socket.data.userName =
+            userName;
+        }
+
+        socket.data.avatar =
+          userAvatar;
 
         /*
         ==========================================
@@ -1595,22 +1664,12 @@ io.on(
           emitPresence(
             oldRoomId
           );
-        }
 
-
-        /*
-        ==========================================
-        USER NAME
-        ==========================================
-        */
-
-        const userName =
-          normalizeName(
-            data?.userName ||
-            socket.data.userName ||
-            "Guest"
+          console.log(
+            "🚪 left previous room:",
+            oldRoomId
           );
-
+        }
 
         /*
         ==========================================
@@ -1632,6 +1691,34 @@ io.on(
         socket.data.videoState =
           room.playback.action;
 
+        /*
+        ==========================================
+        DEBUG
+        ==========================================
+        */
+
+        console.log(
+          "🏠 ROOM JOIN DEBUG:",
+          {
+            socketId:
+              socket.id,
+
+            userId:
+              socket.data.userId,
+
+            userName:
+              socket.data.userName,
+
+            roomId:
+              socket.data.roomId,
+
+            roomUsers:
+              getRoomUsers(roomId),
+
+            presence:
+              getPresence(roomId)
+          }
+        );
 
         /*
         ==========================================
@@ -1659,7 +1746,6 @@ io.on(
           }
         );
 
-
         /*
         ==========================================
         USERS
@@ -1670,7 +1756,6 @@ io.on(
           roomId
         );
 
-
         /*
         ==========================================
         PRESENCE
@@ -1680,7 +1765,6 @@ io.on(
         emitPresence(
           roomId
         );
-
 
         console.log(
           "👤 joined:",
@@ -1695,7 +1779,6 @@ io.on(
         );
       }
     );
-
 
     /*
     ==============================================
@@ -1763,7 +1846,6 @@ io.on(
       }
     );
 
-
     /*
     ==============================================
     VIDEO CONTROL
@@ -1808,21 +1890,11 @@ io.on(
             data?.position
           );
 
-
-        /*
-        SAVE TO DATABASE
-        */
-
         updateRoomPlayback(
           roomId,
           action,
           position
         );
-
-
-        /*
-        UPDATE SENDER
-        */
 
         socket.data.position =
           position;
@@ -1830,18 +1902,8 @@ io.on(
         socket.data.videoState =
           action;
 
-
-        /*
-        UNIQUE EVENT ID
-        */
-
         const id =
           Date.now();
-
-
-        /*
-        SEND TO OTHER USERS
-        */
 
         socket
           .to(roomId)
@@ -1856,11 +1918,9 @@ io.on(
             }
           );
 
-
         emitPresence(
           roomId
         );
-
 
         console.log(
           "🎬 video:",
@@ -1870,7 +1930,6 @@ io.on(
         );
       }
     );
-
 
     /*
     ==============================================
@@ -1906,28 +1965,13 @@ io.on(
             data?.position
           );
 
-
-        /*
-        SAVE TO DATABASE
-        */
-
         updateRoomPosition(
           roomId,
           position
         );
 
-
-        /*
-        UPDATE SOCKET
-        */
-
         socket.data.position =
           position;
-
-
-        /*
-        SEND TO OTHER USERS
-        */
 
         const id =
           Date.now();
@@ -1944,13 +1988,11 @@ io.on(
             }
           );
 
-
         emitPresence(
           roomId
         );
       }
     );
-
 
     /*
     ==============================================
@@ -2017,7 +2059,6 @@ io.on(
       }
     );
 
-
     /*
     ==============================================
     CHAT
@@ -2065,7 +2106,6 @@ io.on(
       }
     );
 
-
     /*
     ==============================================
     DISCONNECT
@@ -2074,11 +2114,27 @@ io.on(
 
     socket.on(
       "disconnect",
-      () => {
+      reason => {
         const roomId =
           socket.data.roomId;
 
+        console.log(
+          "🔴 disconnected:",
+          socket.id,
+          "reason:",
+          reason,
+          "room:",
+          roomId
+        );
+
         if (roomId) {
+          /*
+            Socket.IO уже удалил socket
+            из комнаты к моменту disconnect,
+            поэтому getRoomUsers() покажет
+            оставшихся участников.
+          */
+
           emitRoomUsers(
             roomId
           );
@@ -2087,16 +2143,10 @@ io.on(
             roomId
           );
         }
-
-        console.log(
-          "🔴 disconnected:",
-          socket.id
-        );
       }
     );
   }
 );
-
 
 /*
 ==================================================
@@ -2108,7 +2158,6 @@ const PORT =
   Number(
     process.env.PORT || 3001
   );
-
 
 try {
   await app.listen({
