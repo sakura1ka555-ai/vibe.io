@@ -1,911 +1,150 @@
-import Fastify from "fastify";
-import cors from "@fastify/cors";
-import { Server } from "socket.io";
+import { useState } from "react";
+
+type CreateRoomProps = {
+  onCreate: (videoUrl: string) => void;
+  onClose: () => void;
+};
+
+function CreateRoom({
+  onCreate,
+  onClose
+}: CreateRoomProps) {
+
+  const [videoUrl, setVideoUrl] =
+    useState("");
+
+  const [creating, setCreating] =
+    useState(false);
 
 
-const app = Fastify();
+  function handleCreate() {
+
+    const url =
+      videoUrl.trim();
 
 
-await app.register(
-  cors,
-  {
-    origin: "*"
-  }
-);
+    if (!url) {
 
+      alert(
+        "Введи ссылку на видео"
+      );
 
-/*
-  =========================
-  HTTP
-  =========================
-*/
-
-app.get(
-  "/",
-  async () => {
-
-    return {
-      app: "VIBE SERVER",
-      status: "online"
-    };
-
-  }
-);
-
-
-/*
-  =========================
-  ROOMS
-  =========================
-*/
-
-const rooms =
-  new Map();
-
-
-/*
-  =========================
-  CREATE ROOM
-  =========================
-*/
-
-app.post(
-  "/rooms",
-  async (
-    request,
-    reply
-  ) => {
-
-    const data =
-      request.body || {};
-
-
-    const roomId =
-      String(
-        data.roomId || ""
-      )
-        .trim()
-        .toUpperCase();
-
-
-    if (!roomId) {
-
-      return reply
-        .code(400)
-        .send({
-          error:
-            "Room ID is required"
-        });
+      return;
 
     }
 
 
-    const room = {
-
-      id:
-        roomId,
-
-      title:
-        data.title ||
-        `Комната ${roomId}`,
-
-      videoUrl:
-        data.videoUrl ||
-        "",
-
-      users: 0,
-
-      playback: {
-        action: "pause",
-        position: 0
-      }
-
-    };
+    setCreating(true);
 
 
-    rooms.set(
-      roomId,
-      room
-    );
+    try {
 
+      onCreate(url);
 
-    console.log(
-      "🏠 room created:",
-      roomId
-    );
+    } finally {
 
-
-    return {
-      room
-    };
-
-  }
-);
-
-
-/*
-  =========================
-  GET ROOM
-  =========================
-*/
-
-app.get(
-  "/rooms/:roomId",
-  async (
-    request,
-    reply
-  ) => {
-
-    const roomId =
-      String(
-        request.params.roomId || ""
-      )
-        .trim()
-        .toUpperCase();
-
-
-    const room =
-      rooms.get(roomId);
-
-
-    console.log(
-      "🔎 room request:",
-      roomId
-    );
-
-
-    if (!room) {
-
-      return reply
-        .code(404)
-        .send({
-          error:
-            "Room not found"
-        });
+      setCreating(false);
 
     }
 
-
-    return {
-      room
-    };
-
   }
-);
 
 
-/*
-  =========================
-  SOCKET.IO
-  =========================
-*/
-
-const io =
-  new Server(
-    app.server,
-    {
-      cors: {
-        origin: "*",
-        methods: [
-          "GET",
-          "POST"
-        ]
-      }
-    }
-  );
-
-
-/*
-  =========================
-  HELPERS
-  =========================
-*/
-
-function formatPosition(
-  seconds
-) {
-
-  const total =
-    Math.max(
-      0,
-      Math.floor(
-        Number(seconds) || 0
-      )
-    );
-
-
-  const minutes =
-    Math.floor(
-      total / 60
-    );
-
-
-  const secs =
-    total % 60;
-
-
-  return (
-    String(minutes)
-      .padStart(2, "0")
-    +
-    ":"
-    +
-    String(secs)
-      .padStart(2, "0")
-  );
-
-}
-
-
-function getPresence(
-  roomId
-) {
-
-  const result = [];
-
-
-  for (
-    const connectedSocket of
-    io.sockets.sockets.values()
+  function handleKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>
   ) {
 
     if (
-      connectedSocket.data.roomId !==
-      roomId
+      event.key === "Enter" &&
+      !creating
     ) {
-      continue;
+
+      event.preventDefault();
+
+      handleCreate();
+
     }
-
-
-    result.push({
-
-      id:
-        connectedSocket.id,
-
-      name:
-        connectedSocket.data.userName ||
-        "Guest",
-
-      position:
-        Number(
-          connectedSocket.data.position || 0
-        ),
-
-      time:
-        formatPosition(
-          connectedSocket.data.position
-        ),
-
-      state:
-        connectedSocket.data.videoState ||
-        "pause"
-
-    });
 
   }
 
 
-  return result;
+  return (
 
-}
+    <div className="modal-backdrop">
+
+      <div className="room-modal">
+
+        <button
+          type="button"
+          className="modal-close"
+          onClick={onClose}
+          disabled={creating}
+        >
+          ×
+        </button>
 
 
-function emitPresence(
-  roomId
-) {
+        <div className="modal-label">
+          CREATE ROOM
+        </div>
 
-  io.to(roomId).emit(
-    "presence",
-    getPresence(roomId)
+
+        <h2>
+          Создать комнату
+        </h2>
+
+
+        <p className="modal-description">
+          Добавь ссылку на видео,
+          чтобы начать совместный просмотр.
+        </p>
+
+
+        <div className="video-url-block">
+
+          <label>
+            Ссылка на видео
+          </label>
+
+
+          <input
+            type="text"
+            value={videoUrl}
+            onChange={(event) =>
+              setVideoUrl(
+                event.target.value
+              )
+            }
+            onKeyDown={handleKeyDown}
+            placeholder="Например https://..."
+            autoFocus
+            autoComplete="off"
+          />
+
+        </div>
+
+
+        <button
+          type="button"
+          className="join-submit-button"
+          onClick={handleCreate}
+          disabled={creating}
+        >
+
+          {creating
+            ? "Создание..."
+            : "Создать комнату"
+          }
+
+        </button>
+
+      </div>
+
+    </div>
+
   );
 
 }
 
 
-/*
-  =========================
-  SOCKET CONNECTION
-  =========================
-*/
-
-io.on(
-  "connection",
-  (socket) => {
-
-    console.log(
-      "🟢 user connected:",
-      socket.id
-    );
-
-
-    /*
-      =========================
-      JOIN ROOM
-      =========================
-    */
-
-    socket.on(
-      "join-room",
-      (data) => {
-
-        const roomId =
-          String(
-            typeof data === "string"
-              ? data
-              : data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
-
-
-        const userName =
-          String(
-            typeof data === "string"
-              ? "Guest"
-              : data?.userName || "Guest"
-          )
-            .trim()
-            .slice(
-              0,
-              40
-            );
-
-
-        const room =
-          rooms.get(roomId);
-
-
-        if (!room) {
-
-          socket.emit(
-            "room-not-found"
-          );
-
-          return;
-
-        }
-
-
-        /*
-          Уже в этой комнате
-        */
-
-        if (
-          socket.data.roomId ===
-          roomId
-        ) {
-
-          return;
-
-        }
-
-
-        /*
-          Уходим из старой комнаты
-        */
-
-        if (
-          socket.data.roomId
-        ) {
-
-          const oldRoom =
-            rooms.get(
-              socket.data.roomId
-            );
-
-
-          if (oldRoom) {
-
-            oldRoom.users =
-              Math.max(
-                0,
-                oldRoom.users - 1
-              );
-
-
-            io.to(
-              socket.data.roomId
-            ).emit(
-              "users",
-              oldRoom.users
-            );
-
-
-            emitPresence(
-              socket.data.roomId
-            );
-
-          }
-
-
-          socket.leave(
-            socket.data.roomId
-          );
-
-        }
-
-
-        socket.join(
-          roomId
-        );
-
-
-        socket.data.roomId =
-          roomId;
-
-
-        socket.data.userName =
-          userName || "Guest";
-
-
-        socket.data.position =
-          room.playback.position;
-
-
-        socket.data.videoState =
-          room.playback.action;
-
-
-        room.users++;
-
-
-        /*
-          Состояние комнаты
-        */
-
-        socket.emit(
-          "room-state",
-          {
-
-            roomId:
-              room.id,
-
-            title:
-              room.title,
-
-            videoUrl:
-              room.videoUrl,
-
-            action:
-              room.playback.action,
-
-            position:
-              room.playback.position
-
-          }
-        );
-
-
-        io.to(roomId).emit(
-          "users",
-          room.users
-        );
-
-
-        emitPresence(
-          roomId
-        );
-
-
-        console.log(
-          "👤 joined:",
-          roomId,
-          socket.data.userName,
-          "users:",
-          room.users
-        );
-
-      }
-    );
-
-
-    /*
-      =========================
-      VIDEO CONTROL
-      =========================
-    */
-
-    socket.on(
-      "video-control",
-      (data) => {
-
-        const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
-
-
-        if (!roomId) {
-          return;
-        }
-
-
-        const room =
-          rooms.get(roomId);
-
-
-        if (!room) {
-          return;
-        }
-
-
-        const action =
-          data?.action === "play"
-            ? "play"
-            : "pause";
-
-
-        const position =
-          Math.max(
-            0,
-            Number(
-              data?.position || 0
-            )
-          );
-
-
-        room.playback = {
-
-          action,
-
-          position
-
-        };
-
-
-        socket.data.position =
-          position;
-
-
-        socket.data.videoState =
-          action;
-
-
-        socket.data.userName =
-          socket.data.userName ||
-          "Guest";
-
-
-        /*
-          Отправляем
-          остальным
-        */
-
-        socket
-          .to(roomId)
-          .emit(
-            "video-control",
-            {
-
-              action,
-
-              position,
-
-              source:
-                socket.id
-
-            }
-          );
-
-
-        emitPresence(
-          roomId
-        );
-
-      }
-    );
-
-
-    /*
-      =========================
-      VIDEO POSITION
-      =========================
-    */
-
-    socket.on(
-      "video-position",
-      (data) => {
-
-        const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
-
-
-        if (!roomId) {
-          return;
-        }
-
-
-        const position =
-          Math.max(
-            0,
-            Number(
-              data?.position || 0
-            )
-          );
-
-
-        socket.data.position =
-          position;
-
-
-        const room =
-          rooms.get(roomId);
-
-
-        if (room) {
-
-          room.playback.position =
-            position;
-
-        }
-
-
-        emitPresence(
-          roomId
-        );
-
-      }
-    );
-
-
-    /*
-      =========================
-      VIBE REACTIONS
-      =========================
-    */
-
-    socket.on(
-      "reaction",
-      (data) => {
-
-        const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
-
-
-        const reaction =
-          String(
-            data?.reaction || ""
-          )
-            .trim();
-
-
-        if (
-          !roomId ||
-          !reaction
-        ) {
-
-          return;
-
-        }
-
-
-        if (
-          !rooms.has(roomId)
-        ) {
-
-          return;
-
-        }
-
-
-        /*
-          Разрешённые реакции.
-          Это защищает сервер
-          от случайного мусора.
-        */
-
-        const allowedReactions = [
-          "❤️",
-          "😂",
-          "🔥",
-          "😮",
-          "😭",
-          "💀"
-        ];
-
-
-        if (
-          !allowedReactions.includes(
-            reaction
-          )
-        ) {
-
-          return;
-
-        }
-
-
-        /*
-          Отправляем ВСЕМ
-          участникам комнаты,
-          включая отправителя.
-        */
-
-        io.to(roomId).emit(
-          "reaction",
-          {
-
-            id:
-              `${socket.id}-${Date.now()}`,
-
-            reaction,
-
-            user:
-              socket.data.userName ||
-              "Guest"
-
-          }
-        );
-
-
-        console.log(
-          "💜 reaction:",
-          roomId,
-          socket.data.userName,
-          reaction
-        );
-
-      }
-    );
-
-
-    /*
-      =========================
-      CHAT
-      =========================
-    */
-
-    socket.on(
-      "chat-message",
-      (data) => {
-
-        const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
-
-
-        const text =
-          String(
-            data?.text || ""
-          ).trim();
-
-
-        if (
-          !roomId ||
-          !text
-        ) {
-
-          return;
-
-        }
-
-
-        if (
-          !rooms.has(roomId)
-        ) {
-
-          return;
-
-        }
-
-
-        io.to(roomId).emit(
-          "chat-message",
-          {
-
-            user:
-              socket.data.userName ||
-              "Guest",
-
-            text
-
-          }
-        );
-
-      }
-    );
-
-
-    /*
-      =========================
-      DISCONNECT
-      =========================
-    */
-
-    socket.on(
-      "disconnect",
-      () => {
-
-        const roomId =
-          socket.data.roomId;
-
-
-        if (roomId) {
-
-          const room =
-            rooms.get(roomId);
-
-
-          if (room) {
-
-            room.users =
-              Math.max(
-                0,
-                room.users - 1
-              );
-
-
-            io.to(roomId).emit(
-              "users",
-              room.users
-            );
-
-
-            emitPresence(
-              roomId
-            );
-
-          }
-
-        }
-
-
-        console.log(
-          "🔴 user disconnected:",
-          socket.id
-        );
-
-      }
-    );
-
-  }
-);
-
-
-/*
-  =========================
-  START
-  =========================
-*/
-
-const PORT =
-  process.env.PORT || 3001;
-
-
-app.listen({
-  port: PORT,
-  host: "0.0.0.0"
-})
-.then(
-  () => {
-
-    console.log(
-      `🔥 VIBE server started on ${PORT}`
-    );
-
-  }
-)
-.catch(
-  error => {
-
-    console.error(
-      error
-    );
-
-    process.exit(1);
-
-  }
-);
+export default CreateRoom;
