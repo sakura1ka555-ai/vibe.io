@@ -5938,3 +5938,121 @@ button {
   }
 
 }
+
+/* =========================
+   CREATE ROOM — VISIBILITY
+   ========================= */
+
+.room-visibility {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.visibility-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid rgba(166, 105, 232, 0.14);
+  border-radius: 11px;
+  background: rgba(153, 88, 243, 0.055);
+  color: rgba(225, 203, 241, 0.55);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.visibility-option:hover {
+  border-color: rgba(166, 105, 232, 0.28);
+  background: rgba(153, 88, 243, 0.10);
+  color: rgba(239, 225, 248, 0.85);
+}
+
+.visibility-option.active {
+  border-color: rgba(166, 105, 232, 0.38);
+  background: rgba(153, 88, 243, 0.16);
+  color: #fff;
+}
+
+.visibility-icon {
+  font-size: 14px;
+}
+
+
+/* =========================
+   CREATE ROOM — CATEGORY
+   ========================= */
+
+.category-select {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.category-option {
+  min-height: 38px;
+  padding: 8px 7px;
+  box-sizing: border-box;
+  border: 1px solid rgba(166, 105, 232, 0.13);
+  border-radius: 10px;
+  background: rgba(153, 88, 243, 0.05);
+  color: rgba(225, 203, 241, 0.52);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.category-option:hover {
+  transform: translateY(-1px);
+  border-color: rgba(166, 105, 232, 0.28);
+  background: rgba(153, 88, 243, 0.10);
+  color: rgba(239, 225, 248, 0.86);
+}
+
+.category-option.active {
+  border-color: rgba(166, 105, 232, 0.38);
+  background: rgba(153, 88, 243, 0.17);
+  color: #fff;
+}
+
+
+/* =========================
+   CREATE ROOM — LABELS
+   ========================= */
+
+.room-visibility + label,
+.category-select + label {
+  color: rgba(225, 203, 241, 0.52);
+}
+
+
+/* =========================
+   CREATE ROOM — MOBILE
+   ========================= */
+
+@media (max-width: 520px) {
+
+  .room-visibility {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .category-select {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+}
