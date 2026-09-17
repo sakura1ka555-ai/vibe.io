@@ -347,7 +347,7 @@ function WatchRoom({
   /*
     =========================
     VIBE TIME
-  =========================
+    =========================
   */
 
   const userIdRef =
@@ -532,15 +532,6 @@ function WatchRoom({
 
   useEffect(() => {
 
-    /*
-      Если предыдущая сессия
-      каким-то образом осталась
-      после закрытия браузера,
-      восстанавливаем только
-      небольшой промежуток времени,
-      а не считаем всю ночь.
-    */
-
     const stored =
       statsRef.current;
 
@@ -707,7 +698,7 @@ function WatchRoom({
   /*
     =========================
     LIVE ACTIVITY
-  =========================
+    =========================
   */
 
   const weeklyActivity =
@@ -720,7 +711,7 @@ function WatchRoom({
   /*
     =========================
     INVITE
-  =========================
+    =========================
   */
 
   const inviteUrl =
@@ -730,7 +721,7 @@ function WatchRoom({
   /*
     =========================
     JOIN ROOM
-  =========================
+    =========================
   */
 
   useEffect(() => {
@@ -739,20 +730,51 @@ function WatchRoom({
       count: number
     ) {
 
-      setUsers(
-        count
-      );
+      if (
+        typeof count === "number" &&
+        Number.isFinite(count)
+      ) {
+
+        setUsers(
+          Math.max(
+            0,
+            count
+          )
+        );
+
+      }
 
     }
 
 
     function handlePresence(
-      people: PresenceUser[]
+      people: unknown
     ) {
 
-      setPresence(
-        people
-      );
+      /*
+        Сервер сейчас может отправлять
+        числовое количество зрителей
+        через event "presence".
+
+        Chat ожидает массив пользователей,
+        поэтому число нельзя передавать
+        в setPresence().
+      */
+
+      if (
+        Array.isArray(people)
+      ) {
+
+        setPresence(
+          people as PresenceUser[]
+        );
+
+        return;
+
+      }
+
+
+      setPresence([]);
 
     }
 
@@ -766,13 +788,24 @@ function WatchRoom({
       }
     ) {
 
+      if (
+        !state
+      ) {
+        return;
+      }
+
+
       setInitialAction(
-        state.action
+        state.action === "play"
+          ? "play"
+          : "pause"
       );
 
 
       setInitialPosition(
-        state.position || 0
+        Number(
+          state.position
+        ) || 0
       );
 
     }
@@ -787,13 +820,55 @@ function WatchRoom({
       }
     ) {
 
+      if (
+        !data
+      ) {
+        return;
+      }
+
+
       setRemoteControl({
 
         action:
-          data.action,
+          data.action === "play"
+            ? "play"
+            : "pause",
 
         position:
-          data.position,
+          Number(
+            data.position
+          ) || 0,
+
+        id:
+          Date.now()
+
+      });
+
+    }
+
+
+    function handleVideoPosition(
+      data: {
+        position: number;
+      }
+    ) {
+
+      if (
+        !data
+      ) {
+        return;
+      }
+
+
+      setRemoteControl({
+
+        action:
+          initialAction,
+
+        position:
+          Number(
+            data.position
+          ) || 0,
 
         id:
           Date.now()
@@ -806,6 +881,13 @@ function WatchRoom({
     function handleReaction(
       reaction: Reaction
     ) {
+
+      if (
+        !reaction
+      ) {
+        return;
+      }
+
 
       setReactionsOnScreen(
         previous => [
@@ -855,6 +937,12 @@ function WatchRoom({
     socket.on(
       "video-control",
       handleRemoteControl
+    );
+
+
+    socket.on(
+      "video-position",
+      handleVideoPosition
     );
 
 
@@ -918,6 +1006,12 @@ function WatchRoom({
 
 
       socket.off(
+        "video-position",
+        handleVideoPosition
+      );
+
+
+      socket.off(
         "reaction",
         handleReaction
       );
@@ -927,15 +1021,16 @@ function WatchRoom({
   }, [
     roomId,
     userName,
-    profile.avatar
+    profile.avatar,
+    initialAction
   ]);
 
 
   /*
     =========================
     PROFILE UPDATE
-  =========================
-    */
+    =========================
+  */
 
   function saveProfile(
     newProfile: ProfileData
@@ -972,7 +1067,7 @@ function WatchRoom({
   /*
     =========================
     VIDEO CONTROL
-  =========================
+    =========================
   */
 
   const handleControl =
@@ -1008,7 +1103,7 @@ function WatchRoom({
   /*
     =========================
     VIDEO POSITION
-  =========================
+    =========================
   */
 
   const handlePosition =
@@ -1039,7 +1134,7 @@ function WatchRoom({
   /*
     =========================
     REACTION
-  =========================
+    =========================
   */
 
   function sendReaction(
@@ -1063,7 +1158,7 @@ function WatchRoom({
   /*
     =========================
     COPY INVITE
-  =========================
+    =========================
   */
 
   async function copyInviteLink() {
@@ -1151,7 +1246,7 @@ function WatchRoom({
   /*
     =========================
     SHARE
-  =========================
+    =========================
   */
 
   async function shareInviteLink() {
@@ -1224,7 +1319,7 @@ function WatchRoom({
   /*
     =========================
     CLOSE INVITE
-  =========================
+    =========================
   */
 
   function closeInvite() {
@@ -1253,19 +1348,16 @@ function WatchRoom({
   /*
     =========================
     UI
-  =========================
+    =========================
   */
 
   return (
 
     <main className="watch-room">
 
-
       <section className="watch-main">
 
-
         <header className="watch-header">
-
 
           <div className="watch-title-group">
 
@@ -1273,11 +1365,9 @@ function WatchRoom({
               VIBE ROOM
             </div>
 
-
             <h1>
               {name}
             </h1>
-
 
             <div className="watch-room-code">
               ID: {roomId}
@@ -1287,9 +1377,6 @@ function WatchRoom({
 
 
           <div className="watch-header-actions">
-
-
-            {/* PROFILE */}
 
             <button
               type="button"
@@ -1322,8 +1409,6 @@ function WatchRoom({
             </button>
 
 
-            {/* INVITE */}
-
             <button
               type="button"
               className="invite-button"
@@ -1349,9 +1434,7 @@ function WatchRoom({
                 ●
               </span>
 
-
               {users}
-
 
               <span className="watch-users-label">
                 watching
@@ -1359,15 +1442,12 @@ function WatchRoom({
 
             </div>
 
-
           </div>
-
 
         </header>
 
 
         <div className="video-frame">
-
 
           <VideoPlayer
 
@@ -1400,7 +1480,6 @@ function WatchRoom({
 
           <div className="floating-reactions">
 
-
             {reactionsOnScreen.map(
               item => {
 
@@ -1429,7 +1508,6 @@ function WatchRoom({
                       {item.reaction}
                     </span>
 
-
                     <small>
                       {item.user}
                     </small>
@@ -1443,12 +1521,10 @@ function WatchRoom({
 
           </div>
 
-
         </div>
 
 
         <div className="reaction-bar">
-
 
           <div className="reaction-label">
             REACT
@@ -1456,7 +1532,6 @@ function WatchRoom({
 
 
           <div className="reaction-buttons">
-
 
             {reactions.map(
               reaction => (
@@ -1484,15 +1559,12 @@ function WatchRoom({
               )
             )}
 
-
           </div>
-
 
         </div>
 
 
         <div className="watch-bottom">
-
 
           <div className="watch-bottom-status">
 
@@ -1515,9 +1587,7 @@ function WatchRoom({
 
           </div>
 
-
         </div>
-
 
       </section>
 
@@ -1535,10 +1605,6 @@ function WatchRoom({
 
       </aside>
 
-
-      {/* =========================
-          PROFILE MODAL
-      ========================= */}
 
       {profileOpen && (
 
@@ -1574,10 +1640,6 @@ function WatchRoom({
 
       )}
 
-
-      {/* =========================
-          INVITE MODAL
-      ========================= */}
 
       {inviteOpen && (
 
@@ -1670,13 +1732,11 @@ function WatchRoom({
 
             </div>
 
-
           </div>
 
         </div>
 
       )}
-
 
     </main>
 
