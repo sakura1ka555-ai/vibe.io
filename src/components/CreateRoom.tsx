@@ -10,18 +10,8 @@ function CreateRoom({
   onClose
 }: CreateRoomProps) {
 
-  const [videoUrl, setVideoUrl] =
-    useState("");
-
-  const [creating, setCreating] =
-    useState(false);
-
-
-  /*
-    =========================
-    VIDEO SERVICES
-    =========================
-  */
+  const [videoUrl, setVideoUrl] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const videoServices = [
     {
@@ -42,102 +32,36 @@ function CreateRoom({
     }
   ];
 
-
-  /*
-    =========================
-    OPEN VIDEO SERVICE
-    =========================
-  */
-
-  function openVideoService(
-    url: string
-  ) {
-
-    window.open(
-      url,
-      "_blank",
-      "noopener,noreferrer"
-    );
-
-  }
-
-
-  /*
-    =========================
-    CREATE
-    =========================
-  */
-
   function handleCreate() {
-
-    const url =
-      videoUrl.trim();
-
+    const url = videoUrl.trim();
 
     if (!url) {
-
-      alert(
-        "Введи ссылку на видео"
-      );
-
+      alert("Введи ссылку на видео");
       return;
-
     }
-
 
     setCreating(true);
 
-
     try {
-
       onCreate(url);
-
     } finally {
-
       setCreating(false);
-
     }
-
   }
-
-
-  /*
-    =========================
-    KEYBOARD
-    =========================
-  */
 
   function handleKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
-
-    if (
-      event.key === "Enter" &&
-      !creating
-    ) {
-
+    if (event.key === "Enter" && !creating) {
       event.preventDefault();
-
       handleCreate();
-
     }
-
   }
 
-
-  /*
-    =========================
-    RENDER
-    =========================
-  */
-
   return (
-
     <div className="modal-backdrop">
 
       <div className="room-modal">
-
-        {/* CLOSE */}
 
         <button
           type="button"
@@ -148,20 +72,13 @@ function CreateRoom({
           ×
         </button>
 
-
-        {/* LABEL */}
-
         <div className="modal-label">
           CREATE ROOM
         </div>
 
-
-        {/* TITLE */}
-
         <h2>
           Создать комнату
         </h2>
-
 
         <p className="modal-description">
           Добавь ссылку на видео,
@@ -169,9 +86,9 @@ function CreateRoom({
         </p>
 
 
-        {/* =========================
+        {/* =================================
             VIDEO SERVICES
-        ========================= */}
+        ================================= */}
 
         <div className="video-services">
 
@@ -179,73 +96,62 @@ function CreateRoom({
             Где найти фильм?
           </div>
 
-
           <div className="video-services-buttons">
 
-            {videoServices.map(
-              service => (
+            {videoServices.map((service) => (
 
-                <button
-                  key={service.name}
-                  type="button"
-                  className="video-service-button"
-                  onClick={() =>
-                    openVideoService(
-                      service.url
-                    )
-                  }
-                  disabled={creating}
-                >
+              <a
+                key={service.name}
+                href={service.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="video-service-button"
+              >
+                <span className="video-service-name">
+                  {service.name}
+                </span>
 
-                  <span>
-                    {service.name}
-                  </span>
+                <span className="video-service-arrow">
+                  ↗
+                </span>
+              </a>
 
-                  <span className="video-service-arrow">
-                    ↗
-                  </span>
-
-                </button>
-
-              )
-            )}
+            ))}
 
           </div>
 
         </div>
 
 
-        {/* =========================
+        {/* =================================
             VIDEO URL
-        ========================= */}
+        ================================= */}
 
         <div className="video-url-block">
 
           <label>
-            Ссылка на видео
+            ССЫЛКА НА ВИДЕО
           </label>
-
 
           <input
             type="text"
             value={videoUrl}
             onChange={(event) =>
-              setVideoUrl(
-                event.target.value
-              )
+              setVideoUrl(event.target.value)
             }
             onKeyDown={handleKeyDown}
             placeholder="Вставь ссылку на фильм или видео"
             autoFocus
             autoComplete="off"
+            disabled={creating}
           />
 
         </div>
 
 
-        {/* =========================
-            CREATE BUTTON
-        ========================= */}
+        {/* =================================
+            CREATE
+        ================================= */}
 
         <button
           type="button"
@@ -253,21 +159,16 @@ function CreateRoom({
           onClick={handleCreate}
           disabled={creating}
         >
-
           {creating
             ? "Создание..."
             : "Создать комнату"
           }
-
         </button>
 
       </div>
 
     </div>
-
   );
-
 }
-
 
 export default CreateRoom;
