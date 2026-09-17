@@ -62,6 +62,15 @@ db.exec(`
     UNIQUE(from_id, to_id)
   );
 
+  CREATE TABLE IF NOT EXISTS rooms (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    video_url TEXT NOT NULL DEFAULT '',
+    playback_action TEXT NOT NULL DEFAULT 'pause',
+    playback_position REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_users_name
   ON users(name);
 
@@ -73,6 +82,9 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_friend_requests_from
   ON friend_requests(from_id);
+
+  CREATE INDEX IF NOT EXISTS idx_rooms_title
+  ON rooms(title);
 `);
 
 
@@ -90,12 +102,9 @@ function normalizeUserId(value) {
 
 
 function normalizeName(value) {
-  return (
-    String(value || "Guest")
-      .trim()
-      .slice(0, 40) ||
-    "Guest"
-  );
+  return String(value || "Guest")
+    .trim()
+    .slice(0, 40) || "Guest";
 }
 
 
@@ -112,6 +121,29 @@ function normalizePosition(value) {
   }
 
   return Math.max(0, number);
+}
+
+
+function normalizeRoomId(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase();
+}
+
+
+function normalizeRoomTitle(value, roomId) {
+  return String(
+    value || `Комната ${roomId}`
+  )
+    .trim()
+    .slice(0, 100) || `Комната ${roomId}`;
+}
+
+
+function normalizeVideoUrl(value) {
+  return String(value || "")
+    .trim()
+    .slice(0, 5000);
 }
 
 
@@ -179,7 +211,7 @@ function getUser(userId) {
       FROM users
       WHERE id = ?
     `)
-    .get(id);
+    .get(id) || null;
 }
 
 
@@ -246,18 +278,11 @@ FRIENDS
 ==================================================
 */
 
-function areFriends(
-  userA,
-  userB
-) {
+function areFriends(userA, userB) {
   const a = normalizeUserId(userA);
   const b = normalizeUserId(userB);
 
-  if (
-    !a ||
-    !b ||
-    a === b
-  ) {
+  if (!a || !b || a === b) {
     return false;
   }
 
@@ -269,10 +294,7 @@ function areFriends(
         user_id = ?
         AND friend_id = ?
       LIMIT 1
-    `).get(
-      a,
-      b
-    );
+    `).get(a, b);
 
   return Boolean(row);
 }
@@ -351,18 +373,11 @@ function getOutgoingRequests(userId) {
 }
 
 
-function addFriendship(
-  userA,
-  userB
-) {
+function addFriendship(userA, userB) {
   const a = normalizeUserId(userA);
   const b = normalizeUserId(userB);
 
-  if (
-    !a ||
-    !b ||
-    a === b
-  ) {
+  if (!a || !b || a === b) {
     return;
   }
 
@@ -412,32 +427,171 @@ ROOMS
 ==================================================
 */
 
-const rooms =
-  new Map();
+/*
+  ВАЖНО:
+
+  Раньше было:
+
+    const rooms = new Map();
+
+  Теперь комнаты находятся в SQLite.
+
+  Это позволяет второму аккаунту
+  получить ту же комнату.
+*/
 
 
-function createRoomObject(
+function getRoom(roomId) {
+  const id = normalizeRoomId(roomId);
+
+  if (!id) {
+    return null;
+  }
+
+  const row =
+    db.prepare(`
+      SELECT
+        id,
+        title,
+        video_url AS videoUrl,
+        playback_action AS playbackAction,
+        playback_position AS playbackPosition,
+        created_at AS createdAt
+      FROM rooms
+      WHERE id = ?
+    `).get(id);
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    title: row.title,
+    videoUrl: row.videoUrl,
+    users: 0,
+    playback: {
+      action:
+        row.playbackAction === "play"
+          ? "play"
+          : "pause",
+      position:
+        normalizePosition(
+          row.playbackPosition
+        )
+    },
+    createdAt: row.createdAt
+  };
+}
+
+
+function createRoom(
   roomId,
   title,
   videoUrl
 ) {
-  return {
-    id: roomId,
+  const id = normalizeRoomId(roomId);
 
-    title:
-      title ||
-      `Комната ${roomId}`,
+  if (!id) {
+    return null;
+  }
 
-    videoUrl:
-      videoUrl || "",
+  const now =
+    new Date().toISOString();
 
-    users: 0,
+  db.prepare(`
+    INSERT INTO rooms
+      (
+        id,
+        title,
+        video_url,
+        playback_action,
+        playback_position,
+        created_at
+      )
+    VALUES
+      (?, ?, ?, 'pause', 0, ?)
+  `).run(
+    id,
+    normalizeRoomTitle(title, id),
+    normalizeVideoUrl(videoUrl),
+    now
+  );
 
-    playback: {
-      action: "pause",
-      position: 0
-    }
-  };
+  return getRoom(id);
+}
+
+
+function updateRoomPlayback(
+  roomId,
+  action,
+  position
+) {
+  const id = normalizeRoomId(roomId);
+
+  if (!id) {
+    return null;
+  }
+
+  const normalizedAction =
+    action === "play"
+      ? "play"
+      : "pause";
+
+  const normalizedPosition =
+    normalizePosition(position);
+
+  db.prepare(`
+    UPDATE rooms
+    SET
+      playback_action = ?,
+      playback_position = ?
+    WHERE id = ?
+  `).run(
+    normalizedAction,
+    normalizedPosition,
+    id
+  );
+
+  return getRoom(id);
+}
+
+
+function updateRoomPosition(
+  roomId,
+  position
+) {
+  const id = normalizeRoomId(roomId);
+
+  if (!id) {
+    return null;
+  }
+
+  const normalizedPosition =
+    normalizePosition(position);
+
+  db.prepare(`
+    UPDATE rooms
+    SET
+      playback_position = ?
+    WHERE id = ?
+  `).run(
+    normalizedPosition,
+    id
+  );
+
+  return getRoom(id);
+}
+
+
+function getRoomCount() {
+  const row =
+    db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM rooms
+    `).get();
+
+  return Number(row?.count || 0);
 }
 
 
@@ -463,13 +617,9 @@ app.get(
   async () => {
     return {
       status: "ok",
-
       app: "VIBE SERVER",
-
-      rooms: rooms.size,
-
-      time:
-        new Date().toISOString()
+      rooms: getRoomCount(),
+      time: new Date().toISOString()
     };
   }
 );
@@ -483,32 +633,24 @@ CREATE USER
 
 app.post(
   "/users",
-  async (
-    request,
-    reply
-  ) => {
+  async (request, reply) => {
     const data =
-      request.body || {};
+      request.body &&
+      typeof request.body === "object"
+        ? request.body
+        : {};
 
     const name =
-      normalizeName(
-        data.name
-      );
+      normalizeName(data.name);
 
     const avatar =
-      normalizeAvatar(
-        data.avatar
-      );
+      normalizeAvatar(data.avatar);
 
-    if (
-      avatar.length >
-      1500000
-    ) {
+    if (avatar.length > 1500000) {
       return reply
         .code(400)
         .send({
-          error:
-            "Avatar is too large"
+          error: "Avatar is too large"
         });
     }
 
@@ -533,22 +675,18 @@ GET USER
 
 app.get(
   "/users/:userId",
-  async (
-    request,
-    reply
-  ) => {
-    const userId =
-      request.params?.userId;
+  async (request, reply) => {
+    const params =
+      request.params || {};
 
     const user =
-      getUser(userId);
+      getUser(params.userId);
 
     if (!user) {
       return reply
         .code(404)
         .send({
-          error:
-            "User not found"
+          error: "User not found"
         });
     }
 
@@ -567,9 +705,7 @@ SEARCH USERS
 
 app.get(
   "/users/search",
-  async (
-    request
-  ) => {
+  async request => {
     const query =
       String(
         request.query?.q || ""
@@ -625,89 +761,71 @@ CREATE ROOM
 
 app.post(
   "/rooms",
-  async (
-    request,
-    reply
-  ) => {
+  async (request, reply) => {
     const data =
-      request.body || {};
+      request.body &&
+      typeof request.body === "object"
+        ? request.body
+        : {};
 
     const roomId =
-      String(
-        data.roomId || ""
-      )
-        .trim()
-        .toUpperCase();
+      normalizeRoomId(
+        data.roomId
+      );
 
     const title =
-      String(
-        data.title ||
-        `Комната ${roomId}`
-      )
-        .trim()
-        .slice(0, 100);
+      normalizeRoomTitle(
+        data.title,
+        roomId
+      );
 
     const videoUrl =
-      String(
-        data.videoUrl || ""
-      )
-        .trim();
+      normalizeVideoUrl(
+        data.videoUrl
+      );
 
     if (!roomId) {
       return reply
         .code(400)
         .send({
-          error:
-            "Room ID is required"
+          error: "Room ID is required"
         });
     }
 
-    if (
-      roomId.length >
-      50
-    ) {
+    if (roomId.length > 50) {
       return reply
         .code(400)
         .send({
-          error:
-            "Room ID is too long"
+          error: "Room ID is too long"
         });
     }
 
-    if (
-      videoUrl.length >
-      5000
-    ) {
+    if (videoUrl.length > 5000) {
       return reply
         .code(400)
         .send({
-          error:
-            "Video URL is too long"
+          error: "Video URL is too long"
         });
     }
 
-    if (
-      rooms.has(roomId)
-    ) {
+    const existing =
+      getRoom(roomId);
+
+    if (existing) {
       return reply
         .code(409)
         .send({
-          error:
-            "Room already exists"
+          error: "Room already exists",
+          room: existing
         });
     }
 
     const room =
-      createRoomObject(
+      createRoom(
         roomId,
         title,
         videoUrl
       );
-
-    rooms.set(
-      roomId,
-      room
-    );
 
     console.log(
       "🏠 room created:",
@@ -729,26 +847,20 @@ GET ROOM
 
 app.get(
   "/rooms/:roomId",
-  async (
-    request,
-    reply
-  ) => {
+  async (request, reply) => {
     const roomId =
-      String(
-        request.params?.roomId || ""
-      )
-        .trim()
-        .toUpperCase();
+      normalizeRoomId(
+        request.params?.roomId
+      );
 
     const room =
-      rooms.get(roomId);
+      getRoom(roomId);
 
     if (!room) {
       return reply
         .code(404)
         .send({
-          error:
-            "Room not found"
+          error: "Room not found"
         });
     }
 
@@ -786,14 +898,10 @@ POSITION FORMAT
 ==================================================
 */
 
-function formatPosition(
-  seconds
-) {
+function formatPosition(seconds) {
   const total =
     Math.floor(
-      normalizePosition(
-        seconds
-      )
+      normalizePosition(seconds)
     );
 
   const minutes =
@@ -805,11 +913,9 @@ function formatPosition(
     total % 60;
 
   return (
-    String(minutes)
-      .padStart(2, "0") +
+    String(minutes).padStart(2, "0") +
     ":" +
-    String(secs)
-      .padStart(2, "0")
+    String(secs).padStart(2, "0")
   );
 }
 
@@ -820,9 +926,7 @@ PRESENCE
 ==================================================
 */
 
-function getPresence(
-  roomId
-) {
+function getPresence(roomId) {
   const result = [];
 
   for (
@@ -857,9 +961,7 @@ function getPresence(
       position,
 
       time:
-        formatPosition(
-          position
-        ),
+        formatPosition(position),
 
       state:
         connectedSocket.data.videoState ===
@@ -873,12 +975,37 @@ function getPresence(
 }
 
 
-function emitPresence(
-  roomId
-) {
+function emitPresence(roomId) {
   io.to(roomId).emit(
     "presence",
     getPresence(roomId)
+  );
+}
+
+
+function getRoomUsers(roomId) {
+  let count = 0;
+
+  for (
+    const connectedSocket
+    of io.sockets.sockets.values()
+  ) {
+    if (
+      connectedSocket.data.roomId ===
+      roomId
+    ) {
+      count++;
+    }
+  }
+
+  return count;
+}
+
+
+function emitRoomUsers(roomId) {
+  io.to(roomId).emit(
+    "users",
+    getRoomUsers(roomId)
   );
 }
 
@@ -889,9 +1016,7 @@ FRIENDS UPDATE
 ==================================================
 */
 
-function emitFriendsUpdate(
-  userId
-) {
+function emitFriendsUpdate(userId) {
   if (!userId) {
     return;
   }
@@ -1085,16 +1210,11 @@ io.on(
             data?.userId
           );
 
-        if (
-          !fromId ||
-          !toId
-        ) {
+        if (!fromId || !toId) {
           return;
         }
 
-        if (
-          fromId === toId
-        ) {
+        if (fromId === toId) {
           socket.emit(
             "friend-error",
             {
@@ -1412,16 +1532,31 @@ io.on(
       "join-room",
       data => {
         const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
+          normalizeRoomId(
+            data?.roomId
+          );
+
+        console.log(
+          "🚪 join-room request:",
+          socket.id,
+          roomId
+        );
+
+
+        /*
+          ИЩЕМ КОМНАТУ В SQLITE
+        */
 
         const room =
-          rooms.get(roomId);
+          getRoom(roomId);
+
 
         if (!room) {
+          console.log(
+            "❌ room not found:",
+            roomId
+          );
+
           socket.emit(
             "room-not-found"
           );
@@ -1430,8 +1565,16 @@ io.on(
         }
 
 
+        console.log(
+          "✅ room found:",
+          roomId
+        );
+
+
         /*
-        Leave previous room
+        ==========================================
+        LEAVE PREVIOUS ROOM
+        ==========================================
         */
 
         const oldRoomId =
@@ -1441,38 +1584,24 @@ io.on(
           oldRoomId &&
           oldRoomId !== roomId
         ) {
-          const oldRoom =
-            rooms.get(
-              oldRoomId
-            );
-
-          if (oldRoom) {
-            oldRoom.users =
-              Math.max(
-                0,
-                oldRoom.users - 1
-              );
-
-            io.to(
-              oldRoomId
-            ).emit(
-              "users",
-              oldRoom.users
-            );
-
-            emitPresence(
-              oldRoomId
-            );
-          }
-
           socket.leave(
+            oldRoomId
+          );
+
+          emitRoomUsers(
+            oldRoomId
+          );
+
+          emitPresence(
             oldRoomId
           );
         }
 
 
         /*
-        User name
+        ==========================================
+        USER NAME
+        ==========================================
         */
 
         const userName =
@@ -1484,19 +1613,12 @@ io.on(
 
 
         /*
-        Join
+        ==========================================
+        JOIN
+        ==========================================
         */
 
-        if (
-          socket.data.roomId !==
-          roomId
-        ) {
-          socket.join(
-            roomId
-          );
-
-          room.users++;
-        }
+        socket.join(roomId);
 
         socket.data.roomId =
           roomId;
@@ -1512,7 +1634,9 @@ io.on(
 
 
         /*
-        Send current room state
+        ==========================================
+        SEND ROOM STATE
+        ==========================================
         */
 
         socket.emit(
@@ -1537,31 +1661,37 @@ io.on(
 
 
         /*
-        Users
+        ==========================================
+        USERS
+        ==========================================
         */
 
-        io.to(
+        emitRoomUsers(
           roomId
-        ).emit(
-          "users",
-          room.users
         );
 
 
         /*
-        Presence
+        ==========================================
+        PRESENCE
+        ==========================================
         */
 
         emitPresence(
           roomId
         );
 
+
         console.log(
           "👤 joined:",
           roomId,
           userName,
           "users:",
-          room.users
+          getRoomUsers(roomId),
+          "position:",
+          room.playback.position,
+          "action:",
+          room.playback.action
         );
       }
     );
@@ -1577,11 +1707,9 @@ io.on(
       "profile-update",
       data => {
         const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
+          normalizeRoomId(
+            data?.roomId
+          );
 
         if (
           !roomId ||
@@ -1601,10 +1729,7 @@ io.on(
             data?.avatar
           );
 
-        if (
-          avatar.length >
-          1500000
-        ) {
+        if (avatar.length > 1500000) {
           return;
         }
 
@@ -1649,11 +1774,9 @@ io.on(
       "video-control",
       data => {
         const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
+          normalizeRoomId(
+            data?.roomId
+          );
 
         if (
           !roomId ||
@@ -1664,9 +1787,14 @@ io.on(
         }
 
         const room =
-          rooms.get(roomId);
+          getRoom(roomId);
 
         if (!room) {
+          console.log(
+            "❌ video-control room not found:",
+            roomId
+          );
+
           return;
         }
 
@@ -1682,17 +1810,18 @@ io.on(
 
 
         /*
-        Update room state
+        SAVE TO DATABASE
         */
 
-        room.playback = {
+        updateRoomPlayback(
+          roomId,
           action,
           position
-        };
+        );
 
 
         /*
-        Update sender state
+        UPDATE SENDER
         */
 
         socket.data.position =
@@ -1703,7 +1832,7 @@ io.on(
 
 
         /*
-        Unique event ID
+        UNIQUE EVENT ID
         */
 
         const id =
@@ -1711,7 +1840,7 @@ io.on(
 
 
         /*
-        Send to everyone EXCEPT sender
+        SEND TO OTHER USERS
         */
 
         socket
@@ -1728,13 +1857,10 @@ io.on(
           );
 
 
-        /*
-        Presence
-        */
-
         emitPresence(
           roomId
         );
+
 
         console.log(
           "🎬 video:",
@@ -1756,11 +1882,9 @@ io.on(
       "video-position",
       data => {
         const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
+          normalizeRoomId(
+            data?.roomId
+          );
 
         if (
           !roomId ||
@@ -1771,7 +1895,7 @@ io.on(
         }
 
         const room =
-          rooms.get(roomId);
+          getRoom(roomId);
 
         if (!room) {
           return;
@@ -1782,16 +1906,27 @@ io.on(
             data?.position
           );
 
-        room.playback.position =
-          position;
+
+        /*
+        SAVE TO DATABASE
+        */
+
+        updateRoomPosition(
+          roomId,
+          position
+        );
+
+
+        /*
+        UPDATE SOCKET
+        */
 
         socket.data.position =
           position;
 
 
         /*
-        Position events are sent
-        to other users too.
+        SEND TO OTHER USERS
         */
 
         const id =
@@ -1827,17 +1962,14 @@ io.on(
       "reaction",
       data => {
         const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
+          normalizeRoomId(
+            data?.roomId
+          );
 
         const reaction =
           String(
             data?.reaction || ""
-          )
-            .trim();
+          ).trim();
 
         if (
           !roomId ||
@@ -1848,9 +1980,7 @@ io.on(
           return;
         }
 
-        if (
-          !rooms.has(roomId)
-        ) {
+        if (!getRoom(roomId)) {
           return;
         }
 
@@ -1871,9 +2001,7 @@ io.on(
           return;
         }
 
-        io.to(
-          roomId
-        ).emit(
+        io.to(roomId).emit(
           "reaction",
           {
             id:
@@ -1900,11 +2028,9 @@ io.on(
       "chat-message",
       data => {
         const roomId =
-          String(
-            data?.roomId || ""
-          )
-            .trim()
-            .toUpperCase();
+          normalizeRoomId(
+            data?.roomId
+          );
 
         const text =
           String(
@@ -1922,15 +2048,11 @@ io.on(
           return;
         }
 
-        if (
-          !rooms.has(roomId)
-        ) {
+        if (!getRoom(roomId)) {
           return;
         }
 
-        io.to(
-          roomId
-        ).emit(
+        io.to(roomId).emit(
           "chat-message",
           {
             user:
@@ -1957,27 +2079,13 @@ io.on(
           socket.data.roomId;
 
         if (roomId) {
-          const room =
-            rooms.get(roomId);
+          emitRoomUsers(
+            roomId
+          );
 
-          if (room) {
-            room.users =
-              Math.max(
-                0,
-                room.users - 1
-              );
-
-            io.to(
-              roomId
-            ).emit(
-              "users",
-              room.users
-            );
-
-            emitPresence(
-              roomId
-            );
-          }
+          emitPresence(
+            roomId
+          );
         }
 
         console.log(
@@ -1998,8 +2106,7 @@ START
 
 const PORT =
   Number(
-    process.env.PORT ||
-    3001
+    process.env.PORT || 3001
   );
 
 
@@ -2011,6 +2118,10 @@ try {
 
   console.log(
     `🔥 VIBE server started on ${PORT}`
+  );
+
+  console.log(
+    `🏠 rooms in database: ${getRoomCount()}`
   );
 
 } catch (error) {
