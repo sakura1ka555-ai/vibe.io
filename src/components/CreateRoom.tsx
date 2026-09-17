@@ -1,17 +1,20 @@
 import { useState } from "react";
 
 type Props = {
-  onCreate: (videoUrl: string) => void;
+  onCreate: (
+    videoUrl: string,
+    title: string,
+    isPublic: boolean,
+    category: string
+  ) => void;
   onClose?: () => void;
 };
-
 
 type Source = {
   id: string;
   name: string;
   url: string;
 };
-
 
 const sources: Source[] = [
   {
@@ -36,6 +39,32 @@ const sources: Source[] = [
   }
 ];
 
+const categories = [
+  {
+    id: "movies",
+    name: "🎬 Фильмы"
+  },
+  {
+    id: "series",
+    name: "📺 Сериалы"
+  },
+  {
+    id: "music",
+    name: "🎵 Музыка"
+  },
+  {
+    id: "gaming",
+    name: "🎮 Gaming"
+  },
+  {
+    id: "chill",
+    name: "🌙 Chill"
+  },
+  {
+    id: "other",
+    name: "✨ Другое"
+  }
+];
 
 function CreateRoom({
   onCreate,
@@ -45,31 +74,43 @@ function CreateRoom({
   const [videoUrl, setVideoUrl] =
     useState("");
 
+  const [title, setTitle] =
+    useState("");
+
   const [selectedSource, setSelectedSource] =
     useState("vk");
 
+  const [isPublic, setIsPublic] =
+    useState(true);
+
+  const [category, setCategory] =
+    useState("movies");
 
   const activeSource =
     sources.find(
-      source => source.id === selectedSource
+      source =>
+        source.id === selectedSource
     );
-
 
   function submit() {
 
     const url =
       videoUrl.trim();
 
+    const roomTitle =
+      title.trim();
 
     if (!url) {
       return;
     }
 
-
-    onCreate(url);
-
+    onCreate(
+      url,
+      roomTitle,
+      isPublic,
+      category
+    );
   }
-
 
   function openSource() {
 
@@ -77,15 +118,12 @@ function CreateRoom({
       return;
     }
 
-
     window.open(
       activeSource.url,
       "_blank",
       "noopener,noreferrer"
     );
-
   }
-
 
   return (
 
@@ -93,31 +131,146 @@ function CreateRoom({
 
       <div className="room-modal">
 
-
         <button
           className="modal-close"
           onClick={onClose}
+          type="button"
         >
           ×
         </button>
-
 
         <div className="modal-label">
           NEW ROOM
         </div>
 
-
         <h2>
           Создать комнату
         </h2>
 
-
         <p className="modal-description">
-
-          Выбери видеосервис,
-          найди видео и вставь его ссылку.
-
+          Создай комнату и пригласи друзей
+          смотреть видео вместе.
         </p>
+
+        <div className="room-visibility">
+
+          <button
+            type="button"
+            className={
+              isPublic
+                ? "visibility-option active"
+                : "visibility-option"
+            }
+            onClick={() =>
+              setIsPublic(true)
+            }
+          >
+
+            <span className="visibility-icon">
+              🌎
+            </span>
+
+            <span>
+              <strong>
+                Public
+              </strong>
+
+              <small>
+                Видна в LIVE NOW
+              </small>
+            </span>
+
+          </button>
+
+
+          <button
+            type="button"
+            className={
+              !isPublic
+                ? "visibility-option active"
+                : "visibility-option"
+            }
+            onClick={() =>
+              setIsPublic(false)
+            }
+          >
+
+            <span className="visibility-icon">
+              🔒
+            </span>
+
+            <span>
+              <strong>
+                Private
+              </strong>
+
+              <small>
+                Только по приглашению
+              </small>
+            </span>
+
+          </button>
+
+        </div>
+
+
+        {isPublic && (
+
+          <div className="video-url-block">
+
+            <label>
+              Категория
+            </label>
+
+            <div className="category-select">
+
+              {categories.map(item => (
+
+                <button
+                  key={item.id}
+                  type="button"
+                  className={
+                    category === item.id
+                      ? "category-option active"
+                      : "category-option"
+                  }
+                  onClick={() =>
+                    setCategory(
+                      item.id
+                    )
+                  }
+                >
+                  {item.name}
+                </button>
+
+              ))}
+
+            </div>
+
+          </div>
+
+        )}
+
+
+        <div className="video-url-block">
+
+          <label>
+            Название комнаты
+          </label>
+
+          <input
+            value={title}
+            onChange={e =>
+              setTitle(
+                e.target.value
+              )
+            }
+            placeholder="Например: Friday Movie Night"
+            maxLength={80}
+            autoComplete="off"
+          />
+
+        </div>
 
 
         <div className="source-tabs">
@@ -125,27 +278,20 @@ function CreateRoom({
           {sources.map(source => (
 
             <button
-
               key={source.id}
-
               type="button"
-
               className={
                 selectedSource === source.id
                   ? "source-tab active"
                   : "source-tab"
               }
-
               onClick={() =>
                 setSelectedSource(
                   source.id
                 )
               }
-
             >
-
               {source.name}
-
             </button>
 
           ))}
@@ -154,13 +300,9 @@ function CreateRoom({
 
 
         <button
-
           type="button"
-
           className="open-source"
-
           onClick={openSource}
-
         >
 
           <span>
@@ -178,50 +320,33 @@ function CreateRoom({
             Ссылка на видео
           </label>
 
-
           <input
-
             value={videoUrl}
-
-            onChange={(e) =>
+            onChange={e =>
               setVideoUrl(
                 e.target.value
               )
             }
-
-            placeholder={
-              "Вставьте ссылку на видео..."
-            }
-
+            placeholder="Вставьте ссылку на видео..."
             autoComplete="off"
-
           />
 
         </div>
 
 
         <button
-
           type="button"
-
           className="create-room-button"
-
           onClick={submit}
-
         >
-
           Создать комнату
-
         </button>
-
 
       </div>
 
     </div>
 
   );
-
 }
-
 
 export default CreateRoom;
