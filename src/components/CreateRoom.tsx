@@ -249,25 +249,29 @@ function CreateRoom({
 
         {/* TITLE */}
 
-        <div className="video-url-block">
+        {isPublic && (
 
-          <label>
-            Название комнаты
-          </label>
+          <div className="video-url-block">
 
-          <input
-            value={title}
-            onChange={event =>
-              setTitle(
-                event.target.value
-              )
-            }
-            placeholder="Например: Friday Movie Night"
-            maxLength={80}
-            autoComplete="off"
-          />
+            <label>
+              Название комнаты
+            </label>
 
-        </div>
+            <input
+              value={title}
+              onChange={event =>
+                setTitle(
+                  event.target.value
+                )
+              }
+              placeholder="Например: Friday Movie Night"
+              maxLength={80}
+              autoComplete="off"
+            />
+
+          </div>
+
+        )}
 
 
         {/* SOURCE */}
