@@ -741,3 +741,8 @@ export function updateProfile(
     }
   );
 }
+
+console.log("🔥 SOCKET.TS LOADED");
+console.log("🔥 SERVER_URL:", SERVER_URL);
+console.log("🔥 SOCKET CONNECTED:", socket.connected);
+console.log("🔥 SOCKET ID:", socket.id);
