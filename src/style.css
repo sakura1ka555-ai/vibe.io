@@ -6463,3 +6463,112 @@ button {
   }
 
 }
+
+/* =========================
+   HERO — VIBE CINEMATIC
+   ========================= */
+
+.home .hero-vibe {
+  position: relative;
+  width: 100%;
+  max-width: 780px;
+  margin: 58px auto 0;
+  text-align: center;
+  isolation: isolate;
+}
+
+.hero-vibe .hero-eyebrow {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  padding: 6px 11px;
+  border: 1px solid rgba(166, 105, 232, 0.18);
+  border-radius: 999px;
+  background: rgba(153, 88, 243, 0.06);
+  color: rgba(225, 203, 241, 0.48);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.hero-vibe h1 {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(38px, 7vw, 68px);
+  line-height: 0.98;
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  text-transform: uppercase;
+}
+
+.hero-vibe h1 span {
+  background:
+    linear-gradient(
+      90deg,
+      #ffffff 0%,
+      #d7b4ff 45%,
+      #9c5cff 100%
+    );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-vibe p {
+  position: relative;
+  z-index: 2;
+  margin: 20px auto 0;
+  color: rgba(225, 203, 241, 0.48);
+  font-size: 12px;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+}
+
+.hero-glow {
+  position: absolute;
+  z-index: 0;
+  width: 260px;
+  height: 130px;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(153, 88, 243, 0.14);
+  filter: blur(55px);
+  pointer-events: none;
+}
+
+@media (max-width: 620px) {
+
+  .home .hero-vibe {
+    margin-top: 46px;
+  }
+
+  .hero-vibe .hero-eyebrow {
+    margin-bottom: 13px;
+    padding: 5px 9px;
+    font-size: 7px;
+    letter-spacing: 0.11em;
+  }
+
+  .hero-vibe h1 {
+    font-size: 42px;
+    line-height: 0.98;
+  }
+
+  .hero-vibe p {
+    margin-top: 15px;
+    font-size: 10px;
+  }
+
+  .hero-glow {
+    width: 200px;
+    height: 100px;
+  }
+
+}
