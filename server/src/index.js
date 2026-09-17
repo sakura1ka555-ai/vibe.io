@@ -1547,6 +1547,21 @@ io.on(
         );
 
 
+        socket.emit(
+  "room-state",
+  {
+    action:
+      room.playback?.action ||
+      "pause",
+
+    position:
+      Number(
+        room.playback?.position
+      ) || 0
+  }
+);
+
+
         io.to(
           roomId
         ).emit(
