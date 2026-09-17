@@ -27,6 +27,8 @@ type Room = {
   title: string;
   users: number;
   videoUrl: string;
+  public?: boolean;
+  category?: string;
 };
 
 
@@ -43,12 +45,10 @@ function getSavedProfile(): ProfileData {
         PROFILE_STORAGE_KEY
       );
 
-
     if (saved) {
 
       const parsed =
         JSON.parse(saved);
-
 
       return {
 
@@ -69,7 +69,6 @@ function getSavedProfile(): ProfileData {
     // ignore
 
   }
-
 
   return {
 
@@ -99,7 +98,6 @@ function App() {
 
         const saved =
           getSavedProfile();
-
 
         return {
 
@@ -193,7 +191,10 @@ function App() {
   */
 
   async function createRoom(
-    videoUrl: string
+    videoUrl: string,
+    title: string,
+    isPublic: boolean,
+    category: string
   ) {
 
     const roomId =
@@ -203,18 +204,29 @@ function App() {
         .toUpperCase();
 
 
+    const roomTitle =
+      title.trim() ||
+      `Комната ${roomId}`;
+
+
     const room: Room = {
 
       id:
         roomId,
 
       title:
-        `Комната ${roomId}`,
+        roomTitle,
 
       users:
         0,
 
-      videoUrl
+      videoUrl,
+
+      public:
+        isPublic,
+
+      category:
+        category
 
     };
 
@@ -242,7 +254,13 @@ function App() {
                   room.title,
 
                 videoUrl:
-                  room.videoUrl
+                  room.videoUrl,
+
+                public:
+                  room.public,
+
+                category:
+                  room.category
               })
           }
         );
@@ -257,10 +275,47 @@ function App() {
       }
 
 
+      const data =
+        await response.json();
+
+
+      const createdRoom =
+        data?.room;
+
+
+      const finalRoom: Room = {
+
+        id:
+          createdRoom?.id ||
+          room.id,
+
+        title:
+          createdRoom?.title ||
+          room.title,
+
+        users:
+          createdRoom?.users ||
+          0,
+
+        videoUrl:
+          createdRoom?.videoUrl ||
+          room.videoUrl,
+
+        public:
+          createdRoom?.public ??
+          room.public,
+
+        category:
+          createdRoom?.category ||
+          room.category
+
+      };
+
+
       setRooms(
         previous => [
           ...previous,
-          room
+          finalRoom
         ]
       );
 
@@ -271,7 +326,7 @@ function App() {
 
 
       setActiveRoom(
-        room
+        finalRoom
       );
 
     } catch (error) {
@@ -393,7 +448,15 @@ function App() {
 
         videoUrl:
           room.videoUrl ||
-          ""
+          "",
+
+        public:
+          room.public ??
+          false,
+
+        category:
+          room.category ||
+          "other"
 
       };
 
@@ -710,6 +773,10 @@ function App() {
       </div>
 
 
+      {/* =========================
+          HERO
+      ========================= */}
+
       <section className="hero">
 
         <h1>
@@ -733,6 +800,10 @@ function App() {
 
       </section>
 
+
+      {/* =========================
+          ACTIONS
+      ========================= */}
 
       <section className="actions">
 
