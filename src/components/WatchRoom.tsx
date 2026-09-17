@@ -751,16 +751,6 @@ function WatchRoom({
       people: unknown
     ) {
 
-      /*
-        Сервер сейчас может отправлять
-        числовое количество зрителей
-        через event "presence".
-
-        Chat ожидает массив пользователей,
-        поэтому число нельзя передавать
-        в setPresence().
-      */
-
       if (
         Array.isArray(people)
       ) {
@@ -795,17 +785,30 @@ function WatchRoom({
       }
 
 
-      setInitialAction(
+      const action =
         state.action === "play"
           ? "play"
-          : "pause"
+          : "pause";
+
+
+      const position =
+        Number(
+          state.position
+        );
+
+
+      setInitialAction(
+        action
       );
 
 
       setInitialPosition(
-        Number(
-          state.position
-        ) || 0
+        Number.isFinite(position)
+          ? Math.max(
+              0,
+              position
+            )
+          : 0
       );
 
     }
@@ -817,6 +820,8 @@ function WatchRoom({
           "play" | "pause";
 
         position: number;
+
+        id?: number;
       }
     ) {
 
@@ -827,51 +832,36 @@ function WatchRoom({
       }
 
 
-      setRemoteControl({
-
-        action:
-          data.action === "play"
-            ? "play"
-            : "pause",
-
-        position:
-          Number(
-            data.position
-          ) || 0,
-
-        id:
-          Date.now()
-
-      });
-
-    }
+      const action =
+        data.action === "play"
+          ? "play"
+          : "pause";
 
 
-    function handleVideoPosition(
-      data: {
-        position: number;
-      }
-    ) {
-
-      if (
-        !data
-      ) {
-        return;
-      }
+      const position =
+        Number(
+          data.position
+        );
 
 
       setRemoteControl({
 
-        action:
-          initialAction,
+        action,
 
         position:
-          Number(
-            data.position
-          ) || 0,
+          Number.isFinite(position)
+            ? Math.max(
+                0,
+                position
+              )
+            : 0,
 
         id:
-          Date.now()
+          Number.isFinite(
+            Number(data.id)
+          )
+            ? Number(data.id)
+            : Date.now()
 
       });
 
@@ -879,14 +869,38 @@ function WatchRoom({
 
 
     function handleReaction(
-      reaction: Reaction
+      data: {
+        reaction?: string;
+        user?: string;
+        id?: string;
+      }
     ) {
 
       if (
-        !reaction
+        !data?.reaction
       ) {
         return;
       }
+
+
+      const reaction: Reaction = {
+
+        id:
+          String(
+            data.id ||
+            `${Date.now()}-${Math.random()}`
+          ),
+
+        reaction:
+          data.reaction,
+
+        user:
+          String(
+            data.user ||
+            "Guest"
+          )
+
+      };
 
 
       setReactionsOnScreen(
@@ -937,12 +951,6 @@ function WatchRoom({
     socket.on(
       "video-control",
       handleRemoteControl
-    );
-
-
-    socket.on(
-      "video-position",
-      handleVideoPosition
     );
 
 
@@ -1006,12 +1014,6 @@ function WatchRoom({
 
 
       socket.off(
-        "video-position",
-        handleVideoPosition
-      );
-
-
-      socket.off(
         "reaction",
         handleReaction
       );
@@ -1021,8 +1023,7 @@ function WatchRoom({
   }, [
     roomId,
     userName,
-    profile.avatar,
-    initialAction
+    profile.avatar
   ]);
 
 
@@ -1157,7 +1158,7 @@ function WatchRoom({
 
   /*
     =========================
-    COPY INVITE
+    COPY INVITE LINK
     =========================
   */
 
