@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState
 } from "react";
@@ -14,8 +13,7 @@ import ProfileModal, {
 
 import {
   socket,
-  joinRoom,
-  sendVideoSeek
+  joinRoom
 } from "../socket";
 
 
@@ -33,7 +31,6 @@ type Reaction = {
   id: string;
   reaction: string;
   user: string;
-  left: number;
 };
 
 
@@ -42,13 +39,6 @@ type VibeStatsStorage = {
   activity: Record<string, number>;
   activeSince: number | null;
   lastHeartbeat: number | null;
-};
-
-
-type RemoteControl = {
-  action: "play" | "pause";
-  position: number;
-  id: number;
 };
 
 
@@ -82,7 +72,8 @@ const VIBE_USER_ID_KEY =
 
 
 function getTodayKey() {
-  const date = new Date();
+  const date =
+    new Date();
 
   const year =
     date.getFullYear();
@@ -132,29 +123,24 @@ function createUserId() {
 
 
 function getUserId() {
-  try {
-    const existing =
-      localStorage.getItem(
-        VIBE_USER_ID_KEY
-      );
-
-    if (existing) {
-      return existing;
-    }
-
-    const id =
-      createUserId();
-
-    localStorage.setItem(
-      VIBE_USER_ID_KEY,
-      id
+  const existing =
+    localStorage.getItem(
+      VIBE_USER_ID_KEY
     );
 
-    return id;
-
-  } catch {
-    return createUserId();
+  if (existing) {
+    return existing;
   }
+
+  const id =
+    createUserId();
+
+  localStorage.setItem(
+    VIBE_USER_ID_KEY,
+    id
+  );
+
+  return id;
 }
 
 
@@ -198,22 +184,22 @@ function loadStats(
     return {
       totalSeconds:
         Number(
-          parsed?.totalSeconds
+          parsed.totalSeconds
         ) || 0,
 
       activity:
-        parsed?.activity &&
+        parsed.activity &&
         typeof parsed.activity === "object"
           ? parsed.activity
           : {},
 
       activeSince:
-        typeof parsed?.activeSince === "number"
+        typeof parsed.activeSince === "number"
           ? parsed.activeSince
           : null,
 
       lastHeartbeat:
-        typeof parsed?.lastHeartbeat === "number"
+        typeof parsed.lastHeartbeat === "number"
           ? parsed.lastHeartbeat
           : null
     };
@@ -240,10 +226,10 @@ function saveStats(
 
   } catch {
 
-    // ignore
+    // localStorage недоступен
+    // или переполнен
 
   }
-
 }
 
 
@@ -305,103 +291,74 @@ function WatchRoom({
 }: Props) {
 
   const userName =
-    profile.name?.trim() ||
+    profile.name ||
     "Guest";
 
 
-  /*
-    =================================
-    ROOM STATE
-    =================================
-  */
-
   const [users, setUsers] =
     useState(1);
+
 
   const [presence, setPresence] =
     useState<PresenceUser[]>([]);
 
 
-  /*
-    =================================
-    VIDEO SYNC STATE
-    =================================
-  */
-
-  const [initialPosition, setInitialPosition] =
-    useState(0);
-
-  const [initialAction, setInitialAction] =
-    useState<"play" | "pause">(
-      "pause"
-    );
-
-  const [remoteControl, setRemoteControl] =
-    useState<RemoteControl | null>(
-      null
-    );
-
-
-  /*
-    =================================
-    REACTIONS
-    =================================
-  */
-
   const [reactionsOnScreen, setReactionsOnScreen] =
     useState<Reaction[]>([]);
 
 
-  /*
-    =================================
-    MODALS
-    =================================
-  */
+  const [initialPosition, setInitialPosition] =
+    useState(0);
+
+
+  const [initialAction, setInitialAction] =
+    useState<
+      "play" | "pause"
+    >(
+      "pause"
+    );
+
+
+  const [remoteControl, setRemoteControl] =
+    useState<{
+      action:
+        "play" | "pause";
+
+      position: number;
+
+      id: number;
+    } | null>(
+      null
+    );
+
 
   const [inviteOpen, setInviteOpen] =
     useState(false);
 
+
   const [inviteCopied, setInviteCopied] =
     useState(false);
+
 
   const [profileOpen, setProfileOpen] =
     useState(false);
 
 
   /*
-    =================================
-    SYNC REFS
-    =================================
-  */
-
-  const lastRemoteIdRef =
-    useRef<number | null>(null);
-
-  const remoteApplyTimerRef =
-    useRef<number | null>(null);
-
-  const lastPositionSentRef =
-    useRef(0);
-
-  const joinedRoomRef =
-    useRef<string | null>(null);
-
-
-  /*
-    =================================
+    =========================
     VIBE TIME
-    =================================
+  =========================
   */
 
   const userIdRef =
     useRef<string | null>(null);
 
-  if (!userIdRef.current) {
 
+  if (!userIdRef.current) {
     userIdRef.current =
       getUserId();
-
   }
+
 
   const userId =
     userIdRef.current;
@@ -443,14 +400,15 @@ function WatchRoom({
       !Number.isFinite(seconds) ||
       seconds <= 0
     ) {
-
       return;
-
     }
 
 
     const rounded =
-      Math.floor(seconds);
+      Math.max(
+        0,
+        Math.floor(seconds)
+      );
 
 
     if (rounded <= 0) {
@@ -535,15 +493,18 @@ function WatchRoom({
       startedAt !== null
     ) {
 
-      const elapsed =
+      const now =
+        Date.now();
+
+
+      const seconds =
         (
-          Date.now() -
-          startedAt
+          now - startedAt
         ) / 1000;
 
 
       addElapsedTime(
-        elapsed
+        seconds
       );
 
     }
@@ -571,6 +532,15 @@ function WatchRoom({
 
   useEffect(() => {
 
+    /*
+      Если предыдущая сессия
+      каким-то образом осталась
+      после закрытия браузера,
+      восстанавливаем только
+      небольшой промежуток времени,
+      а не считаем всю ночь.
+    */
+
     const stored =
       statsRef.current;
 
@@ -580,13 +550,17 @@ function WatchRoom({
       stored.lastHeartbeat !== null
     ) {
 
+      const now =
+        Date.now();
+
+
       const missedSeconds =
         Math.min(
           10,
           Math.max(
             0,
             (
-              Date.now() -
+              now -
               stored.lastHeartbeat
             ) / 1000
           )
@@ -633,12 +607,9 @@ function WatchRoom({
 
 
           if (
-            sessionStartedRef.current ===
-            null
+            sessionStartedRef.current === null
           ) {
-
             return;
-
           }
 
 
@@ -728,30 +699,28 @@ function WatchRoom({
 
     };
 
-  }, [userId]);
+  }, [
+    userId
+  ]);
 
 
   /*
-    =================================
-    WEEKLY ACTIVITY
-    =================================
+    =========================
+    LIVE ACTIVITY
+  =========================
   */
 
   const weeklyActivity =
-    useMemo(
-      () =>
-        getLastSevenDays().map(
-          day =>
-            activity[day.key] || 0
-        ),
-      [activity]
+    getLastSevenDays().map(
+      day =>
+        activity[day.key] || 0
     );
 
 
   /*
-    =================================
+    =========================
     INVITE
-    =================================
+  =========================
   */
 
   const inviteUrl =
@@ -759,361 +728,84 @@ function WatchRoom({
 
 
   /*
-    =================================
-    SOCKET ROOM
-    =================================
+    =========================
+    JOIN ROOM
+  =========================
   */
 
   useEffect(() => {
 
-    /*
-      Не перезаходим в комнату
-      только из-за обновления
-      профиля.
-    */
-
-    if (
-      joinedRoomRef.current ===
-      roomId
-    ) {
-
-      return;
-
-    }
-
-
-    joinedRoomRef.current =
-      roomId;
-
-
     function handleUsers(
-      count: unknown
+      count: number
     ) {
 
-      const numeric =
-        Number(count);
-
-
-      if (
-        Number.isFinite(numeric)
-      ) {
-
-        setUsers(
-          Math.max(
-            0,
-            Math.floor(numeric)
-          )
-        );
-
-      }
+      setUsers(
+        count
+      );
 
     }
 
 
     function handlePresence(
-      people: unknown
+      people: PresenceUser[]
     ) {
 
-      if (
-        !Array.isArray(people)
-      ) {
-
-        setPresence([]);
-
-        return;
-
-      }
-
-
-      const normalized =
-        people.map(
-          (person: any) => ({
-
-            id:
-              String(
-                person?.id ??
-                ""
-              ),
-
-            name:
-              String(
-                person?.name ||
-                "Guest"
-              ),
-
-            position:
-              Number(
-                person?.position
-              ) || 0,
-
-            time:
-              String(
-                person?.time ||
-                ""
-              ),
-
-            state:
-              person?.state ===
-              "play"
-                ? "play"
-                : "pause",
-
-            avatar:
-              String(
-                person?.avatar ||
-                ""
-              )
-
-          })
-        );
-
-
       setPresence(
-        normalized
+        people
       );
 
     }
 
 
-    /*
-      =================================
-      ROOM STATE
-      =================================
-
-      Сервер присылает текущее
-      состояние комнаты.
-
-      Это используется только
-      при первоначальном входе.
-    */
-
     function handleRoomState(
-      state: any
+      state: {
+        action:
+          "play" | "pause";
+
+        position: number;
+      }
     ) {
 
-      if (!state) {
-        return;
-      }
-
-
-      const action =
-        state.action === "play"
-          ? "play"
-          : "pause";
-
-
-      const rawPosition =
-        Number(
-          state.position
-        );
-
-
-      const position =
-        Number.isFinite(
-          rawPosition
-        )
-          ? Math.max(
-              0,
-              rawPosition
-            )
-          : 0;
-
-
-      lastRemoteIdRef.current =
-        null;
-
-
       setInitialAction(
-        action
+        state.action
       );
 
 
       setInitialPosition(
-        position
+        state.position || 0
       );
 
     }
 
 
-    /*
-      =================================
-      REMOTE VIDEO CONTROL
-      =================================
-    */
-
     function handleRemoteControl(
-      data: any
+      data: {
+        action:
+          "play" | "pause";
+
+        position: number;
+      }
     ) {
 
-      if (!data) {
-        return;
-      }
-
-
-      const action =
-        data.action === "play"
-          ? "play"
-          : "pause";
-
-
-      const rawPosition =
-        Number(
-          data.position
-        );
-
-
-      const position =
-        Number.isFinite(
-          rawPosition
-        )
-          ? Math.max(
-              0,
-              rawPosition
-            )
-          : 0;
-
-
-      const rawId =
-        Number(
-          data.id
-        );
-
-
-      const id =
-        Number.isFinite(rawId)
-          ? rawId
-          : Date.now();
-
-
-      /*
-        Защита от повторного
-        одинакового события.
-      */
-
-      if (
-        lastRemoteIdRef.current ===
-        id
-      ) {
-
-        return;
-
-      }
-
-
-      lastRemoteIdRef.current =
-        id;
-
-
-      /*
-        Передаём команду плееру.
-      */
-
       setRemoteControl({
-        action,
-        position,
-        id
+
+        action:
+          data.action,
+
+        position:
+          data.position,
+
+        id:
+          Date.now()
+
       });
 
     }
 
 
-    /*
-      =================================
-      REMOTE SEEK
-      =================================
-    */
-
-    function handleRemoteSeek(
-      data: any
-    ) {
-
-      if (!data) {
-        return;
-      }
-
-
-      const rawPosition =
-        Number(
-          data.position
-        );
-
-
-      if (
-        !Number.isFinite(
-          rawPosition
-        )
-      ) {
-
-        return;
-
-      }
-
-
-      const position =
-        Math.max(
-          0,
-          rawPosition
-        );
-
-
-      window.dispatchEvent(
-        new CustomEvent(
-          "vibe-video-seek",
-          {
-            detail: {
-              position
-            }
-          }
-        )
-      );
-
-    }
-
-
-    /*
-      =================================
-      REACTION
-      =================================
-    */
-
     function handleReaction(
-      data: any
+      reaction: Reaction
     ) {
-
-      if (
-        !data?.reaction
-      ) {
-
-        return;
-
-      }
-
-
-      const reaction: Reaction = {
-
-        id:
-          String(
-            data.id ||
-            `${Date.now()}-${Math.random()}`
-          ),
-
-        reaction:
-          String(
-            data.reaction
-          ),
-
-        user:
-          String(
-            data.user ||
-            "Guest"
-          ),
-
-        left:
-          15 +
-          Math.random() * 70
-
-      };
-
 
       setReactionsOnScreen(
         previous => [
@@ -1142,12 +834,6 @@ function WatchRoom({
     }
 
 
-    /*
-      =================================
-      REGISTER SOCKET EVENTS
-      =================================
-    */
-
     socket.on(
       "users",
       handleUsers
@@ -1173,22 +859,10 @@ function WatchRoom({
 
 
     socket.on(
-      "video-seek",
-      handleRemoteSeek
-    );
-
-
-    socket.on(
       "reaction",
       handleReaction
     );
 
-
-    /*
-      =================================
-      JOIN
-      =================================
-    */
 
     joinRoom(
       roomId,
@@ -1196,40 +870,28 @@ function WatchRoom({
     );
 
 
-    /*
-      Профиль отправляем после
-      фактического подключения.
-    */
+    window.setTimeout(
+      () => {
 
-    const profileTimer =
-      window.setTimeout(
-        () => {
+        socket.emit(
+          "profile-update",
+          {
+            roomId,
 
-          socket.emit(
-            "profile-update",
-            {
-              roomId,
+            name:
+              userName,
 
-              name:
-                userName,
+            avatar:
+              profile.avatar || ""
+          }
+        );
 
-              avatar:
-                profile.avatar ||
-                ""
-            }
-          );
-
-        },
-        250
-      );
+      },
+      100
+    );
 
 
     return () => {
-
-      window.clearTimeout(
-        profileTimer
-      );
-
 
       socket.off(
         "users",
@@ -1256,58 +918,11 @@ function WatchRoom({
 
 
       socket.off(
-        "video-seek",
-        handleRemoteSeek
-      );
-
-
-      socket.off(
         "reaction",
         handleReaction
       );
 
-
-      joinedRoomRef.current =
-        null;
-
     };
-
-  }, [
-    roomId
-  ]);
-
-
-  /*
-    =================================
-    PROFILE UPDATE
-    =================================
-  */
-
-  useEffect(() => {
-
-    if (
-      joinedRoomRef.current !==
-      roomId
-    ) {
-
-      return;
-
-    }
-
-
-    socket.emit(
-      "profile-update",
-      {
-        roomId,
-
-        name:
-          userName,
-
-        avatar:
-          profile.avatar ||
-          ""
-      }
-    );
 
   }, [
     roomId,
@@ -1317,206 +932,10 @@ function WatchRoom({
 
 
   /*
-    =================================
-    VIDEO CONTROL
-    =================================
-  */
-
-  const handleControl =
-    useCallback(
-      (
-        action:
-          "play" | "pause",
-        position:
-          number
-      ) => {
-
-        const safePosition =
-          Number.isFinite(
-            position
-          )
-            ? Math.max(
-                0,
-                position
-              )
-            : 0;
-
-
-        /*
-          Локальное состояние
-          больше не отправляем обратно
-          через onPosition.
-
-          Только реальная команда:
-          PLAY / PAUSE.
-        */
-
-        socket.emit(
-          "video-control",
-          {
-            roomId,
-
-            action,
-
-            position:
-              safePosition
-          }
-        );
-
-      },
-      [
-        roomId
-      ]
-    );
-
-
-  /*
-    =================================
-    VIDEO SEEK
-    =================================
-  */
-
-  const handleSeek =
-    useCallback(
-      (
-        position: number
-      ) => {
-
-        const safePosition =
-          Number.isFinite(
-            position
-          )
-            ? Math.max(
-                0,
-                position
-              )
-            : 0;
-
-
-        sendVideoSeek(
-          roomId,
-          safePosition
-        );
-
-      },
-      [
-        roomId
-      ]
-    );
-
-
-  /*
-    =================================
-    VIDEO POSITION
-    =================================
-
-    Это heartbeat позиции.
-
-    Не отправляем каждую миллисекунду.
-    Отправляем примерно раз в секунду
-    и только если позиция реально
-    изменилась.
-    =================================
-  */
-
-  const handlePosition =
-    useCallback(
-      (
-        position: number
-      ) => {
-
-        if (
-          !Number.isFinite(
-            position
-          )
-        ) {
-
-          return;
-
-        }
-
-
-        const safePosition =
-          Math.max(
-            0,
-            position
-          );
-
-
-        /*
-          Не шлём одинаковую
-          позицию постоянно.
-        */
-
-        if (
-          Math.abs(
-            safePosition -
-            lastPositionSentRef.current
-          ) < 0.8
-        ) {
-
-          return;
-
-        }
-
-
-        lastPositionSentRef.current =
-          safePosition;
-
-
-        /*
-          video-position используется
-          только как информация
-          о текущей позиции пользователя.
-
-          Оно НЕ должно менять
-          play/pause состояние.
-        */
-
-        socket.emit(
-          "video-position",
-          {
-            roomId,
-
-            position:
-              safePosition
-          }
-        );
-
-      },
-      [
-        roomId
-      ]
-    );
-
-
-  /*
-    =================================
-    REACTION
-    =================================
-  */
-
-  function sendReaction(
-    reaction: string
-  ) {
-
-    socket.emit(
-      "reaction",
-      {
-        roomId,
-
-        reaction
-      }
-    );
-
-  }
-
-
-  /*
-    =================================
-    PROFILE SAVE
-    =================================
-  */
+    =========================
+    PROFILE UPDATE
+  =========================
+    */
 
   function saveProfile(
     newProfile: ProfileData
@@ -1535,15 +954,15 @@ function WatchRoom({
     socket.emit(
       "profile-update",
       {
+
         roomId,
 
         name:
-          newProfile.name?.trim() ||
-          "Guest",
+          newProfile.name,
 
         avatar:
-          newProfile.avatar ||
-          ""
+          newProfile.avatar
+
       }
     );
 
@@ -1551,9 +970,100 @@ function WatchRoom({
 
 
   /*
-    =================================
-    INVITE
-    =================================
+    =========================
+    VIDEO CONTROL
+  =========================
+  */
+
+  const handleControl =
+    useCallback(
+      (
+        action:
+          "play" | "pause",
+
+        position:
+          number
+      ) => {
+
+        socket.emit(
+          "video-control",
+          {
+
+            roomId,
+
+            action,
+
+            position
+
+          }
+        );
+
+      },
+      [
+        roomId
+      ]
+    );
+
+
+  /*
+    =========================
+    VIDEO POSITION
+  =========================
+  */
+
+  const handlePosition =
+    useCallback(
+      (
+        position:
+          number
+      ) => {
+
+        socket.emit(
+          "video-position",
+          {
+
+            roomId,
+
+            position
+
+          }
+        );
+
+      },
+      [
+        roomId
+      ]
+    );
+
+
+  /*
+    =========================
+    REACTION
+  =========================
+  */
+
+  function sendReaction(
+    reaction: string
+  ) {
+
+    socket.emit(
+      "reaction",
+      {
+
+        roomId,
+
+        reaction
+
+      }
+    );
+
+  }
+
+
+  /*
+    =========================
+    COPY INVITE
+  =========================
   */
 
   async function copyInviteLink() {
@@ -1609,17 +1119,9 @@ function WatchRoom({
       textarea.select();
 
 
-      try {
-
-        document.execCommand(
-          "copy"
-        );
-
-      } catch {
-
-        // ignore
-
-      }
+      document.execCommand(
+        "copy"
+      );
 
 
       textarea.remove();
@@ -1645,6 +1147,12 @@ function WatchRoom({
 
   }
 
+
+  /*
+    =========================
+    SHARE
+  =========================
+  */
 
   async function shareInviteLink() {
 
@@ -1684,6 +1192,7 @@ function WatchRoom({
       try {
 
         await navigator.share({
+
           title:
             "VIBE",
 
@@ -1692,13 +1201,15 @@ function WatchRoom({
 
           url:
             inviteUrl
+
         });
+
 
         return;
 
       } catch {
 
-        // cancelled
+        // share cancelled
 
       }
 
@@ -1710,11 +1221,18 @@ function WatchRoom({
   }
 
 
+  /*
+    =========================
+    CLOSE INVITE
+  =========================
+  */
+
   function closeInvite() {
 
     setInviteOpen(
       false
     );
+
 
     setInviteCopied(
       false
@@ -1722,12 +1240,6 @@ function WatchRoom({
 
   }
 
-
-  /*
-    =================================
-    PROFILE LETTER
-    =================================
-  */
 
   const profileLetter =
     (
@@ -1739,18 +1251,21 @@ function WatchRoom({
 
 
   /*
-    =================================
+    =========================
     UI
-    =================================
+  =========================
   */
 
   return (
 
     <main className="watch-room">
 
+
       <section className="watch-main">
 
+
         <header className="watch-header">
+
 
           <div className="watch-title-group">
 
@@ -1758,9 +1273,11 @@ function WatchRoom({
               VIBE ROOM
             </div>
 
+
             <h1>
               {name}
             </h1>
+
 
             <div className="watch-room-code">
               ID: {roomId}
@@ -1770,6 +1287,9 @@ function WatchRoom({
 
 
           <div className="watch-header-actions">
+
+
+            {/* PROFILE */}
 
             <button
               type="button"
@@ -1795,13 +1315,14 @@ function WatchRoom({
 
               )}
 
-
               <span className="watch-profile-name">
                 {profile.name}
               </span>
 
             </button>
 
+
+            {/* INVITE */}
 
             <button
               type="button"
@@ -1828,7 +1349,9 @@ function WatchRoom({
                 ●
               </span>
 
+
               {users}
+
 
               <span className="watch-users-label">
                 watching
@@ -1836,14 +1359,18 @@ function WatchRoom({
 
             </div>
 
+
           </div>
+
 
         </header>
 
 
         <div className="video-frame">
 
+
           <VideoPlayer
+
             videoUrl={
               videoUrl
             }
@@ -1860,10 +1387,6 @@ function WatchRoom({
               handleControl
             }
 
-            onSeek={
-              handleSeek
-            }
-
             onPosition={
               handlePosition
             }
@@ -1871,44 +1394,61 @@ function WatchRoom({
             remoteControl={
               remoteControl
             }
+
           />
 
 
           <div className="floating-reactions">
 
+
             {reactionsOnScreen.map(
-              item => (
+              item => {
 
-                <div
-                  key={
-                    item.id
-                  }
-                  className="floating-reaction"
-                  style={{
-                    left:
-                      `${item.left}%`
-                  }}
-                >
+                const randomLeft =
+                  15 +
+                  (
+                    Math.random() *
+                    70
+                  );
 
-                  <span>
-                    {item.reaction}
-                  </span>
 
-                  <small>
-                    {item.user}
-                  </small>
+                return (
 
-                </div>
+                  <div
+                    key={
+                      item.id
+                    }
+                    className="floating-reaction"
+                    style={{
+                      left:
+                        `${randomLeft}%`
+                    }}
+                  >
 
-              )
+                    <span>
+                      {item.reaction}
+                    </span>
+
+
+                    <small>
+                      {item.user}
+                    </small>
+
+                  </div>
+
+                );
+
+              }
             )}
 
           </div>
+
 
         </div>
 
 
         <div className="reaction-bar">
+
 
           <div className="reaction-label">
             REACT
@@ -1916,6 +1456,7 @@ function WatchRoom({
 
 
           <div className="reaction-buttons">
+
 
             {reactions.map(
               reaction => (
@@ -1943,12 +1484,15 @@ function WatchRoom({
               )
             )}
 
+
           </div>
+
 
         </div>
 
 
         <div className="watch-bottom">
+
 
           <div className="watch-bottom-status">
 
@@ -1971,7 +1515,9 @@ function WatchRoom({
 
           </div>
 
+
         </div>
+
 
       </section>
 
@@ -1982,7 +1528,6 @@ function WatchRoom({
           roomId={
             roomId
           }
-
           presence={
             presence
           }
@@ -1990,6 +1535,10 @@ function WatchRoom({
 
       </aside>
 
+
+      {/* =========================
+          PROFILE MODAL
+      ========================= */}
 
       {profileOpen && (
 
@@ -2025,6 +1574,10 @@ function WatchRoom({
 
       )}
 
+
+      {/* =========================
+          INVITE MODAL
+      ========================= */}
 
       {inviteOpen && (
 
@@ -2117,11 +1670,13 @@ function WatchRoom({
 
             </div>
 
+
           </div>
 
         </div>
 
       )}
+
 
     </main>
 
