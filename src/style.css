@@ -6123,3 +6123,194 @@ button {
   }
 
 }
+
+/* =========================
+   CREATE ROOM — COMPACT FINAL
+   ========================= */
+
+.create-room-modal {
+  width: min(92vw, 440px);
+  max-height: 88vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.create-room-description {
+  margin-top: 6px;
+  margin-bottom: 0;
+  line-height: 1.35;
+}
+
+
+/* PUBLIC / PRIVATE */
+
+.create-room-modal .room-visibility {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.create-room-modal .visibility-option {
+  min-width: 0;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 8px;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+}
+
+.create-room-modal .visibility-icon {
+  font-size: 12px;
+}
+
+
+/* CATEGORY */
+
+.create-room-modal .category-block {
+  margin-top: 7px;
+}
+
+.create-room-modal .category-select {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.create-room-modal .category-option {
+  width: 100%;
+  min-width: 0;
+  min-height: 29px;
+  padding: 4px 2px;
+  border-radius: 7px;
+  font-size: 8px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* FIELDS */
+
+.create-room-modal .compact-field {
+  margin-top: 8px;
+}
+
+.create-room-modal .compact-field label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.create-room-modal .compact-field input {
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+
+/* SOURCE */
+
+.create-room-modal .source-tabs {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 9px;
+}
+
+.create-room-modal .source-tab {
+  min-width: 0;
+  height: 30px;
+  padding: 0 3px;
+  border-radius: 7px;
+  font-size: 7px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.create-room-modal .open-source {
+  width: 100%;
+  height: 31px;
+  margin-top: 5px;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 8px;
+}
+
+
+/* CREATE BUTTON */
+
+.create-room-modal .create-room-button {
+  width: 100%;
+  height: 38px;
+  min-height: 38px;
+  margin-top: 10px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 520px) {
+
+  .create-room-modal {
+    width: calc(100vw - 24px);
+    max-width: none;
+    max-height: 90vh;
+    padding: 18px;
+    border-radius: 17px;
+  }
+
+  .create-room-modal h2 {
+    font-size: 20px;
+  }
+
+  .create-room-description {
+    font-size: 10px;
+  }
+
+  .create-room-modal .room-visibility {
+    margin-top: 4px;
+    gap: 5px;
+  }
+
+  .create-room-modal .visibility-option {
+    height: 32px;
+    min-height: 32px;
+    font-size: 8px;
+  }
+
+  .create-room-modal .category-select {
+    gap: 4px;
+  }
+
+  .create-room-modal .category-option {
+    min-height: 28px;
+    font-size: 7px;
+  }
+
+  .create-room-modal .source-tabs {
+    gap: 3px;
+  }
+
+  .create-room-modal .source-tab {
+    height: 29px;
+    font-size: 6.5px;
+  }
+
+}
