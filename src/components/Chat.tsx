@@ -1,43 +1,46 @@
+```tsx
 import {
   useEffect,
   useState
 } from "react";
 
 import {
-  socket
+  socket,
+  sendChatMessage
 } from "../socket";
 
 
 type Message = {
-
+  id: string;
   user: string;
-
   text: string;
-
+  avatar?: string;
 };
 
 
 type PresenceUser = {
-
   id: string;
-
   name: string;
-
   position: number;
-
   time: string;
-
+  state?: "play" | "pause";
   avatar?: string;
-
 };
 
 
 type Props = {
-
   roomId: string;
-
   presence: PresenceUser[];
+};
 
+
+type IncomingMessage = {
+  id?: string | number;
+  roomId?: string;
+  user?: string;
+  name?: string;
+  text?: string;
+  avatar?: string;
 };
 
 
@@ -54,17 +57,121 @@ function Chat({
     useState("");
 
 
+  /*
+    =========================
+    CHAT MESSAGES
+    =========================
+  */
+
   useEffect(() => {
 
     function handleMessage(
-      message: Message
+      data: IncomingMessage
     ) {
 
+      if (!data) {
+        return;
+      }
+
+
+      /*
+        Если сервер прислал roomId,
+        принимаем сообщение только
+        для текущей комнаты.
+      */
+
+      if (
+        data.roomId &&
+        String(data.roomId) !==
+          String(roomId)
+      ) {
+
+        return;
+
+      }
+
+
+      const messageText =
+        String(
+          data.text ||
+          ""
+        ).trim();
+
+
+      if (!messageText) {
+        return;
+      }
+
+
+      const user =
+        String(
+          data.user ||
+          data.name ||
+          "Guest"
+        )
+          .trim()
+          .slice(
+            0,
+            40
+          ) ||
+        "Guest";
+
+
+      const messageId =
+        String(
+          data.id ||
+          `${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 9)}`
+        );
+
+
+      const message: Message = {
+
+        id:
+          messageId,
+
+        user,
+
+        text:
+          messageText,
+
+        avatar:
+          String(
+            data.avatar ||
+            ""
+          )
+
+      };
+
+
       setMessages(
-        previous => [
-          ...previous,
-          message
-        ]
+        previous => {
+
+          /*
+            Защита от повторной доставки
+            одного и того же сообщения.
+          */
+
+          if (
+            previous.some(
+              item =>
+                item.id ===
+                message.id
+            )
+          ) {
+
+            return previous;
+
+          }
+
+
+          return [
+            ...previous,
+            message
+          ];
+
+        }
       );
 
     }
@@ -85,8 +192,16 @@ function Chat({
 
     };
 
-  }, []);
+  }, [
+    roomId
+  ]);
 
+
+  /*
+    =========================
+    SEND MESSAGE
+    =========================
+  */
 
   function sendMessage() {
 
@@ -99,16 +214,23 @@ function Chat({
     }
 
 
-    socket.emit(
-      "chat-message",
-      {
+    if (
+      !roomId
+    ) {
 
-        roomId,
+      return;
 
-        text:
-          message
+    }
 
-      }
+
+    /*
+      Используем общий метод
+      из socket.ts.
+    */
+
+    sendChatMessage(
+      roomId,
+      message
     );
 
 
@@ -116,6 +238,12 @@ function Chat({
 
   }
 
+
+  /*
+    =========================
+    KEYBOARD
+    =========================
+  */
 
   function handleKeyDown(
     event:
@@ -129,12 +257,19 @@ function Chat({
 
       event.preventDefault();
 
+
       sendMessage();
 
     }
 
   }
 
+
+  /*
+    =========================
+    AVATAR
+    =========================
+  */
 
   function getAvatarLetter(
     name: string
@@ -150,10 +285,33 @@ function Chat({
   }
 
 
+  /*
+    =========================
+    VIEWER COUNT
+    =========================
+  */
+
+  const viewerCount =
+    Math.max(
+      1,
+      presence.length
+    );
+
+
+  /*
+    =========================
+    UI
+    =========================
+  */
+
   return (
 
     <div className="chat">
 
+
+      {/* =========================
+          HEADER
+      ========================= */}
 
       <div className="chat-header">
 
@@ -163,14 +321,17 @@ function Chat({
             Чат
           </div>
 
+
           <div className="chat-online">
 
             <span>
               ●
             </span>
 
-            {presence.length || 1}
+            {viewerCount}
+
             {" "}
+
             сейчас смотрят
 
           </div>
@@ -179,7 +340,9 @@ function Chat({
 
 
         <div className="chat-room">
+
           {roomId}
+
         </div>
 
       </div>
@@ -192,11 +355,14 @@ function Chat({
       <div className="chat-viewers">
 
         <div className="chat-viewers-title">
+
           СЕЙЧАС СМОТРЯТ
+
         </div>
 
 
         <div className="chat-viewers-list">
+
 
           {presence.length === 0 && (
 
@@ -212,12 +378,16 @@ function Chat({
               <div className="viewer-info">
 
                 <div className="viewer-name">
+
                   Guest
+
                 </div>
 
 
                 <div className="viewer-time">
+
                   00:00
+
                 </div>
 
               </div>
@@ -237,13 +407,14 @@ function Chat({
                 className="viewer"
               >
 
-
                 <div className="viewer-avatar">
 
                   {person.avatar ? (
 
                     <img
-                      src={person.avatar}
+                      src={
+                        person.avatar
+                      }
                       alt=""
                       className="viewer-avatar-image"
                     />
@@ -263,7 +434,8 @@ function Chat({
 
                   <div className="viewer-name">
 
-                    {person.name}
+                    {person.name ||
+                      "Guest"}
 
                   </div>
 
@@ -271,10 +443,13 @@ function Chat({
                   <div className="viewer-time">
 
                     <span className="viewer-live-dot">
+
                       ●
+
                     </span>
 
-                    {person.time}
+                    {person.time ||
+                      "00:00"}
 
                   </div>
 
@@ -308,14 +483,11 @@ function Chat({
 
 
         {messages.map(
-          (
-            message,
-            index
-          ) => (
+          message => (
 
             <div
               key={
-                index
+                message.id
               }
               className="message"
             >
@@ -366,6 +538,8 @@ function Chat({
 
           autoComplete="off"
 
+          maxLength={500}
+
         />
 
 
@@ -376,6 +550,12 @@ function Chat({
           onClick={
             sendMessage
           }
+
+          disabled={
+            !text.trim()
+          }
+
+          aria-label="Отправить сообщение"
 
         >
 
@@ -394,3 +574,4 @@ function Chat({
 
 
 export default Chat;
+```
