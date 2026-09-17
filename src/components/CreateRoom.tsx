@@ -87,7 +87,7 @@ const categories = [
 ];
 
 
-function CreateRoom({
+export default function CreateRoom({
   onCreate,
   onClose
 }: Props) {
@@ -609,5 +609,3 @@ function CreateRoom({
 }
 
 
-export default CreateRoom;
-```
