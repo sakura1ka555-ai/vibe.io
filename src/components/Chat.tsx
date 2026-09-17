@@ -1,4 +1,3 @@
-```tsx
 import {
   useEffect,
   useState
@@ -574,4 +573,3 @@ function Chat({
 
 
 export default Chat;
-```
