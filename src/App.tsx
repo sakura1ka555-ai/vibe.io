@@ -11,6 +11,7 @@ import ProfileModal, {
   ProfileData
 } from "./components/ProfileModal";
 import Friends from "./components/Friends";
+import PublicRooms from "./components/PublicRooms";
 
 import {
   initTelegram,
@@ -121,6 +122,10 @@ function App() {
     useState<Room[]>([]);
 
 
+  const [publicRooms, setPublicRooms] =
+    useState<Room[]>([]);
+
+
   const [createOpen, setCreateOpen] =
     useState(false);
 
@@ -186,9 +191,123 @@ function App() {
 
   /*
     =========================
+    LOAD PUBLIC ROOMS
+    =========================
+  */
+
+  useEffect(() => {
+
+    let mounted = true;
+
+
+    async function loadPublicRooms() {
+
+      try {
+
+        const response =
+          await fetch(
+            `${SERVER_URL}/rooms/public`
+          );
+
+
+        if (!response.ok) {
+
+          return;
+
+        }
+
+
+        const data =
+          await response.json();
+
+
+        if (!mounted) {
+
+          return;
+
+        }
+
+
+        const loadedRooms =
+          Array.isArray(
+            data?.rooms
+          )
+            ? data.rooms
+            : [];
+
+
+        setPublicRooms(
+          loadedRooms.map(
+            (room: Room) => ({
+              id:
+                room.id,
+
+              title:
+                room.title ||
+                "Без названия",
+
+              users:
+                Number(
+                  room.users || 0
+                ),
+
+              videoUrl:
+                room.videoUrl ||
+                "",
+
+              public:
+                true,
+
+              category:
+                room.category ||
+                "other"
+
+            })
+          )
+        );
+
+      } catch (error) {
+
+        console.error(
+          "Public rooms error:",
+          error
+        );
+
+      }
+
+    }
+
+
+    void loadPublicRooms();
+
+
+    const interval =
+      window.setInterval(
+        () => {
+          void loadPublicRooms();
+        },
+        10000
+      );
+
+
+    return () => {
+
+      mounted = false;
+
+      window.clearInterval(
+        interval
+      );
+
+    };
+
+  }, []);
+
+
+  /*
+    =========================
     CREATE ROOM
   =========================
-  */
+    */
 
   async function createRoom(
     videoUrl: string,
@@ -318,6 +437,44 @@ function App() {
           finalRoom
         ]
       );
+
+
+      /*
+        Если комната публичная,
+        сразу добавляем её в LIVE NOW.
+      */
+
+      if (
+        finalRoom.public
+      ) {
+
+        setPublicRooms(
+          previous => {
+
+            const exists =
+              previous.some(
+                item =>
+                  item.id ===
+                  finalRoom.id
+              );
+
+
+            if (exists) {
+
+              return previous;
+
+            }
+
+
+            return [
+              finalRoom,
+              ...previous
+            ];
+
+          }
+        );
+
+      }
 
 
       setCreateOpen(
@@ -520,7 +677,7 @@ function App() {
   /*
     =========================
     AUTO JOIN
-  =========================
+    =========================
   */
 
   useEffect(() => {
@@ -609,7 +766,7 @@ function App() {
   /*
     =========================
     PROFILE SAVE
-  =========================
+    =========================
   */
 
   function saveProfile(
@@ -631,7 +788,7 @@ function App() {
   /*
     =========================
     ACTIVE ROOM
-  =========================
+    =========================
   */
 
   if (
@@ -672,7 +829,7 @@ function App() {
   /*
     =========================
     AVATAR LETTER
-  =========================
+    =========================
   */
 
   const profileLetter =
@@ -687,7 +844,7 @@ function App() {
   /*
     =========================
     HOME
-  =========================
+    =========================
   */
 
   return (
@@ -1005,7 +1162,24 @@ function App() {
 
 
       {/* =========================
-          ROOMS
+          LIVE NOW
+      ========================= */}
+
+      <PublicRooms
+        rooms={
+          publicRooms
+        }
+        onJoin={
+          roomId =>
+            void joinRoom(
+              roomId
+            )
+        }
+      />
+
+
+      {/* =========================
+          YOUR ROOMS
       ========================= */}
 
       {rooms.length > 0 && (
