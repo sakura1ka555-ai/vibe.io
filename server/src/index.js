@@ -79,6 +79,16 @@ const rooms =
 
 /*
   =========================
+  ONLINE USERS
+  =========================
+*/
+
+const onlineUsers =
+  new Map();
+
+
+/*
+  =========================
   VIBE ID
   =========================
 */
@@ -345,27 +355,6 @@ function emitFriendsData(
           userId
         )
     }
-  );
-
-}
-
-
-/*
-  =========================
-  ONLINE USERS
-  =========================
-*/
-
-const onlineUsers =
-  new Map();
-
-
-function isUserOnline(
-  userId
-) {
-
-  return onlineUsers.has(
-    userId
   );
 
 }
@@ -859,11 +848,11 @@ app.post(
 
       },
 
-      participants:
-        new Map(),
-
       playbackVersion:
-        0
+        0,
+
+      participants:
+        new Map()
 
     };
 
@@ -1304,10 +1293,8 @@ io.on(
               SELECT id
               FROM friend_requests
               WHERE
-                (
-                  from_user_id = ?
-                  AND to_user_id = ?
-                )
+                from_user_id = ?
+                AND to_user_id = ?
                 AND status = 'pending'
               `
             )
@@ -1341,10 +1328,8 @@ io.on(
               SELECT id
               FROM friend_requests
               WHERE
-                (
-                  from_user_id = ?
-                  AND to_user_id = ?
-                )
+                from_user_id = ?
+                AND to_user_id = ?
                 AND status = 'pending'
               `
             )
@@ -1860,7 +1845,14 @@ io.on(
               userName,
 
             avatar:
-              "",
+              currentUserId
+                ? (
+                    getUser(
+                      currentUserId
+                    )?.avatar ||
+                    ""
+                  )
+                : "",
 
             position:
               Number(
@@ -2079,8 +2071,7 @@ io.on(
 
 
         const action =
-          data?.action ===
-          "play"
+          data?.action === "play"
             ? "play"
             : "pause";
 
@@ -2099,7 +2090,22 @@ io.on(
                 0,
                 rawPosition
               )
-            : 0;
+            : Number(
+                room.playback?.position
+              ) || 0;
+
+
+        /*
+          PLAY / PAUSE — единственная
+          команда, которая меняет
+          глобальное состояние action.
+        */
+
+        room.playback =
+          {
+            action,
+            position
+          };
 
 
         room.playbackVersion =
@@ -2110,14 +2116,9 @@ io.on(
           ) + 1;
 
 
-        room.playback = {
-
-          action,
-
-          position
-
-        };
-
+        /*
+          Обновляем отправителя.
+        */
 
         const participant =
           room.participants?.get(
@@ -2138,22 +2139,72 @@ io.on(
         }
 
 
+        /*
+          Обновляем состояние
+          остальных участников.
+
+          Их текущая позиция здесь
+          НЕ трогается.
+        */
+
+        if (
+          room.participants
+        ) {
+
+          for (
+            const [
+              participantSocketId,
+              otherParticipant
+            ]
+            of room.participants.entries()
+          ) {
+
+            if (
+              participantSocketId ===
+              socket.id
+            ) {
+
+              continue;
+
+            }
+
+
+            otherParticipant.state =
+              action;
+
+          }
+
+        }
+
+
+        /*
+          Отправляем команду только
+          другим клиентам.
+
+          Отправитель уже находится
+          в нужном состоянии.
+        */
+
         socket
-          .to(roomId)
+          .to(
+            roomId
+          )
           .emit(
             "video-control",
             {
-
               action,
 
               position,
 
               id:
                 room.playbackVersion
-
             }
           );
 
+
+        /*
+          Presence отправляем всем.
+        */
 
         io.to(
           roomId
@@ -2227,8 +2278,9 @@ io.on(
 
 
         /*
-          Перемотка НЕ меняет
-          play/pause состояние.
+          SEEK меняет только позицию.
+
+          PLAY / PAUSE НЕ меняется.
         */
 
         room.playback.position =
@@ -2257,12 +2309,14 @@ io.on(
 
 
         /*
-          Отправляем только позицию
-          другим участникам.
+          Другим клиентам отправляем
+          ТОЛЬКО перемотку.
         */
 
         socket
-          .to(roomId)
+          .to(
+            roomId
+          )
           .emit(
             "video-seek",
             {
@@ -2347,15 +2401,19 @@ io.on(
 
 
         /*
-          video-position используется
-          только для presence и состояния.
-          Другим клиентам не отправляется
-          как команда управления.
+          ВАЖНО:
+
+          video-position НЕ меняет
+          room.playback.position.
+
+          Иначе обычная отправка позиции
+          может перетереть результат
+          Play / Pause / Seek.
+
+          Эта команда нужна только
+          для Presence конкретного
+          участника.
         */
-
-        room.playback.position =
-          safePosition;
-
 
         const participant =
           room.participants?.get(
@@ -2377,6 +2435,11 @@ io.on(
 
         }
 
+
+        /*
+          Никакого video-control
+          другим клиентам здесь нет.
+        */
 
         io.to(
           roomId
