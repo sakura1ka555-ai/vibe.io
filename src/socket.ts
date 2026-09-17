@@ -587,6 +587,37 @@ export function sendVideoControl(
 }
 
 
+/*
+  =========================
+  VIDEO SEEK
+  =========================
+*/
+
+export function sendVideoSeek(
+  roomId: string,
+  position: number
+) {
+
+  socket.emit(
+    "video-seek",
+    {
+
+      roomId,
+
+      position
+
+    }
+  );
+
+}
+
+
+/*
+  =========================
+  VIDEO POSITION
+  =========================
+*/
+
 export function sendVideoPosition(
   roomId: string,
   position: number
