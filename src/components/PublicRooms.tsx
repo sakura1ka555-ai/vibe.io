@@ -49,10 +49,7 @@ const filters = [
 ] as const;
 
 
-const categoryNames: Record<
-  string,
-  string
-> = {
+const categoryNames: Record<string, string> = {
   movies: "Фильмы",
   series: "Сериалы",
   music: "Музыка",
@@ -62,29 +59,19 @@ const categoryNames: Record<
 };
 
 
-function normalizeCategory(
-  category?: string
-) {
-  const value =
-    String(
-      category || "other"
-    )
-      .trim()
-      .toLowerCase();
+function normalizeCategory(category?: string) {
+  const value = String(category || "other")
+    .trim()
+    .toLowerCase();
 
   return value || "other";
 }
 
 
-function normalizeUsers(
-  users: unknown
-) {
-  const value =
-    Number(users);
+function normalizeUsers(users: unknown) {
+  const value = Number(users);
 
-  if (
-    !Number.isFinite(value)
-  ) {
+  if (!Number.isFinite(value)) {
     return 0;
   }
 
@@ -105,110 +92,87 @@ export default function PublicRooms({
     setFilter
   ] = useState<
     (typeof filters)[number]["id"]
-  >(
-    "all"
-  );
+  >("all");
 
 
   const [
     joiningRoomId,
     setJoiningRoomId
-  ] = useState<string | null>(
-    null
+  ] = useState<string | null>(null);
+
+
+  const safeRooms = useMemo(
+    () => {
+
+      if (!Array.isArray(rooms)) {
+        return [];
+      }
+
+      return rooms
+        .filter(
+          room =>
+            Boolean(
+              room &&
+              room.id
+            )
+        )
+        .map(
+          room => ({
+            ...room,
+
+            id: String(
+              room.id
+            ),
+
+            title: String(
+              room.title ||
+              "Без названия"
+            ),
+
+            users: normalizeUsers(
+              room.users
+            ),
+
+            category: normalizeCategory(
+              room.category
+            )
+          })
+        );
+
+    },
+    [rooms]
   );
 
 
-  const safeRooms =
-    useMemo(
-      () => {
+  const filteredRooms = useMemo(
+    () => {
 
-        if (
-          !Array.isArray(rooms)
-        ) {
-          return [];
-        }
+      if (filter === "all") {
+        return safeRooms;
+      }
 
+      return safeRooms.filter(
+        room =>
+          normalizeCategory(
+            room.category
+          ) === filter
+      );
 
-        return rooms
-          .filter(
-            room =>
-              Boolean(
-                room &&
-                room.id
-              )
-          )
-          .map(
-            room => ({
-
-              ...room,
-
-              id:
-                String(
-                  room.id
-                ),
-
-              title:
-                String(
-                  room.title ||
-                  "Без названия"
-                ),
-
-              users:
-                normalizeUsers(
-                  room.users
-                ),
-
-              category:
-                normalizeCategory(
-                  room.category
-                )
-
-            })
-          );
-
-      },
-      [
-        rooms
-      ]
-    );
+    },
+    [
+      safeRooms,
+      filter
+    ]
+  );
 
 
-  const filteredRooms =
-    useMemo(
-      () => {
+  function handleJoin(roomId: string) {
 
-        if (
-          filter === "all"
-        ) {
-          return safeRooms;
-        }
-
-
-        return safeRooms.filter(
-          room =>
-            normalizeCategory(
-              room.category
-            ) === filter
-        );
-
-      },
-      [
-        safeRooms,
-        filter
-      ]
-    );
-
-
-  function handleJoin(
-    roomId: string
-  ) {
-
-    const id =
-      String(
-        roomId
-      )
-        .trim()
-        .toUpperCase();
+    const id = String(
+      roomId
+    )
+      .trim()
+      .toUpperCase();
 
 
     if (!id) {
@@ -216,39 +180,23 @@ export default function PublicRooms({
     }
 
 
-    if (
-      joiningRoomId
-    ) {
+    if (joiningRoomId) {
       return;
     }
 
 
-    setJoiningRoomId(
-      id
-    );
+    setJoiningRoomId(id);
 
 
     try {
 
-      onJoin(
-        id
-      );
+      onJoin(id);
 
     } finally {
 
-      /*
-        Сбрасываем состояние на следующем
-        кадре, чтобы кнопка не зависала,
-        если joinRoom завершился сразу.
-      */
-
       window.setTimeout(
         () => {
-
-          setJoiningRoomId(
-            null
-          );
-
+          setJoiningRoomId(null);
         },
         500
       );
@@ -259,7 +207,6 @@ export default function PublicRooms({
 
 
   return (
-
     <section className="public-rooms">
 
       <div className="public-rooms-header">
@@ -288,30 +235,28 @@ export default function PublicRooms({
       <div className="public-room-filters">
 
         {filters.map(
-          item => (
+          item => {
 
-            <button
-              key={
-                item.id
-              }
-              type="button"
-              className={
-                `public-room-filter ${
-                  filter === item.id
-                    ? "active"
-                    : ""
-                }`
-              }
-              onClick={() =>
-                setFilter(
-                  item.id
-                )
-              }
-            >
-              {item.label}
-            </button>
+            const filterClass =
+              filter === item.id
+                ? "public-room-filter active"
+                : "public-room-filter";
 
-          )
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={filterClass}
+                onClick={() =>
+                  setFilter(item.id)
+                }
+              >
+                {item.label}
+              </button>
+            );
+
+          }
         )}
 
       </div>
@@ -365,9 +310,7 @@ export default function PublicRooms({
               return (
 
                 <article
-                  key={
-                    room.id
-                  }
+                  key={room.id}
                   className="public-room-card"
                 >
 
@@ -424,5 +367,37 @@ export default function PublicRooms({
 
                     <button
                       type="button"
-                      className="publ
+                      className="public-room-join"
+                      onClick={() =>
+                        handleJoin(
+                          room.id
+                        )
+                      }
+                      disabled={isJoining}
+                    >
+
+                      {isJoining
+                        ? "JOINING..."
+                        : "JOIN"
+                      }
+
+                    </button>
+
+                  </div>
+
+                </article>
+
+              );
+
+            }
+          )}
+
+        </div>
+
+      )}
+
+    </section>
+  );
+
+}
 ```
