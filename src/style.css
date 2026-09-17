@@ -6056,3 +6056,70 @@ button {
   }
 
 }
+
+/* =========================
+   CREATE ROOM — FINAL
+   ========================= */
+
+.room-visibility {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.visibility-option {
+  min-height: 34px;
+  padding: 5px 8px;
+  gap: 5px;
+  border-radius: 9px;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+}
+
+.visibility-icon {
+  font-size: 12px;
+}
+
+.category-block {
+  margin-top: 8px;
+}
+
+.category-select {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.category-option {
+  min-height: 31px;
+  padding: 5px 3px;
+  border-radius: 8px;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+
+  .room-visibility {
+    gap: 5px;
+  }
+
+  .visibility-option {
+    min-height: 32px;
+    padding: 4px 6px;
+    font-size: 8px;
+  }
+
+  .category-select {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .category-option {
+    min-height: 29px;
+    font-size: 7px;
+    padding: 4px 2px;
+  }
+
+}
