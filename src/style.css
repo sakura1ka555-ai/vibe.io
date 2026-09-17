@@ -2560,7 +2560,7 @@ button {
 
   overflow: hidden;
 
-  border-radius: 8px;
+  border-radius: 50%;
 
   border:
     1px solid
