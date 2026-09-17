@@ -20,12 +20,6 @@ type Props = {
     position: number
   ) => void;
 
-  /*
-    Только локальная позиция.
-
-    ВАЖНО:
-    не отправляй её на сервер каждую секунду.
-  */
   onPosition?: (
     position: number
   ) => void;
@@ -94,14 +88,12 @@ type YouTubePlayerConstructor =
 
 declare global {
   interface Window {
-
     YT?: {
       Player:
         YouTubePlayerConstructor;
     };
 
     onYouTubeIframeAPIReady?: () => void;
-
   }
 }
 
@@ -447,9 +439,12 @@ function VideoPlayer({
 
 
   /*
-    Защита от событий,
-    вызванных нашей собственной
-    remote-командой.
+    Когда true — событие от самого
+    плеера является следствием нашей
+    remote-команды.
+
+    В таком случае НЕ отправляем
+    его обратно через socket.
   */
 
   const applyingRemote =
@@ -462,6 +457,11 @@ function VideoPlayer({
     );
 
 
+  /*
+    ID последней применённой
+    remote-команды.
+  */
+
   const lastRemoteId =
     useRef<number | null>(
       null
@@ -469,10 +469,8 @@ function VideoPlayer({
 
 
   /*
-    Последнее известное время.
-
-    Используется для определения
-    ручной перемотки.
+    Последняя известная позиция.
+    Нужна для обнаружения ручного seek.
   */
 
   const lastPosition =
@@ -494,18 +492,30 @@ function VideoPlayer({
 
 
   /*
-    Защита от повторного initial state.
+    Последнее применённое initial state.
+
+    ВАЖНО:
+    сюда входит и position, и action.
+
+    Благодаря этому если VideoPlayer
+    сначала получил 0/pause, а потом
+    room-state прислал 125/play —
+    новое состояние будет применено.
   */
 
-  const initialApplied =
-    useRef(false);
+  const lastInitialSignature =
+    useRef<string | null>(
+      null
+    );
 
 
   const positionCallback =
     useRef(onPosition);
 
+
   const controlCallback =
     useRef(onControl);
+
 
   const seekCallback =
     useRef(onSeek);
@@ -528,6 +538,10 @@ function VideoPlayer({
       videoUrl
     );
 
+
+  /*
+    Всегда держим актуальные callbacks.
+  */
 
   useEffect(() => {
 
@@ -585,9 +599,9 @@ function VideoPlayer({
         true;
 
 
-      /* ---------------------------
-         YOUTUBE
-      --------------------------- */
+      /*
+        YOUTUBE
+      */
 
       if (
         youtubeId &&
@@ -631,9 +645,9 @@ function VideoPlayer({
       }
 
 
-      /* ---------------------------
-         RUTUBE
-      --------------------------- */
+      /*
+        RUTUBE
+      */
 
       if (
         rutubeId &&
@@ -674,6 +688,7 @@ function VideoPlayer({
               false;
 
           }, 1000);
+
 
         return;
 
@@ -722,21 +737,23 @@ function VideoPlayer({
       false;
 
 
+    /*
+      Применяет состояние комнаты.
+
+      Главное изменение:
+      функция вызывается не только
+      при onReady, но и когда
+      initialPosition / initialAction
+      приходят позже от сервера.
+    */
+
     function applyInitialState(
       target: YouTubePlayer
     ) {
 
-      if (
-        initialApplied.current
-      ) {
-
+      if (cancelled) {
         return;
-
       }
-
-
-      initialApplied.current =
-        true;
 
 
       const position =
@@ -745,8 +762,41 @@ function VideoPlayer({
         );
 
 
+      const action =
+        initialAction === "play"
+          ? "play"
+          : "pause";
+
+
+      const signature =
+        `${position}|${action}`;
+
+
+      /*
+        Уже применяли именно это
+        состояние — ничего не делаем.
+      */
+
+      if (
+        lastInitialSignature.current ===
+        signature
+      ) {
+
+        return;
+
+      }
+
+
+      lastInitialSignature.current =
+        signature;
+
+
       applyingRemote.current =
         true;
+
+
+      lastPosition.current =
+        position;
 
 
       if (
@@ -761,6 +811,11 @@ function VideoPlayer({
       }
 
 
+      /*
+        Небольшая задержка нужна,
+        чтобы YouTube успел принять seek.
+      */
+
       window.setTimeout(() => {
 
         if (cancelled) {
@@ -769,7 +824,7 @@ function VideoPlayer({
 
 
         if (
-          initialAction === "play"
+          action === "play"
         ) {
 
           target.playVideo();
@@ -783,12 +838,30 @@ function VideoPlayer({
       }, 150);
 
 
-      window.setTimeout(() => {
+      /*
+        Не блокируем реальные события
+        слишком долго.
+      */
 
-        applyingRemote.current =
-          false;
+      if (
+        remoteTimer.current !==
+        null
+      ) {
 
-      }, 1200);
+        window.clearTimeout(
+          remoteTimer.current
+        );
+
+      }
+
+
+      remoteTimer.current =
+        window.setTimeout(() => {
+
+          applyingRemote.current =
+            false;
+
+        }, 1200);
 
     }
 
@@ -826,6 +899,10 @@ function VideoPlayer({
 
             events: {
 
+              /*
+                YOUTUBE READY
+              */
+
               onReady:
                 event => {
 
@@ -847,6 +924,12 @@ function VideoPlayer({
                     );
 
 
+                  /*
+                    Здесь применится
+                    актуальное состояние,
+                    которое уже есть в props.
+                  */
+
                   applyInitialState(
                     event.target
                   );
@@ -854,11 +937,29 @@ function VideoPlayer({
                 },
 
 
+              /*
+                YOUTUBE STATE
+              */
+
               onStateChange:
                 event => {
 
                   if (
-                    cancelled ||
+                    cancelled
+                  ) {
+
+                    return;
+
+                  }
+
+
+                  /*
+                    События, вызванные
+                    нашей remote-командой,
+                    обратно не отправляем.
+                  */
+
+                  if (
                     applyingRemote.current
                   ) {
 
@@ -880,14 +981,35 @@ function VideoPlayer({
                   /*
                     1 = PLAYING
                     2 = PAUSED
+                    3 = BUFFERING
                   */
 
                   if (
                     event.data === 1
                   ) {
 
+                    /*
+                      Не шлём play повторно,
+                      если YouTube просто
+                      повторил событие.
+                    */
+
+                    if (
+                      lastState.current ===
+                      "playing"
+                    ) {
+
+                      return;
+
+                    }
+
+
                     lastState.current =
                       "playing";
+
+
+                    lastPosition.current =
+                      position;
 
 
                     controlCallback.current?.(
@@ -905,8 +1027,26 @@ function VideoPlayer({
                     event.data === 2
                   ) {
 
+                    /*
+                      Не шлём pause повторно.
+                    */
+
+                    if (
+                      lastState.current ===
+                      "paused"
+                    ) {
+
+                      return;
+
+                    }
+
+
                     lastState.current =
                       "paused";
+
+
+                    lastPosition.current =
+                      position;
 
 
                     controlCallback.current?.(
@@ -926,6 +1066,10 @@ function VideoPlayer({
     }
 
 
+    /*
+      YouTube API уже загружен.
+    */
+
     if (
       window.YT?.Player
     ) {
@@ -933,6 +1077,10 @@ function VideoPlayer({
       createPlayer();
 
     } else {
+
+      /*
+        API ещё грузится.
+      */
 
       const previous =
         window.onYouTubeIframeAPIReady;
@@ -981,6 +1129,42 @@ function VideoPlayer({
     }
 
 
+    /*
+      =================================================
+      КЛЮЧЕВОЙ FIX
+      =================================================
+
+      room-state может прийти уже после
+      создания YouTube player.
+
+      Например:
+
+        первый render:
+          initialPosition = 0
+          initialAction = pause
+
+        потом socket:
+          initialPosition = 137
+          initialAction = play
+
+      Старый код это состояние пропускал.
+
+      Теперь при изменении этих props
+      применяем новое состояние.
+    */
+
+    if (
+      player.current &&
+      ready.current
+    ) {
+
+      applyInitialState(
+        player.current
+      );
+
+    }
+
+
     return () => {
 
       cancelled =
@@ -988,10 +1172,6 @@ function VideoPlayer({
 
 
       ready.current =
-        false;
-
-
-      initialApplied.current =
         false;
 
 
@@ -1021,18 +1201,27 @@ function VideoPlayer({
 
       }
 
+
+      /*
+        Новый URL должен иметь
+        возможность применить
+        своё initial state.
+      */
+
+      lastInitialSignature.current =
+        null;
+
     };
 
   }, [
-    youtubeId
+    youtubeId,
+    initialPosition,
+    initialAction
   ]);
 
 
   /* ===================================================
      YOUTUBE POLLING
-
-     Нужен именно для обнаружения
-     ручной перемотки через UI YouTube.
   =================================================== */
 
   useEffect(() => {
@@ -1073,10 +1262,20 @@ function VideoPlayer({
           position;
 
 
+        /*
+          Heartbeat позиции.
+        */
+
         positionCallback.current?.(
           position
         );
 
+
+        /*
+          Если это позиция,
+          которую только что поставила
+          remote-команда — seek не отправляем.
+        */
 
         if (
           applyingRemote.current
@@ -1104,11 +1303,11 @@ function VideoPlayer({
 
 
         /*
-          Обычное воспроизведение:
-          ~0.25-1 сек.
+          Нормальное воспроизведение
+          двигается маленькими шагами.
 
-          Скачок > 1.5 сек =
-          ручная перемотка.
+          Большой скачок означает
+          ручную перемотку.
         */
 
         if (
@@ -1152,14 +1351,151 @@ function VideoPlayer({
       false;
 
 
-    initialApplied.current =
-      false;
+    lastInitialSignature.current =
+      null;
 
 
     lastPosition.current =
       clampPosition(
         initialPosition
       );
+
+
+    function applyRutubeInitialState() {
+
+      if (
+        !rutubeReady.current ||
+        !rutubeIframe.current
+      ) {
+
+        return;
+
+      }
+
+
+      const position =
+        clampPosition(
+          initialPosition
+        );
+
+
+      const action =
+        initialAction === "play"
+          ? "play"
+          : "pause";
+
+
+      const signature =
+        `${position}|${action}`;
+
+
+      if (
+        lastInitialSignature.current ===
+        signature
+      ) {
+
+        return;
+
+      }
+
+
+      lastInitialSignature.current =
+        signature;
+
+
+      const iframe =
+        rutubeIframe.current;
+
+
+      applyingRemote.current =
+        true;
+
+
+      lastPosition.current =
+        position;
+
+
+      sendRutube(
+        iframe,
+        "player:setCurrentTime",
+        {
+          time:
+            position
+        }
+      );
+
+
+      /*
+        RUTUBE иногда принимает
+        play/pause не с первого раза,
+        поэтому повторяем один раз.
+      */
+
+      window.setTimeout(() => {
+
+        if (
+          !rutubeReady.current ||
+          !rutubeIframe.current
+        ) {
+
+          return;
+
+        }
+
+
+        sendRutube(
+          rutubeIframe.current,
+          action === "play"
+            ? "player:play"
+            : "player:pause"
+        );
+
+      }, 250);
+
+
+      window.setTimeout(() => {
+
+        if (
+          !rutubeReady.current ||
+          !rutubeIframe.current
+        ) {
+
+          return;
+
+        }
+
+
+        sendRutube(
+          rutubeIframe.current,
+          action === "play"
+            ? "player:play"
+            : "player:pause"
+        );
+
+      }, 700);
+
+
+      if (
+        remoteTimer.current !==
+        null
+      ) {
+
+        window.clearTimeout(
+          remoteTimer.current
+        );
+
+      }
+
+
+      remoteTimer.current =
+        window.setTimeout(() => {
+
+          applyingRemote.current =
+            false;
+
+        }, 1300);
+
+    }
 
 
     function handleMessage(
@@ -1187,9 +1523,9 @@ function VideoPlayer({
       }
 
 
-      /* ---------------------------
-         READY
-      --------------------------- */
+      /*
+        READY
+      */
 
       if (
         message.type ===
@@ -1200,102 +1536,13 @@ function VideoPlayer({
           true;
 
 
-        if (
-          initialApplied.current
-        ) {
-
-          return;
-
-        }
-
-
-        initialApplied.current =
-          true;
-
-
-        const iframe =
-          rutubeIframe.current;
-
-
-        if (!iframe) {
-          return;
-        }
-
-
-        const position =
-          clampPosition(
-            initialPosition
-          );
-
-
-        applyingRemote.current =
-          true;
-
-
         /*
-          RUTUBE требует,
-          чтобы команды play/pause
-          отправлялись после ready.
+          Здесь применяются
+          АКТУАЛЬНЫЕ initialPosition
+          и initialAction.
         */
 
-        sendRutube(
-          iframe,
-          "player:setCurrentTime",
-          {
-            time:
-              position
-          }
-        );
-
-
-        window.setTimeout(() => {
-
-          if (
-            !rutubeReady.current
-          ) {
-
-            return;
-
-          }
-
-
-          sendRutube(
-            iframe,
-            initialAction === "play"
-              ? "player:play"
-              : "player:pause"
-          );
-
-        }, 250);
-
-
-        window.setTimeout(() => {
-
-          if (
-            !rutubeReady.current
-          ) {
-
-            return;
-
-          }
-
-
-          sendRutube(
-            iframe,
-            initialAction === "play"
-              ? "player:play"
-              : "player:pause"
-          );
-
-        }, 700);
-
-
-        window.setTimeout(() => {
-
-          applyingRemote.current =
-            false;
-
-        }, 1300);
+        applyRutubeInitialState();
 
 
         return;
@@ -1303,9 +1550,9 @@ function VideoPlayer({
       }
 
 
-      /* ---------------------------
-         CURRENT TIME
-      --------------------------- */
+      /*
+        CURRENT TIME
+      */
 
       if (
         message.type ===
@@ -1372,9 +1619,9 @@ function VideoPlayer({
       }
 
 
-      /* ---------------------------
-         STATE
-      --------------------------- */
+      /*
+        STATE
+      */
 
       if (
         message.type ===
@@ -1404,20 +1651,23 @@ function VideoPlayer({
         ) {
 
           if (
-            lastState.current !==
+            lastState.current ===
             "playing"
           ) {
 
-            lastState.current =
-              "playing";
-
-
-            controlCallback.current?.(
-              "play",
-              position
-            );
+            return;
 
           }
+
+
+          lastState.current =
+            "playing";
+
+
+          controlCallback.current?.(
+            "play",
+            position
+          );
 
 
           return;
@@ -1430,20 +1680,23 @@ function VideoPlayer({
         ) {
 
           if (
-            lastState.current !==
+            lastState.current ===
             "paused"
           ) {
 
-            lastState.current =
-              "paused";
-
-
-            controlCallback.current?.(
-              "pause",
-              position
-            );
+            return;
 
           }
+
+
+          lastState.current =
+            "paused";
+
+
+          controlCallback.current?.(
+            "pause",
+            position
+          );
 
         }
 
@@ -1456,6 +1709,20 @@ function VideoPlayer({
       "message",
       handleMessage
     );
+
+
+    /*
+      Если RUTUBE уже успел стать ready
+      до этого effect — применяем state.
+    */
+
+    if (
+      rutubeReady.current
+    ) {
+
+      applyRutubeInitialState();
+
+    }
 
 
     return () => {
@@ -1489,6 +1756,11 @@ function VideoPlayer({
     }
 
 
+    /*
+      Защита от повторного применения
+      одной и той же команды.
+    */
+
     if (
       lastRemoteId.current ===
       remoteControl.id
@@ -1513,9 +1785,11 @@ function VideoPlayer({
       true;
 
 
-    /* ---------------------------
-       YOUTUBE
-    --------------------------- */
+    /*
+      =================================================
+      YOUTUBE
+      =================================================
+    */
 
     if (
       youtubeId &&
@@ -1533,6 +1807,14 @@ function VideoPlayer({
       );
 
 
+      lastPosition.current =
+        position;
+
+
+      /*
+        Сначала seek, потом play/pause.
+      */
+
       window.setTimeout(() => {
 
         if (
@@ -1549,10 +1831,6 @@ function VideoPlayer({
         }
 
       }, 120);
-
-
-      lastPosition.current =
-        position;
 
 
       if (
@@ -1581,9 +1859,11 @@ function VideoPlayer({
     }
 
 
-    /* ---------------------------
-       RUTUBE
-    --------------------------- */
+    /*
+      =================================================
+      RUTUBE
+      =================================================
+    */
 
     if (
       rutubeId &&
@@ -1688,13 +1968,7 @@ function VideoPlayer({
 
 
   /* ===================================================
-     VK
-     
-     VK iframe не даёт нам такого же
-     универсального JS API управления,
-     поэтому полноценная синхронизация
-     через iframe здесь невозможна
-     тем же способом.
+     RENDER — YOUTUBE
   =================================================== */
 
   if (youtubeId) {
@@ -1710,6 +1984,10 @@ function VideoPlayer({
 
   }
 
+
+  /* ===================================================
+     RENDER — RUTUBE
+  =================================================== */
 
   if (rutubeId) {
 
@@ -1737,6 +2015,10 @@ function VideoPlayer({
 
   }
 
+
+  /* ===================================================
+     RENDER — VK
+  =================================================== */
 
   if (vkData) {
 
@@ -1794,6 +2076,10 @@ function VideoPlayer({
 
   }
 
+
+  /* ===================================================
+     NO VIDEO
+  =================================================== */
 
   return (
     <div className="player-message">
