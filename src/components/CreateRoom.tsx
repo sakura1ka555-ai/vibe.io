@@ -173,15 +173,9 @@ function CreateRoom({
               🌎
             </span>
 
-            <span>
-              <strong>
-                Public
-              </strong>
-
-              <small>
-                Видна в LIVE NOW
-              </small>
-            </span>
+            <strong>
+              PUBLIC
+            </strong>
 
           </button>
 
@@ -202,15 +196,9 @@ function CreateRoom({
               🔒
             </span>
 
-            <span>
-              <strong>
-                Private
-              </strong>
-
-              <small>
-                Только по приглашению
-              </small>
-            </span>
+            <strong>
+              PRIVATE
+            </strong>
 
           </button>
 
@@ -221,7 +209,7 @@ function CreateRoom({
 
         {isPublic && (
 
-          <div className="video-url-block">
+          <div className="video-url-block category-block">
 
             <label>
               Категория
