@@ -13,7 +13,8 @@ import ProfileModal, {
 
 import {
   socket,
-  joinRoom
+  joinRoom,
+  sendVideoSeek
 } from "../socket";
 
 
@@ -868,6 +869,50 @@ function WatchRoom({
     }
 
 
+    function handleRemoteSeek(
+      data: {
+        position?: number;
+      }
+    ) {
+
+      if (
+        !data
+      ) {
+        return;
+      }
+
+
+      const position =
+        Number(
+          data.position
+        );
+
+
+      if (
+        !Number.isFinite(position)
+      ) {
+        return;
+      }
+
+
+      window.dispatchEvent(
+        new CustomEvent(
+          "vibe-video-seek",
+          {
+            detail: {
+              position:
+                Math.max(
+                  0,
+                  position
+                )
+            }
+          }
+        )
+      );
+
+    }
+
+
     function handleReaction(
       data: {
         reaction?: string;
@@ -955,6 +1000,12 @@ function WatchRoom({
 
 
     socket.on(
+      "video-seek",
+      handleRemoteSeek
+    );
+
+
+    socket.on(
       "reaction",
       handleReaction
     );
@@ -1010,6 +1061,12 @@ function WatchRoom({
       socket.off(
         "video-control",
         handleRemoteControl
+      );
+
+
+      socket.off(
+        "video-seek",
+        handleRemoteSeek
       );
 
 
@@ -1092,6 +1149,31 @@ function WatchRoom({
             position
 
           }
+        );
+
+      },
+      [
+        roomId
+      ]
+    );
+
+
+  /*
+    =========================
+    VIDEO SEEK
+    =========================
+  */
+
+  const handleSeek =
+    useCallback(
+      (
+        position:
+          number
+      ) => {
+
+        sendVideoSeek(
+          roomId,
+          position
         );
 
       },
@@ -1466,6 +1548,10 @@ function WatchRoom({
 
             onControl={
               handleControl
+            }
+
+            onSeek={
+              handleSeek
             }
 
             onPosition={
