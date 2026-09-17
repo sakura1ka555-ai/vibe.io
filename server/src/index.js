@@ -377,19 +377,6 @@ function isUserOnline(
   =========================
 */
 
-/*
-  Каждая комната получает:
-  participants: Map(socketId -> participant)
-
-  В participant храним:
-  - VIBE user id
-  - имя
-  - аватар
-  - позицию видео
-  - состояние play/pause
-  - время входа
-*/
-
 function createRoomPresence(
   room
 ) {
@@ -769,6 +756,7 @@ app.get(
               undefined
           })
         )
+
     };
 
   }
@@ -987,6 +975,7 @@ app.get(
     return {
       room: {
         ...room,
+
         participants:
           undefined
       }
@@ -1754,11 +1743,6 @@ io.on(
         }
 
 
-        /*
-          Если socket уже был в другой комнате,
-          полностью удаляем его оттуда.
-        */
-
         if (
           currentRoomId &&
           currentRoomId !== roomId
@@ -1776,11 +1760,6 @@ io.on(
 
         }
 
-
-        /*
-          Защита от повторного join
-          в ту же комнату.
-        */
 
         if (
           currentRoomId === roomId
@@ -1808,6 +1787,7 @@ io.on(
 
             existingParticipant.name =
               userName;
+
 
             if (
               currentUserId
@@ -1908,6 +1888,7 @@ io.on(
           {
             room: {
               ...room,
+
               participants:
                 undefined
             },
@@ -1916,11 +1897,6 @@ io.on(
           }
         );
 
-
-        /*
-          Новый пользователь получает
-          текущее состояние комнаты.
-        */
 
         socket.emit(
           "room-state",
@@ -1941,11 +1917,6 @@ io.on(
           }
         );
 
-
-        /*
-          Всем участникам отправляем
-          актуальное количество и presence.
-        */
 
         emitRoomPresence(
           roomId
@@ -2019,11 +1990,6 @@ io.on(
           }
         );
 
-
-        /*
-          Обновляем пользователя
-          внутри текущей комнаты.
-        */
 
         if (
           currentRoomId
@@ -2112,10 +2078,6 @@ io.on(
         }
 
 
-        /*
-          Принимаем только play/pause.
-        */
-
         const action =
           data?.action ===
           "play"
@@ -2140,11 +2102,6 @@ io.on(
             : 0;
 
 
-        /*
-          Это настоящая команда синхронизации.
-          Каждое изменение получает новый id.
-        */
-
         room.playbackVersion =
           (
             Number(
@@ -2161,10 +2118,6 @@ io.on(
 
         };
 
-
-        /*
-          Обновляем presence отправителя.
-        */
 
         const participant =
           room.participants?.get(
@@ -2185,13 +2138,6 @@ io.on(
         }
 
 
-        /*
-          Отправляем команду только ДРУГИМ
-          участникам комнаты.
-
-          Отправитель уже изменил своё видео.
-        */
-
         socket
           .to(roomId)
           .emit(
@@ -2209,8 +2155,124 @@ io.on(
           );
 
 
+        io.to(
+          roomId
+        ).emit(
+          "presence",
+          getPresence(
+            room
+          )
+        );
+
+      }
+    );
+
+
+    /*
+      =========================
+      VIDEO SEEK
+      =========================
+    */
+
+    socket.on(
+      "video-seek",
+      data => {
+
+        const roomId =
+          String(
+            data?.roomId ||
+            ""
+          )
+            .trim()
+            .toUpperCase();
+
+
+        const room =
+          rooms.get(
+            roomId
+          );
+
+
+        if (
+          !room
+        ) {
+
+          return;
+
+        }
+
+
+        const rawPosition =
+          Number(
+            data?.position
+          );
+
+
+        if (
+          !Number.isFinite(
+            rawPosition
+          )
+        ) {
+
+          return;
+
+        }
+
+
+        const position =
+          Math.max(
+            0,
+            rawPosition
+          );
+
+
         /*
-          Presence получают все.
+          Перемотка НЕ меняет
+          play/pause состояние.
+        */
+
+        room.playback.position =
+          position;
+
+
+        const participant =
+          room.participants?.get(
+            socket.id
+          );
+
+
+        if (
+          participant
+        ) {
+
+          participant.position =
+            position;
+
+          participant.state =
+            room.playback?.action === "play"
+              ? "play"
+              : "pause";
+
+        }
+
+
+        /*
+          Отправляем только позицию
+          другим участникам.
+        */
+
+        socket
+          .to(roomId)
+          .emit(
+            "video-seek",
+            {
+              position
+            }
+          );
+
+
+        /*
+          Presence обновляем всем.
         */
 
         io.to(
@@ -2285,17 +2347,10 @@ io.on(
 
 
         /*
-          ВАЖНО:
-
-          video-position больше НЕ отправляется
-          другим клиентам как команда.
-
-          Иначе RUTUBE постоянно отправляет
-          currentTime -> сервер -> второй клиент
-          -> currentTime -> сервер...
-
-          Здесь позиция используется только
-          для состояния комнаты и presence.
+          video-position используется
+          только для presence и состояния.
+          Другим клиентам не отправляется
+          как команда управления.
         */
 
         room.playback.position =
@@ -2322,10 +2377,6 @@ io.on(
 
         }
 
-
-        /*
-          Presence обновляем всем участникам.
-        */
 
         io.to(
           roomId
