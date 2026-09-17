@@ -5590,3 +5590,230 @@ button {
   }
 
 }
+
+/* =================================
+   CREATE ROOM — VIDEO SOURCES
+================================= */
+
+.video-source-block {
+  margin-top: 18px;
+}
+
+.video-source-title {
+  margin-bottom: 9px;
+
+  color: #736979;
+
+  font-size: 8px;
+  font-weight: 700;
+
+  letter-spacing: 1.2px;
+}
+
+.video-source-links {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 6px;
+}
+
+.video-source-link {
+  height: 30px;
+
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 10px;
+
+  border: 1px solid rgba(180,120,255,.13);
+
+  border-radius: 8px;
+
+  background: rgba(255,255,255,.025);
+
+  color: rgba(255,255,255,.55);
+
+  font-size: 8px;
+  font-weight: 700;
+
+  letter-spacing: .5px;
+
+  text-decoration: none;
+
+  cursor: pointer;
+
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    transform .18s ease;
+}
+
+.video-source-link:hover {
+  border-color:
+    rgba(180,120,255,.28);
+
+  background:
+    rgba(153,88,243,.10);
+
+  color: #ffffff;
+
+  transform:
+    translateY(-1px);
+}
+
+.video-source-link:active {
+  transform:
+    scale(.96);
+}
+
+.video-source-arrow {
+  margin-left: 4px;
+
+  color:
+    rgba(255,255,255,.32);
+
+  font-size: 9px;
+}
+
+.video-source-link:hover
+.video-source-arrow {
+  color:
+    rgba(211,181,237,.85);
+}
+
+
+/* =================================
+   CREATE ROOM — SOURCE + INPUT
+================================= */
+
+.video-url-block {
+  margin-top: 17px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.video-url-block label {
+  color: #736979;
+
+  font-size: 8px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.2px;
+}
+
+.video-url-block input {
+  width: 100%;
+
+  height: 43px;
+
+  padding: 0 13px;
+
+  outline: none;
+
+  border: 1px solid
+    rgba(255,255,255,.08);
+
+  border-radius: 9px;
+
+  background:
+    rgba(0,0,0,.18);
+
+  color: #ffffff;
+
+  font-size: 12px;
+
+  transition:
+    border-color .18s ease,
+    background .18s ease,
+    box-shadow .18s ease;
+}
+
+.video-url-block input::placeholder {
+  color:
+    rgba(255,255,255,.22);
+}
+
+.video-url-block input:focus {
+  border-color:
+    rgba(166,105,232,.38);
+
+  background:
+    rgba(153,88,243,.035);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(153,88,243,.045);
+}
+
+
+/* =================================
+   OPEN SOURCE BUTTON
+================================= */
+
+.open-source {
+  height: 30px;
+
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  padding: 0 10px;
+
+  border:
+    1px solid
+    rgba(180,120,255,.13);
+
+  border-radius: 8px;
+
+  background:
+    rgba(255,255,255,.025);
+
+  color:
+    rgba(255,255,255,.56);
+
+  font-size: 8px;
+
+  font-weight: 700;
+
+  letter-spacing: .6px;
+
+  text-decoration: none;
+
+  cursor: pointer;
+
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    transform .18s ease;
+}
+
+.open-source:hover {
+  border-color:
+    rgba(180,120,255,.25);
+
+  background:
+    rgba(153,88,243,.08);
+
+  color: #ffffff;
+
+  transform:
+    translateY(-1px);
+}
+
+.open-source span {
+  font-size: 12px;
+  line-height: 1;
+}
