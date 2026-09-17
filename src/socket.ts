@@ -1,5 +1,4 @@
-import { io } from "socket.io-client";
-
+import { io, Socket } from "socket.io-client";
 
 /*
   =========================
@@ -12,13 +11,21 @@ const SERVER_URL =
   "https://vibe-server-la2z.onrender.com";
 
 
-export const socket =
-  io(
-    SERVER_URL,
-    {
-      autoConnect: true
-    }
-  );
+/*
+  =========================
+  SOCKET
+  =========================
+*/
+
+export const socket: Socket =
+  io(SERVER_URL, {
+    autoConnect: true,
+    transports: ["websocket", "polling"],
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000
+  });
 
 
 /*
@@ -54,21 +61,31 @@ export type FriendsData = {
 };
 
 
+export type VideoAction =
+  | "play"
+  | "pause";
+
+
+export type VideoState = {
+  action: VideoAction;
+  position: number;
+};
+
+
 /*
   =========================
-  LOCAL USER ID
+  STORAGE
   =========================
 */
 
 const USER_ID_KEY =
   "vibe-user-id";
 
-
 const USER_PROFILE_KEY =
   "vibe-profile";
 
 
-function getSavedUserId() {
+function getSavedUserId(): string {
 
   try {
 
@@ -100,7 +117,7 @@ function saveUserId(
 
   } catch {
 
-    // localStorage unavailable
+    // ignore
 
   }
 
@@ -109,11 +126,14 @@ function saveUserId(
 
 /*
   =========================
-  PROFILE STORAGE
+  PROFILE
   =========================
 */
 
-export function getSavedProfile() {
+export function getSavedProfile(): {
+  name: string;
+  avatar: string;
+} {
 
   try {
 
@@ -133,24 +153,20 @@ export function getSavedProfile() {
     }
 
 
-    const profile =
-      JSON.parse(
-        raw
-      );
+    const parsed =
+      JSON.parse(raw);
 
 
     return {
 
       name:
         String(
-          profile?.name ||
-          ""
+          parsed?.name || ""
         ),
 
       avatar:
         String(
-          profile?.avatar ||
-          ""
+          parsed?.avatar || ""
         )
 
     };
@@ -178,14 +194,12 @@ export function saveProfileLocally(
 
     localStorage.setItem(
       USER_PROFILE_KEY,
-      JSON.stringify(
-        profile
-      )
+      JSON.stringify(profile)
     );
 
   } catch {
 
-    // localStorage unavailable
+    // ignore
 
   }
 
@@ -199,11 +213,11 @@ export function saveProfileLocally(
 */
 
 let currentUser:
-  VibeUser | null =
-  null;
+  VibeUser | null = null;
 
 
-export function getCurrentUser() {
+export function getCurrentUser():
+  VibeUser | null {
 
   return currentUser;
 
@@ -212,7 +226,7 @@ export function getCurrentUser() {
 
 /*
   =========================
-  REGISTER
+  REGISTER USER
   =========================
 */
 
@@ -223,28 +237,25 @@ export function registerUser(
   }
 ) {
 
-  const savedProfile =
+  const saved =
     getSavedProfile();
 
 
   const name =
     String(
       profile?.name ??
-      savedProfile.name ??
+      saved.name ??
       "Guest"
     )
       .trim()
-      .slice(
-        0,
-        40
-      ) ||
+      .slice(0, 40) ||
     "Guest";
 
 
   const avatar =
     String(
       profile?.avatar ??
-      savedProfile.avatar ??
+      saved.avatar ??
       ""
     );
 
@@ -252,14 +263,12 @@ export function registerUser(
   socket.emit(
     "register-user",
     {
-
       userId:
         getSavedUserId(),
 
       name,
 
       avatar
-
     }
   );
 
@@ -274,9 +283,11 @@ export function registerUser(
 
 socket.on(
   "user-registered",
-  (data: {
-    user: VibeUser;
-  }) => {
+  (
+    data: {
+      user: VibeUser;
+    }
+  ) => {
 
     if (!data?.user) {
       return;
@@ -315,7 +326,7 @@ socket.on(
 
 
     console.log(
-      "🆔 VIBE ID:",
+      "🆔 VIBE USER:",
       data.user.id
     );
 
@@ -325,7 +336,7 @@ socket.on(
 
 /*
   =========================
-  REGISTER WHEN CONNECTED
+  CONNECTION
   =========================
 */
 
@@ -334,7 +345,7 @@ socket.on(
   () => {
 
     console.log(
-      "🟢 socket connected:",
+      "🟢 VIBE socket connected:",
       socket.id
     );
 
@@ -345,19 +356,26 @@ socket.on(
 );
 
 
-/*
-  =========================
-  RECONNECT
-  =========================
-*/
-
 socket.on(
   "disconnect",
   reason => {
 
     console.log(
-      "🔴 socket disconnected:",
+      "🔴 VIBE socket disconnected:",
       reason
+    );
+
+  }
+);
+
+
+socket.on(
+  "connect_error",
+  error => {
+
+    console.error(
+      "❌ VIBE socket error:",
+      error
     );
 
   }
@@ -366,13 +384,15 @@ socket.on(
 
 /*
   =========================
-  FRIENDS DATA
+  FRIENDS
   =========================
 */
 
 socket.on(
   "friends-data",
-  (data: FriendsData) => {
+  (
+    data: FriendsData
+  ) => {
 
     window.dispatchEvent(
       new CustomEvent(
@@ -390,7 +410,7 @@ socket.on(
 
 /*
   =========================
-  SEARCH
+  SEARCH USERS
   =========================
 */
 
@@ -401,7 +421,8 @@ export function searchUsers(
   socket.emit(
     "search-users",
     {
-      query
+      query:
+        query.trim()
     }
   );
 
@@ -410,16 +431,22 @@ export function searchUsers(
 
 socket.on(
   "user-search-results",
-  (data: {
-    users: VibeUser[];
-  }) => {
+  (
+    data: {
+      users: VibeUser[];
+    }
+  ) => {
 
     window.dispatchEvent(
       new CustomEvent(
         "vibe-user-search-results",
         {
           detail:
-            data?.users || []
+            Array.isArray(
+              data?.users
+            )
+              ? data.users
+              : []
         }
       )
     );
@@ -430,7 +457,7 @@ socket.on(
 
 /*
   =========================
-  FRIEND REQUEST
+  FRIEND REQUESTS
   =========================
 */
 
@@ -543,14 +570,46 @@ export function joinRoom(
   userName: string
 ) {
 
+  const cleanRoomId =
+    roomId
+      .trim()
+      .toUpperCase();
+
+
+  const cleanName =
+    userName
+      .trim()
+      .slice(0, 40) ||
+    "Guest";
+
+
+  if (!cleanRoomId) {
+    return;
+  }
+
+
   socket.emit(
     "join-room",
     {
+      roomId:
+        cleanRoomId,
 
-      roomId,
+      userName:
+        cleanName
+    }
+  );
 
-      userName
+}
 
+
+export function leaveRoom(
+  roomId: string
+) {
+
+  socket.emit(
+    "leave-room",
+    {
+      roomId
     }
   );
 
@@ -559,17 +618,48 @@ export function joinRoom(
 
 /*
   =========================
-  VIDEO
+  PROFILE IN ROOM
+  =========================
+*/
+
+export function updateRoomProfile(
+  roomId: string,
+  name: string,
+  avatar: string
+) {
+
+  socket.emit(
+    "profile-update",
+    {
+      roomId,
+
+      name:
+        name.trim().slice(0, 40) ||
+        "Guest",
+
+      avatar:
+        avatar || ""
+    }
+  );
+
+}
+
+
+/*
+  =========================
+  VIDEO CONTROL
   =========================
 */
 
 export function sendVideoControl(
   roomId: string,
-  action:
-    | "play"
-    | "pause",
+  action: VideoAction,
   position: number
 ) {
+
+  const safePosition =
+    Number(position);
+
 
   socket.emit(
     "video-control",
@@ -577,9 +667,20 @@ export function sendVideoControl(
 
       roomId,
 
-      action,
+      action:
+        action === "play"
+          ? "play"
+          : "pause",
 
-      position
+      position:
+        Number.isFinite(
+          safePosition
+        )
+          ? Math.max(
+              0,
+              safePosition
+            )
+          : 0
 
     }
   );
@@ -598,13 +699,32 @@ export function sendVideoSeek(
   position: number
 ) {
 
+  const safePosition =
+    Number(position);
+
+
+  if (
+    !Number.isFinite(
+      safePosition
+    )
+  ) {
+
+    return;
+
+  }
+
+
   socket.emit(
     "video-seek",
     {
 
       roomId,
 
-      position
+      position:
+        Math.max(
+          0,
+          safePosition
+        )
 
     }
   );
@@ -623,13 +743,32 @@ export function sendVideoPosition(
   position: number
 ) {
 
+  const safePosition =
+    Number(position);
+
+
+  if (
+    !Number.isFinite(
+      safePosition
+    )
+  ) {
+
+    return;
+
+  }
+
+
   socket.emit(
     "video-position",
     {
 
       roomId,
 
-      position
+      position:
+        Math.max(
+          0,
+          safePosition
+        )
 
     }
   );
@@ -647,6 +786,11 @@ export function sendReaction(
   roomId: string,
   reaction: string
 ) {
+
+  if (!reaction) {
+    return;
+  }
+
 
   socket.emit(
     "reaction",
@@ -673,13 +817,26 @@ export function sendChatMessage(
   text: string
 ) {
 
+  const message =
+    text.trim();
+
+
+  if (!message) {
+    return;
+  }
+
+
   socket.emit(
     "chat-message",
     {
 
       roomId,
 
-      text
+      text:
+        message.slice(
+          0,
+          1000
+        )
 
     }
   );
