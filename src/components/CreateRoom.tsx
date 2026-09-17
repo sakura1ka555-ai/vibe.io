@@ -40,30 +40,12 @@ const sources: Source[] = [
 ];
 
 const categories = [
-  {
-    id: "movies",
-    name: "🎬 Фильмы"
-  },
-  {
-    id: "series",
-    name: "📺 Сериалы"
-  },
-  {
-    id: "music",
-    name: "🎵 Музыка"
-  },
-  {
-    id: "gaming",
-    name: "🎮 Gaming"
-  },
-  {
-    id: "chill",
-    name: "🌙 Chill"
-  },
-  {
-    id: "other",
-    name: "✨ Другое"
-  }
+  { id: "movies", name: "🎬 Фильмы" },
+  { id: "series", name: "📺 Сериалы" },
+  { id: "music", name: "🎵 Музыка" },
+  { id: "gaming", name: "🎮 Gaming" },
+  { id: "chill", name: "🌙 Chill" },
+  { id: "other", name: "✨ Другое" }
 ];
 
 function CreateRoom({
@@ -126,10 +108,9 @@ function CreateRoom({
   }
 
   return (
-
     <div className="modal-backdrop">
 
-      <div className="room-modal">
+      <div className="room-modal create-room-modal">
 
         <button
           type="button"
@@ -147,13 +128,13 @@ function CreateRoom({
           Создать комнату
         </h2>
 
-        <p className="modal-description">
+        <p className="modal-description create-room-description">
           Создай комнату и пригласи друзей
           смотреть видео вместе.
         </p>
 
 
-        {/* VISIBILITY */}
+        {/* PUBLIC / PRIVATE */}
 
         <div className="room-visibility">
 
@@ -168,7 +149,6 @@ function CreateRoom({
               setIsPublic(true)
             }
           >
-
             <span className="visibility-icon">
               🌎
             </span>
@@ -176,7 +156,6 @@ function CreateRoom({
             <strong>
               PUBLIC
             </strong>
-
           </button>
 
 
@@ -191,7 +170,6 @@ function CreateRoom({
               setIsPublic(false)
             }
           >
-
             <span className="visibility-icon">
               🔒
             </span>
@@ -199,77 +177,72 @@ function CreateRoom({
             <strong>
               PRIVATE
             </strong>
-
           </button>
 
         </div>
 
 
-        {/* CATEGORY */}
+        {/* PUBLIC OPTIONS */}
 
         {isPublic && (
 
-          <div className="video-url-block category-block">
+          <>
+            <div className="video-url-block compact-field category-block">
 
-            <label>
-              Категория
-            </label>
+              <label>
+                Категория
+              </label>
 
-            <div className="category-select">
+              <div className="category-select">
 
-              {categories.map(
-                item => (
+                {categories.map(
+                  item => (
 
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={
-                      category === item.id
-                        ? "category-option active"
-                        : "category-option"
-                    }
-                    onClick={() =>
-                      setCategory(
-                        item.id
-                      )
-                    }
-                  >
-                    {item.name}
-                  </button>
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={
+                        category === item.id
+                          ? "category-option active"
+                          : "category-option"
+                      }
+                      onClick={() =>
+                        setCategory(
+                          item.id
+                        )
+                      }
+                    >
+                      {item.name}
+                    </button>
 
-                )
-              )}
+                  )
+                )}
+
+              </div>
 
             </div>
 
-          </div>
 
-        )}
+            <div className="video-url-block compact-field">
 
+              <label>
+                Название комнаты
+              </label>
 
-        {/* TITLE */}
+              <input
+                value={title}
+                onChange={event =>
+                  setTitle(
+                    event.target.value
+                  )
+                }
+                placeholder="Например: Friday Movie Night"
+                maxLength={80}
+                autoComplete="off"
+              />
 
-        {isPublic && (
-
-          <div className="video-url-block">
-
-            <label>
-              Название комнаты
-            </label>
-
-            <input
-              value={title}
-              onChange={event =>
-                setTitle(
-                  event.target.value
-                )
-              }
-              placeholder="Например: Friday Movie Night"
-              maxLength={80}
-              autoComplete="off"
-            />
-
-          </div>
+            </div>
+          </>
 
         )}
 
@@ -309,10 +282,7 @@ function CreateRoom({
           className="open-source"
           onClick={openSource}
         >
-
-          <span>
-            ↗
-          </span>
+          <span>↗</span>
 
           Открыть {activeSource?.name}
 
@@ -321,7 +291,7 @@ function CreateRoom({
 
         {/* VIDEO URL */}
 
-        <div className="video-url-block">
+        <div className="video-url-block compact-field">
 
           <label>
             Ссылка на видео
@@ -352,7 +322,6 @@ function CreateRoom({
       </div>
 
     </div>
-
   );
 }
 
