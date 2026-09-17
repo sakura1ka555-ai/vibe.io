@@ -3,35 +3,25 @@ import cors from "@fastify/cors";
 import { Server } from "socket.io";
 import Database from "better-sqlite3";
 
+const app = Fastify({
+  logger: true
+});
 
-const app =
-  Fastify();
-
-
-await app.register(
-  cors,
-  {
-    origin: "*"
-  }
-);
+await app.register(cors, {
+  origin: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+});
 
 
 /*
-  =========================
-  DATABASE
-  =========================
+==================================================
+DATABASE
+==================================================
 */
 
-const db =
-  new Database(
-    "vibe.sqlite"
-  );
+const db = new Database("vibe.sqlite");
 
-
-db.pragma(
-  "journal_mode = WAL"
-);
-
+db.pragma("journal_mode = WAL");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -61,6 +51,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_users_name
   ON users(name);
 
+  CREATE INDEX IF NOT EXISTS idx_friendships_user
+  ON friendships(user_id);
+
   CREATE INDEX IF NOT EXISTS idx_friend_requests_to
   ON friend_requests(to_id);
 
@@ -70,67 +63,67 @@ db.exec(`
 
 
 /*
-  =========================
-  USER HELPERS
-  =========================
+==================================================
+USER HELPERS
+==================================================
 */
 
-function createVibeId() {
+function normalizeUserId(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase();
+}
 
+
+function normalizeName(value) {
+  return String(value || "Guest")
+    .trim()
+    .slice(0, 40) || "Guest";
+}
+
+
+function normalizeAvatar(value) {
+  return String(value || "");
+}
+
+
+function createVibeId() {
   const chars =
     "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-
   let code = "";
 
-
-  for (
-    let i = 0;
-    i < 6;
-    i++
-  ) {
-
-    code +=
-      chars[
-        Math.floor(
-          Math.random() *
-          chars.length
-        )
-      ];
-
+  for (let i = 0; i < 6; i++) {
+    code += chars[
+      Math.floor(Math.random() * chars.length)
+    ];
   }
 
-
   return `VIBE-${code}`;
-
 }
 
 
 function createUniqueVibeId() {
-
   let id;
 
-
   do {
-
-    id =
-      createVibeId();
-
+    id = createVibeId();
   } while (
     db.prepare(
       "SELECT id FROM users WHERE id = ?"
     ).get(id)
   );
 
-
   return id;
-
 }
 
 
-function getUser(
-  userId
-) {
+function getUser(userId) {
+  const id = normalizeUserId(userId);
+
+  if (!id) {
+    return null;
+  }
 
   return db.prepare(`
     SELECT
@@ -140,8 +133,7 @@ function getUser(
       created_at AS createdAt
     FROM users
     WHERE id = ?
-  `).get(userId);
-
+  `).get(id);
 }
 
 
@@ -149,31 +141,24 @@ function createUser(
   name = "Guest",
   avatar = ""
 ) {
-
-  const id =
-    createUniqueVibeId();
-
+  const id = createUniqueVibeId();
 
   const createdAt =
     new Date().toISOString();
 
-
   db.prepare(`
     INSERT INTO users
-    (id, name, avatar, created_at)
-    VALUES (?, ?, ?, ?)
+      (id, name, avatar, created_at)
+    VALUES
+      (?, ?, ?, ?)
   `).run(
     id,
-    name,
-    avatar,
+    normalizeName(name),
+    normalizeAvatar(avatar),
     createdAt
   );
 
-
-  return getUser(
-    id
-  );
-
+  return getUser(id);
 }
 
 
@@ -182,6 +167,11 @@ function updateUser(
   name,
   avatar
 ) {
+  const id = normalizeUserId(userId);
+
+  if (!id) {
+    return null;
+  }
 
   db.prepare(`
     UPDATE users
@@ -190,48 +180,51 @@ function updateUser(
       avatar = ?
     WHERE id = ?
   `).run(
-    name,
-    avatar,
-    userId
+    normalizeName(name),
+    normalizeAvatar(avatar),
+    id
   );
 
-
-  return getUser(
-    userId
-  );
-
+  return getUser(id);
 }
 
+
+/*
+==================================================
+FRIENDS HELPERS
+==================================================
+*/
 
 function areFriends(
   userA,
   userB
 ) {
+  const a = normalizeUserId(userA);
+  const b = normalizeUserId(userB);
 
-  const row =
-    db.prepare(`
-      SELECT id
-      FROM friendships
-      WHERE
-        user_id = ?
-        AND friend_id = ?
-      LIMIT 1
-    `).get(
-      userA,
-      userB
-    );
+  if (!a || !b) {
+    return false;
+  }
 
+  const row = db.prepare(`
+    SELECT id
+    FROM friendships
+    WHERE
+      user_id = ?
+      AND friend_id = ?
+    LIMIT 1
+  `).get(a, b);
 
-  return Boolean(
-    row
-  );
-
+  return Boolean(row);
 }
 
 
-function getFriends(
-  userId
-) {
+function getFriends(userId) {
+  const id = normalizeUserId(userId);
+
+  if (!id) {
+    return [];
+  }
 
   return db.prepare(`
     SELECT
@@ -243,17 +236,18 @@ function getFriends(
     JOIN users u
       ON u.id = f.friend_id
     WHERE f.user_id = ?
-    ORDER BY u.name COLLATE NOCASE ASC
-  `).all(
-    userId
-  );
-
+    ORDER BY
+      u.name COLLATE NOCASE ASC
+  `).all(id);
 }
 
 
-function getIncomingRequests(
-  userId
-) {
+function getIncomingRequests(userId) {
+  const id = normalizeUserId(userId);
+
+  if (!id) {
+    return [];
+  }
 
   return db.prepare(`
     SELECT
@@ -269,16 +263,16 @@ function getIncomingRequests(
       r.to_id = ?
       AND r.status = 'pending'
     ORDER BY r.id DESC
-  `).all(
-    userId
-  );
-
+  `).all(id);
 }
 
 
-function getOutgoingRequests(
-  userId
-) {
+function getOutgoingRequests(userId) {
+  const id = normalizeUserId(userId);
+
+  if (!id) {
+    return [];
+  }
 
   return db.prepare(`
     SELECT
@@ -294,82 +288,7 @@ function getOutgoingRequests(
       r.from_id = ?
       AND r.status = 'pending'
     ORDER BY r.id DESC
-  `).all(
-    userId
-  );
-
-}
-
-
-function emitFriendsUpdate(
-  userId
-) {
-
-  const sockets =
-    io.sockets.sockets.values();
-
-
-  for (
-    const connectedSocket of sockets
-  ) {
-
-    if (
-      connectedSocket.data.userId ===
-      userId
-    ) {
-
-      connectedSocket.emit(
-        "friends-data",
-        {
-
-          friends:
-            getFriends(
-              userId
-            ),
-
-          incoming:
-            getIncomingRequests(
-              userId
-            ),
-
-          outgoing:
-            getOutgoingRequests(
-              userId
-            )
-
-        }
-      );
-
-    }
-
-  }
-
-}
-
-
-function isUserOnline(
-  userId
-) {
-
-  for (
-    const connectedSocket of
-    io.sockets.sockets.values()
-  ) {
-
-    if (
-      connectedSocket.data.userId ===
-      userId
-    ) {
-
-      return true;
-
-    }
-
-  }
-
-
-  return false;
-
+  `).all(id);
 }
 
 
@@ -377,69 +296,121 @@ function addFriendship(
   userA,
   userB
 ) {
+  const a = normalizeUserId(userA);
+  const b = normalizeUserId(userB);
+
+  if (!a || !b || a === b) {
+    return;
+  }
 
   const transaction =
-    db.transaction(
-      () => {
+    db.transaction(() => {
 
-        db.prepare(`
-          INSERT OR IGNORE INTO friendships
+      const now =
+        new Date().toISOString();
+
+      db.prepare(`
+        INSERT OR IGNORE INTO friendships
           (user_id, friend_id, created_at)
-          VALUES (?, ?, ?)
-        `).run(
-          userA,
-          userB,
-          new Date().toISOString()
-        );
+        VALUES
+          (?, ?, ?)
+      `).run(
+        a,
+        b,
+        now
+      );
 
-
-        db.prepare(`
-          INSERT OR IGNORE INTO friendships
+      db.prepare(`
+        INSERT OR IGNORE INTO friendships
           (user_id, friend_id, created_at)
-          VALUES (?, ?, ?)
-        `).run(
-          userB,
-          userA,
-          new Date().toISOString()
-        );
+        VALUES
+          (?, ?, ?)
+      `).run(
+        b,
+        a,
+        now
+      );
 
-      }
-    );
-
+    });
 
   transaction();
-
 }
 
 
 /*
-  =========================
-  HTTP
-  =========================
+==================================================
+ROOMS
+==================================================
+*/
+
+const rooms = new Map();
+
+
+function createRoomObject(
+  roomId,
+  title,
+  videoUrl
+) {
+  return {
+    id: roomId,
+
+    title:
+      title ||
+      `Комната ${roomId}`,
+
+    videoUrl:
+      videoUrl || "",
+
+    users: 0,
+
+    playback: {
+      action: "pause",
+      position: 0
+    }
+  };
+}
+
+
+/*
+==================================================
+HTTP
+==================================================
 */
 
 app.get(
   "/",
   async () => {
-
     return {
-
-      app:
-        "VIBE SERVER",
-
-      status:
-        "online"
-
+      app: "VIBE SERVER",
+      status: "online"
     };
-
   }
 );
 
 
 /*
-  =========================
-  USER REGISTER
-  =========================
+==================================================
+ HEALTH
+==================================================
+*/
+
+app.get(
+  "/health",
+  async () => {
+    return {
+      status: "ok",
+      app: "VIBE SERVER",
+      rooms: rooms.size,
+      time: new Date().toISOString()
+    };
+  }
+);
+
+
+/*
+==================================================
+CREATE USER
+==================================================
 */
 
 app.post(
@@ -452,64 +423,38 @@ app.post(
     const data =
       request.body || {};
 
-
     const name =
-      String(
-        data.name ||
-        "Guest"
-      )
-        .trim()
-        .slice(
-          0,
-          40
-        );
-
+      normalizeName(data.name);
 
     const avatar =
-      String(
-        data.avatar ||
-        ""
-      );
+      normalizeAvatar(data.avatar);
 
-
-    if (
-      avatar.length >
-      1500000
-    ) {
-
+    if (avatar.length > 1500000) {
       return reply
         .code(400)
         .send({
-
           error:
             "Avatar is too large"
-
         });
-
     }
-
 
     const user =
       createUser(
-        name ||
-        "Guest",
-
+        name,
         avatar
       );
-
 
     return {
       user
     };
-
   }
 );
 
 
 /*
-  =========================
-  GET USER
-  =========================
+==================================================
+GET USER
+==================================================
 */
 
 app.get(
@@ -520,46 +465,33 @@ app.get(
   ) => {
 
     const userId =
-      String(
-        request.params.userId ||
-        ""
-      )
-        .trim()
-        .toUpperCase();
-
-
-    const user =
-      getUser(
-        userId
+      normalizeUserId(
+        request.params?.userId
       );
 
+    const user =
+      getUser(userId);
 
     if (!user) {
-
       return reply
         .code(404)
         .send({
-
           error:
             "User not found"
-
         });
-
     }
-
 
     return {
       user
     };
-
   }
 );
 
 
 /*
-  =========================
-  SEARCH USERS
-  =========================
+==================================================
+SEARCH USERS
+==================================================
 */
 
 app.get(
@@ -570,28 +502,19 @@ app.get(
 
     const query =
       String(
-        request.query?.q ||
-        ""
+        request.query?.q || ""
       )
         .trim()
-        .slice(
-          0,
-          40
-        );
-
+        .slice(0, 40);
 
     if (!query) {
-
       return {
         users: []
       };
-
     }
-
 
     const like =
       `%${query}%`;
-
 
     const users =
       db.prepare(`
@@ -617,29 +540,17 @@ app.get(
         query.toUpperCase()
       );
 
-
     return {
       users
     };
-
   }
 );
 
 
 /*
-  =========================
-  ROOMS
-  =========================
-*/
-
-const rooms =
-  new Map();
-
-
-/*
-  =========================
-  CREATE ROOM
-  =========================
+==================================================
+CREATE ROOM
+==================================================
 */
 
 app.post(
@@ -652,7 +563,6 @@ app.post(
     const data =
       request.body || {};
 
-
     const roomId =
       String(
         data.roomId || ""
@@ -660,74 +570,84 @@ app.post(
         .trim()
         .toUpperCase();
 
+    const title =
+      String(
+        data.title ||
+        `Комната ${roomId}`
+      )
+        .trim()
+        .slice(0, 100);
+
+    const videoUrl =
+      String(
+        data.videoUrl || ""
+      )
+        .trim();
 
     if (!roomId) {
-
       return reply
         .code(400)
         .send({
-
           error:
             "Room ID is required"
-
         });
-
     }
 
+    if (roomId.length > 50) {
+      return reply
+        .code(400)
+        .send({
+          error:
+            "Room ID is too long"
+        });
+    }
 
-    const room = {
+    if (videoUrl.length > 5000) {
+      return reply
+        .code(400)
+        .send({
+          error:
+            "Video URL is too long"
+        });
+    }
 
-      id:
+    if (rooms.has(roomId)) {
+      return reply
+        .code(409)
+        .send({
+          error:
+            "Room already exists"
+        });
+    }
+
+    const room =
+      createRoomObject(
         roomId,
-
-      title:
-        data.title ||
-        `Комната ${roomId}`,
-
-      videoUrl:
-        data.videoUrl ||
-        "",
-
-      users:
-        0,
-
-      playback: {
-
-        action:
-          "pause",
-
-        position:
-          0
-
-      }
-
-    };
-
+        title,
+        videoUrl
+      );
 
     rooms.set(
       roomId,
       room
     );
 
-
     console.log(
       "🏠 room created:",
       roomId
     );
 
-
     return {
       room
     };
-
   }
 );
 
 
 /*
-  =========================
-  GET ROOM
-  =========================
+==================================================
+GET ROOM
+==================================================
 */
 
 app.get(
@@ -739,50 +659,39 @@ app.get(
 
     const roomId =
       String(
-        request.params.roomId || ""
+        request.params?.roomId || ""
       )
         .trim()
         .toUpperCase();
 
-
     const room =
-      rooms.get(
-        roomId
-      );
-
+      rooms.get(roomId);
 
     console.log(
       "🔎 room request:",
       roomId
     );
 
-
     if (!room) {
-
       return reply
         .code(404)
         .send({
-
           error:
             "Room not found"
-
         });
-
     }
-
 
     return {
       room
     };
-
   }
 );
 
 
 /*
-  =========================
-  SOCKET.IO
-  =========================
+==================================================
+SOCKET.IO
+==================================================
 */
 
 const io =
@@ -790,99 +699,89 @@ const io =
     app.server,
     {
       cors: {
-
-        origin:
-          "*",
-
+        origin: "*",
         methods: [
           "GET",
           "POST"
         ]
-
       }
-
     }
   );
 
 
 /*
-  =========================
-  HELPERS
-  =========================
+==================================================
+POSITION
+==================================================
 */
+
+function normalizePosition(
+  seconds
+) {
+  const value =
+    Number(seconds);
+
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    value
+  );
+}
+
 
 function formatPosition(
   seconds
 ) {
-
   const total =
-    Math.max(
-      0,
-      Math.floor(
-        Number(seconds) || 0
+    Math.floor(
+      normalizePosition(
+        seconds
       )
     );
-
 
   const minutes =
     Math.floor(
       total / 60
     );
 
-
   const secs =
     total % 60;
 
-
   return (
-
-    String(minutes)
-      .padStart(
-        2,
-        "0"
-      )
-
-    +
-
-    ":"
-
-    +
-
-    String(secs)
-      .padStart(
-        2,
-        "0"
-      )
-
+    String(minutes).padStart(2, "0") +
+    ":" +
+    String(secs).padStart(2, "0")
   );
-
 }
 
+
+/*
+==================================================
+PRESENCE
+==================================================
+*/
 
 function getPresence(
   roomId
 ) {
-
   const result = [];
 
-
   for (
-    const connectedSocket of
-    io.sockets.sockets.values()
+    const connectedSocket
+    of io.sockets.sockets.values()
   ) {
 
     if (
       connectedSocket.data.roomId !==
       roomId
     ) {
-
       continue;
-
     }
 
-
     result.push({
-
       id:
         connectedSocket.data.userId ||
         connectedSocket.id,
@@ -896,9 +795,8 @@ function getPresence(
         "",
 
       position:
-        Number(
-          connectedSocket.data.position ||
-          0
+        normalizePosition(
+          connectedSocket.data.position
         ),
 
       time:
@@ -909,35 +807,91 @@ function getPresence(
       state:
         connectedSocket.data.videoState ||
         "pause"
-
     });
-
   }
 
-
   return result;
-
 }
 
 
 function emitPresence(
   roomId
 ) {
-
   io.to(roomId).emit(
     "presence",
-    getPresence(
-      roomId
-    )
+    getPresence(roomId)
   );
-
 }
 
 
 /*
-  =========================
-  SOCKET CONNECTION
-  =========================
+==================================================
+FRIENDS SOCKET UPDATE
+==================================================
+*/
+
+function emitFriendsUpdate(
+  userId
+) {
+
+  if (!userId) {
+    return;
+  }
+
+  for (
+    const connectedSocket
+    of io.sockets.sockets.values()
+  ) {
+
+    if (
+      connectedSocket.data.userId !==
+      userId
+    ) {
+      continue;
+    }
+
+    connectedSocket.emit(
+      "friends-data",
+      {
+        friends:
+          getFriends(userId),
+
+        incoming:
+          getIncomingRequests(userId),
+
+        outgoing:
+          getOutgoingRequests(userId)
+      }
+    );
+  }
+}
+
+
+function isUserOnline(
+  userId
+) {
+
+  for (
+    const connectedSocket
+    of io.sockets.sockets.values()
+  ) {
+
+    if (
+      connectedSocket.data.userId ===
+      userId
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+/*
+==================================================
+SOCKET CONNECTION
+==================================================
 */
 
 io.on(
@@ -951,9 +905,9 @@ io.on(
 
 
     /*
-      =========================
-      REGISTER USER
-      =========================
+    ==============================================
+    REGISTER USER
+    ==============================================
     */
 
     socket.on(
@@ -961,57 +915,37 @@ io.on(
       (data) => {
 
         const requestedId =
-          String(
-            data?.userId ||
-            ""
-          )
-            .trim()
-            .toUpperCase();
-
+          normalizeUserId(
+            data?.userId
+          );
 
         let user =
           requestedId
-            ? getUser(
-                requestedId
-              )
+            ? getUser(requestedId)
             : null;
-
 
         if (!user) {
 
           user =
             createUser(
-              String(
-                data?.name ||
-                "Guest"
-              )
-                .trim()
-                .slice(
-                  0,
-                  40
-                ) ||
-              "Guest",
+              normalizeName(
+                data?.name
+              ),
 
-              String(
-                data?.avatar ||
-                ""
+              normalizeAvatar(
+                data?.avatar
               )
             );
-
         }
-
 
         socket.data.userId =
           user.id;
 
-
         socket.data.userName =
           user.name;
 
-
         socket.data.avatar =
           user.avatar;
-
 
         socket.emit(
           "user-registered",
@@ -1020,44 +954,23 @@ io.on(
           }
         );
 
-
-        socket.emit(
-          "friends-data",
-          {
-
-            friends:
-              getFriends(
-                user.id
-              ),
-
-            incoming:
-              getIncomingRequests(
-                user.id
-              ),
-
-            outgoing:
-              getOutgoingRequests(
-                user.id
-              )
-
-          }
+        emitFriendsUpdate(
+          user.id
         );
-
 
         console.log(
           "👤 user registered:",
           user.id,
           user.name
         );
-
       }
     );
 
 
     /*
-      =========================
-      SEARCH USERS
-      =========================
+    ==============================================
+    SEARCH USERS
+    ==============================================
     */
 
     socket.on(
@@ -1066,15 +979,10 @@ io.on(
 
         const query =
           String(
-            data?.query ||
-            ""
+            data?.query || ""
           )
             .trim()
-            .slice(
-              0,
-              40
-            );
-
+            .slice(0, 40);
 
         if (!query) {
 
@@ -1086,13 +994,10 @@ io.on(
           );
 
           return;
-
         }
-
 
         const like =
           `%${query}%`;
-
 
         const users =
           db.prepare(`
@@ -1113,22 +1018,20 @@ io.on(
             like
           );
 
-
         socket.emit(
           "user-search-results",
           {
             users
           }
         );
-
       }
     );
 
 
     /*
-      =========================
-      SEND FRIEND REQUEST
-      =========================
+    ==============================================
+    FRIEND REQUEST
+    ==============================================
     */
 
     socket.on(
@@ -1138,41 +1041,35 @@ io.on(
         const fromId =
           socket.data.userId;
 
-
         const toId =
-          String(
-            data?.userId ||
-            ""
-          )
-            .trim()
-            .toUpperCase();
-
+          normalizeUserId(
+            data?.userId
+          );
 
         if (
           !fromId ||
           !toId
         ) {
-
           return;
-
         }
-
 
         if (
-          fromId ===
-          toId
+          fromId === toId
         ) {
 
-          return;
-
-        }
-
-
-        const target =
-          getUser(
-            toId
+          socket.emit(
+            "friend-error",
+            {
+              message:
+                "Cannot add yourself"
+            }
           );
 
+          return;
+        }
+
+        const target =
+          getUser(toId);
 
         if (!target) {
 
@@ -1185,9 +1082,7 @@ io.on(
           );
 
           return;
-
         }
-
 
         if (
           areFriends(
@@ -1205,9 +1100,7 @@ io.on(
           );
 
           return;
-
         }
-
 
         const existing =
           db.prepare(`
@@ -1235,11 +1128,9 @@ io.on(
             fromId
           );
 
-
         if (
           existing &&
-          existing.status ===
-          "pending"
+          existing.status === "pending"
         ) {
 
           socket.emit(
@@ -1251,9 +1142,7 @@ io.on(
           );
 
           return;
-
         }
-
 
         db.prepare(`
           DELETE FROM friend_requests
@@ -1274,27 +1163,24 @@ io.on(
           fromId
         );
 
-
         db.prepare(`
           INSERT INTO friend_requests
-          (from_id, to_id, status, created_at)
-          VALUES (?, ?, 'pending', ?)
+            (from_id, to_id, status, created_at)
+          VALUES
+            (?, ?, 'pending', ?)
         `).run(
           fromId,
           toId,
           new Date().toISOString()
         );
 
-
         emitFriendsUpdate(
           fromId
         );
 
-
         emitFriendsUpdate(
           toId
         );
-
 
         socket.emit(
           "friend-success",
@@ -1304,22 +1190,20 @@ io.on(
           }
         );
 
-
         console.log(
           "👥 friend request:",
           fromId,
           "→",
           toId
         );
-
       }
     );
 
 
     /*
-      =========================
-      ACCEPT FRIEND REQUEST
-      =========================
+    ==============================================
+    ACCEPT FRIEND
+    ==============================================
     */
 
     socket.on(
@@ -1329,22 +1213,17 @@ io.on(
         const userId =
           socket.data.userId;
 
-
         const requestId =
           Number(
             data?.requestId
           );
 
-
         if (
           !userId ||
           !requestId
         ) {
-
           return;
-
         }
-
 
         const request =
           db.prepare(`
@@ -1362,19 +1241,14 @@ io.on(
             userId
           );
 
-
         if (!request) {
-
           return;
-
         }
-
 
         addFriendship(
           request.fromId,
           request.toId
         );
-
 
         db.prepare(`
           UPDATE friend_requests
@@ -1384,16 +1258,13 @@ io.on(
           requestId
         );
 
-
         emitFriendsUpdate(
           request.fromId
         );
 
-
         emitFriendsUpdate(
           request.toId
         );
-
 
         console.log(
           "✅ friends:",
@@ -1401,15 +1272,14 @@ io.on(
           "<->",
           request.toId
         );
-
       }
     );
 
 
     /*
-      =========================
-      DECLINE FRIEND REQUEST
-      =========================
+    ==============================================
+    DECLINE FRIEND
+    ==============================================
     */
 
     socket.on(
@@ -1419,22 +1289,17 @@ io.on(
         const userId =
           socket.data.userId;
 
-
         const requestId =
           Number(
             data?.requestId
           );
 
-
         if (
           !userId ||
           !requestId
         ) {
-
           return;
-
         }
-
 
         db.prepare(`
           UPDATE friend_requests
@@ -1448,19 +1313,17 @@ io.on(
           userId
         );
 
-
         emitFriendsUpdate(
           userId
         );
-
       }
     );
 
 
     /*
-      =========================
-      REMOVE FRIEND
-      =========================
+    ==============================================
+    REMOVE FRIEND
+    ==============================================
     */
 
     socket.on(
@@ -1470,25 +1333,17 @@ io.on(
         const userId =
           socket.data.userId;
 
-
         const friendId =
-          String(
-            data?.userId ||
-            ""
-          )
-            .trim()
-            .toUpperCase();
-
+          normalizeUserId(
+            data?.userId
+          );
 
         if (
           !userId ||
           !friendId
         ) {
-
           return;
-
         }
-
 
         db.prepare(`
           DELETE FROM friendships
@@ -1509,24 +1364,21 @@ io.on(
           userId
         );
 
-
         emitFriendsUpdate(
           userId
         );
 
-
         emitFriendsUpdate(
           friendId
         );
-
       }
     );
 
 
     /*
-      =========================
-      JOIN ROOM
-      =========================
+    ==============================================
+    JOIN ROOM
+    ==============================================
     */
 
     socket.on(
@@ -1542,27 +1394,16 @@ io.on(
             .trim()
             .toUpperCase();
 
-
         const userName =
-          String(
+          normalizeName(
             typeof data === "string"
-              ? "Guest"
+              ? socket.data.userName
               : data?.userName ||
-                socket.data.userName ||
-                "Guest"
-          )
-            .trim()
-            .slice(
-              0,
-              40
-            );
-
-
-        const room =
-          rooms.get(
-            roomId
+                socket.data.userName
           );
 
+        const room =
+          rooms.get(roomId);
 
         if (!room) {
 
@@ -1571,29 +1412,31 @@ io.on(
           );
 
           return;
-
         }
-
 
         if (
           socket.data.roomId ===
           roomId
         ) {
-
           return;
-
         }
 
+
+        /*
+        Leave old room
+        */
 
         if (
           socket.data.roomId
         ) {
 
+          const oldRoomId =
+            socket.data.roomId;
+
           const oldRoom =
             rooms.get(
-              socket.data.roomId
+              oldRoomId
             );
-
 
           if (oldRoom) {
 
@@ -1603,63 +1446,57 @@ io.on(
                 oldRoom.users - 1
               );
 
-
             io.to(
-              socket.data.roomId
+              oldRoomId
             ).emit(
               "users",
               oldRoom.users
             );
 
-
             emitPresence(
-              socket.data.roomId
+              oldRoomId
             );
-
           }
 
-
           socket.leave(
-            socket.data.roomId
+            oldRoomId
           );
-
         }
 
+
+        /*
+        Join new room
+        */
 
         socket.join(
           roomId
         );
 
-
         socket.data.roomId =
           roomId;
 
-
         socket.data.userName =
-          userName ||
-          "Guest";
-
+          userName;
 
         socket.data.avatar =
-          socket.data.avatar ||
-          "";
-
+          socket.data.avatar || "";
 
         socket.data.position =
           room.playback.position;
 
-
         socket.data.videoState =
           room.playback.action;
-
 
         room.users++;
 
 
+        /*
+        Send room state
+        */
+
         socket.emit(
           "room-state",
           {
-
             roomId:
               room.id,
 
@@ -1674,10 +1511,13 @@ io.on(
 
             position:
               room.playback.position
-
           }
         );
 
+
+        /*
+        Users count
+        */
 
         io.to(
           roomId
@@ -1686,6 +1526,10 @@ io.on(
           room.users
         );
 
+
+        /*
+        Presence
+        */
 
         emitPresence(
           roomId
@@ -1699,15 +1543,14 @@ io.on(
           "users:",
           room.users
         );
-
       }
     );
 
 
     /*
-      =========================
-      PROFILE UPDATE
-      =========================
+    ==============================================
+    PROFILE UPDATE
+    ==============================================
     */
 
     socket.on(
@@ -1721,70 +1564,51 @@ io.on(
             .trim()
             .toUpperCase();
 
-
         if (!roomId) {
           return;
         }
-
 
         if (
           socket.data.roomId !==
           roomId
         ) {
-
           return;
-
         }
 
-
         const room =
-          rooms.get(
-            roomId
-          );
-
+          rooms.get(roomId);
 
         if (!room) {
           return;
         }
 
-
         const name =
-          String(
-            data?.name ||
-            "Guest"
-          )
-            .trim()
-            .slice(
-              0,
-              40
-            );
-
-
-        const avatar =
-          String(
-            data?.avatar ||
-            ""
+          normalizeName(
+            data?.name
           );
 
+        const avatar =
+          normalizeAvatar(
+            data?.avatar
+          );
 
         if (
           avatar.length >
           1500000
         ) {
-
           return;
-
         }
 
-
         socket.data.userName =
-          name ||
-          "Guest";
-
+          name;
 
         socket.data.avatar =
           avatar;
 
+
+        /*
+        Save in SQLite
+        */
 
         if (
           socket.data.userId
@@ -1792,19 +1616,24 @@ io.on(
 
           updateUser(
             socket.data.userId,
-
-            socket.data.userName,
-
-            socket.data.avatar
+            name,
+            avatar
           );
-
         }
 
+
+        /*
+        Update room presence
+        */
 
         emitPresence(
           roomId
         );
 
+
+        /*
+        Update friends
+        */
 
         if (
           socket.data.userId
@@ -1813,24 +1642,21 @@ io.on(
           emitFriendsUpdate(
             socket.data.userId
           );
-
         }
-
 
         console.log(
           "👤 profile updated:",
           roomId,
-          socket.data.userName
+          name
         );
-
       }
     );
 
 
     /*
-      =========================
-      VIDEO CONTROL
-      =========================
+    ==============================================
+    VIDEO CONTROL
+    ==============================================
     */
 
     socket.on(
@@ -1844,86 +1670,78 @@ io.on(
             .trim()
             .toUpperCase();
 
-
         if (!roomId) {
           return;
         }
 
+        if (
+          socket.data.roomId !==
+          roomId
+        ) {
+          return;
+        }
 
         const room =
-          rooms.get(
-            roomId
-          );
-
+          rooms.get(roomId);
 
         if (!room) {
           return;
         }
-
 
         const action =
           data?.action === "play"
             ? "play"
             : "pause";
 
-
         const position =
-          Math.max(
-            0,
-            Number(
-              data?.position || 0
-            )
+          normalizePosition(
+            data?.position
           );
 
-
         room.playback = {
-
           action,
-
           position
-
         };
-
 
         socket.data.position =
           position;
-
 
         socket.data.videoState =
           action;
 
 
+        /*
+        Send everyone except sender
+        */
+
         socket
-          .to(
-            roomId
-          )
+          .to(roomId)
           .emit(
             "video-control",
             {
-
               action,
-
               position,
-
               source:
                 socket.id
-
             }
           );
 
 
+        /*
+        Update presence
+        */
+
         emitPresence(
           roomId
         );
-
       }
     );
 
 
     /*
-      =========================
-      VIDEO POSITION
-      =========================
+    ==============================================
+    VIDEO POSITION
+    ==============================================
     */
 
     socket.on(
@@ -1937,51 +1755,45 @@ io.on(
             .trim()
             .toUpperCase();
 
-
         if (!roomId) {
           return;
         }
 
+        if (
+          socket.data.roomId !==
+          roomId
+        ) {
+          return;
+        }
 
         const position =
-          Math.max(
-            0,
-            Number(
-              data?.position || 0
-            )
+          normalizePosition(
+            data?.position
           );
-
 
         socket.data.position =
           position;
 
-
         const room =
-          rooms.get(
-            roomId
-          );
-
+          rooms.get(roomId);
 
         if (room) {
 
           room.playback.position =
             position;
-
         }
-
 
         emitPresence(
           roomId
         );
-
       }
     );
 
 
     /*
-      =========================
-      REACTIONS
-      =========================
+    ==============================================
+    REACTIONS
+    ==============================================
     */
 
     socket.on(
@@ -1995,64 +1807,54 @@ io.on(
             .trim()
             .toUpperCase();
 
-
         const reaction =
           String(
             data?.reaction || ""
           )
             .trim();
 
-
         if (
           !roomId ||
           !reaction
         ) {
-
           return;
-
         }
-
 
         if (
-          !rooms.has(
-            roomId
-          )
+          socket.data.roomId !==
+          roomId
         ) {
-
           return;
-
         }
 
+        if (
+          !rooms.has(roomId)
+        ) {
+          return;
+        }
 
         const allowedReactions = [
-
           "❤️",
           "😂",
           "🔥",
           "😮",
           "😭",
           "💀"
-
         ];
-
 
         if (
           !allowedReactions.includes(
             reaction
           )
         ) {
-
           return;
-
         }
-
 
         io.to(
           roomId
         ).emit(
           "reaction",
           {
-
             id:
               `${socket.id}-${Date.now()}`,
 
@@ -2061,10 +1863,8 @@ io.on(
             user:
               socket.data.userName ||
               "Guest"
-
           }
         );
-
 
         console.log(
           "💜 reaction:",
@@ -2072,15 +1872,14 @@ io.on(
           socket.data.userName,
           reaction
         );
-
       }
     );
 
 
     /*
-      =========================
-      CHAT
-      =========================
+    ==============================================
+    CHAT
+    ==============================================
     */
 
     socket.on(
@@ -2094,62 +1893,53 @@ io.on(
             .trim()
             .toUpperCase();
 
-
         const text =
           String(
             data?.text || ""
           )
             .trim()
-            .slice(
-              0,
-              1000
-            );
-
+            .slice(0, 1000);
 
         if (
           !roomId ||
           !text
         ) {
-
           return;
-
         }
-
 
         if (
-          !rooms.has(
-            roomId
-          )
+          socket.data.roomId !==
+          roomId
         ) {
-
           return;
-
         }
 
+        if (
+          !rooms.has(roomId)
+        ) {
+          return;
+        }
 
         io.to(
           roomId
         ).emit(
           "chat-message",
           {
-
             user:
               socket.data.userName ||
               "Guest",
 
             text
-
           }
         );
-
       }
     );
 
 
     /*
-      =========================
-      DISCONNECT
-      =========================
+    ==============================================
+    DISCONNECT
+    ==============================================
     */
 
     socket.on(
@@ -2159,14 +1949,10 @@ io.on(
         const roomId =
           socket.data.roomId;
 
-
         if (roomId) {
 
           const room =
-            rooms.get(
-              roomId
-            );
-
+            rooms.get(roomId);
 
           if (room) {
 
@@ -2176,7 +1962,6 @@ io.on(
                 room.users - 1
               );
 
-
             io.to(
               roomId
             ).emit(
@@ -2184,21 +1969,16 @@ io.on(
               room.users
             );
 
-
             emitPresence(
               roomId
             );
-
           }
-
         }
-
 
         console.log(
           "🔴 user disconnected:",
           socket.id
         );
-
       }
     );
 
@@ -2207,45 +1987,34 @@ io.on(
 
 
 /*
-  =========================
-  START
-  =========================
+==================================================
+START SERVER
+==================================================
 */
 
 const PORT =
-  process.env.PORT ||
-  3001;
+  Number(
+    process.env.PORT || 3001
+  );
 
 
-app.listen({
+try {
 
-  port:
-    PORT,
+  await app.listen({
+    port: PORT,
+    host: "0.0.0.0"
+  });
 
-  host:
-    "0.0.0.0"
+  console.log(
+    `🔥 VIBE server started on ${PORT}`
+  );
 
-})
-.then(
-  () => {
+} catch (error) {
 
-    console.log(
-      `🔥 VIBE server started on ${PORT}`
-    );
+  console.error(
+    "❌ VIBE SERVER START ERROR:",
+    error
+  );
 
-  }
-)
-.catch(
-  error => {
-
-    console.error(
-      error
-    );
-
-
-    process.exit(
-      1
-    );
-
-  }
-);
+  process.exit(1);
+}
