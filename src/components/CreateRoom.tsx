@@ -17,6 +17,57 @@ function CreateRoom({
     useState(false);
 
 
+  /*
+    =========================
+    VIDEO SERVICES
+    =========================
+  */
+
+  const videoServices = [
+    {
+      name: "YouTube",
+      url: "https://www.youtube.com/"
+    },
+    {
+      name: "RuTube",
+      url: "https://rutube.ru/"
+    },
+    {
+      name: "VK Видео",
+      url: "https://vkvideo.ru/"
+    },
+    {
+      name: "Кинопоиск",
+      url: "https://www.kinopoisk.ru/"
+    }
+  ];
+
+
+  /*
+    =========================
+    OPEN VIDEO SERVICE
+    =========================
+  */
+
+  function openVideoService(
+    url: string
+  ) {
+
+    window.open(
+      url,
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+  }
+
+
+  /*
+    =========================
+    CREATE
+    =========================
+  */
+
   function handleCreate() {
 
     const url =
@@ -50,6 +101,12 @@ function CreateRoom({
   }
 
 
+  /*
+    =========================
+    KEYBOARD
+    =========================
+  */
+
   function handleKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
@@ -68,11 +125,19 @@ function CreateRoom({
   }
 
 
+  /*
+    =========================
+    RENDER
+    =========================
+  */
+
   return (
 
     <div className="modal-backdrop">
 
       <div className="room-modal">
+
+        {/* CLOSE */}
 
         <button
           type="button"
@@ -84,10 +149,14 @@ function CreateRoom({
         </button>
 
 
+        {/* LABEL */}
+
         <div className="modal-label">
           CREATE ROOM
         </div>
 
+
+        {/* TITLE */}
 
         <h2>
           Создать комнату
@@ -99,6 +168,56 @@ function CreateRoom({
           чтобы начать совместный просмотр.
         </p>
 
+
+        {/* =========================
+            VIDEO SERVICES
+        ========================= */}
+
+        <div className="video-services">
+
+          <div className="video-services-title">
+            Где найти фильм?
+          </div>
+
+
+          <div className="video-services-buttons">
+
+            {videoServices.map(
+              service => (
+
+                <button
+                  key={service.name}
+                  type="button"
+                  className="video-service-button"
+                  onClick={() =>
+                    openVideoService(
+                      service.url
+                    )
+                  }
+                  disabled={creating}
+                >
+
+                  <span>
+                    {service.name}
+                  </span>
+
+                  <span className="video-service-arrow">
+                    ↗
+                  </span>
+
+                </button>
+
+              )
+            )}
+
+          </div>
+
+        </div>
+
+
+        {/* =========================
+            VIDEO URL
+        ========================= */}
 
         <div className="video-url-block">
 
@@ -116,13 +235,17 @@ function CreateRoom({
               )
             }
             onKeyDown={handleKeyDown}
-            placeholder="Например https://..."
+            placeholder="Вставь ссылку на фильм или видео"
             autoFocus
             autoComplete="off"
           />
 
         </div>
 
+
+        {/* =========================
+            CREATE BUTTON
+        ========================= */}
 
         <button
           type="button"
