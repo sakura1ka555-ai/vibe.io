@@ -6088,7 +6088,7 @@ button {
 .category-select {
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 
 .category-option {
